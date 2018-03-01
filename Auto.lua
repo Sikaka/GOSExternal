@@ -91,6 +91,15 @@ function AutoUtil:NearestEnemyDistance(entity)
 end
 
 class "Brand"
+local WCastPos, WCastTime
+
+
+--Gets the time until our W will deal damage
+function Brand:GetWHitTime()
+	local deltaHitTime = WCastTime + W.Delay - Game.Timer()	
+	return deltaHitTime
+end
+
 function Brand:__init()	
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
@@ -139,19 +148,9 @@ end
 function Brand:Tick()	
 	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true  or not AIO.comboActive:Value() then return end
 
-	--Check for out of range gapclosers	
-	local target = TPred:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.reactionTime:Value())
-	if target ~= nil then
-		Control.CastSpell(HK_W, target:GetPath(1))	
-	end			
-	
-	--Check for stasis targets
-	local target = TPred:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.reactionTime:Value())
-	if target ~= nil then
-		Control.CastSpell(HK_W, target.pos)			
-		--Check if our Q will intercept after W and not hit minions on the way, if so cast it as well.		
-	end
+	Brand:AutoImobileCombo()
 		
+	--TODO: Clean up rest of the skills to follow new format of other champs
 	local target = CurrentTarget(W.Range)
 	if target == nil then return end
 	local castpos,HitChance, pos = TPred:GetBestCastPosition(target, W.Delay , W.Width, W.Range, W.Speed, myHero.pos, W.Collision, W.Sort, AIO.reactionTime:Value())
@@ -182,6 +181,40 @@ function Brand:Tick()
 		Control.CastSpell(HK_R, target)
 	end
 end
+
+--Will attempt to W or WQ any champions who are immobile (hourglass, using gapcloser)
+function Brand:AutoImobileCombo()
+	local target = TPred:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.reactionTime:Value())
+	if target ~= nil then
+		if Ready(_W) then
+			Control.CastSpell(HK_W, target:GetPath(1))
+			WCastPos = target:GetPath(1)
+			WCastTime = Game.Timer()
+		end
+		
+		local wHitTime = self:GetWHitTime()
+		if Ready(_Q) and  wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target:GetPath(1), Q.Delay, Q.Speed) > wHitTime then
+			Control.CastSpell(HK_Q, target:GetPath(1))
+		end		
+	end
+	
+	--Check for stasis targets
+	local target = TPred:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.reactionTime:Value())
+	if target ~= nil then
+		if Ready(_W) then
+			Control.CastSpell(HK_W, target.pos)
+			WCastPos = target.pos
+			WCastTime = Game.Timer()
+		end
+		
+		local wHitTime = self:GetWHitTime()
+		if Ready(_Q) and  wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target.pos, Q.Delay, Q.Speed) > wHitTime then
+			Control.CastSpell(HK_Q, target.pos)
+		end
+		--Check if our Q will intercept after W and not hit minions on the way, if so cast it as well.		
+	end
+end
+
 
 class "Velkoz"
 
