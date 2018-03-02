@@ -446,7 +446,7 @@ function Velkoz:AutoEInterupt()
 	
 	--Use E on Stunned Targets
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
-	if target and CurrentManaPct(myHero) >= AIO.Skills.EMana:Value() then
+	if target and CurrentPctMana(myHero) >= AIO.Skills.EMana:Value() then
 		Control.CastSpell(HK_E, target.pos)	
 		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInteruptMana:Value() then
 			Control.CastSpell(HK_W, target.pos)
