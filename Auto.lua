@@ -3,15 +3,13 @@ if not table.contains(Heroes, myHero.charName) then print("Hero not supported: "
 
 local Scriptname,Version,Author,LVersion = "[Auto]","v1.0","Sikaka","0.01"
 
-
 Callback.Add("Load",
 function() 
 	_G[myHero.charName]() 
 	AutoUtil()
 	TPred()
 end)
- 	
-
+ 		
 function CurrentPctLife(entity)
 	local pctLife =  entity.health/entity.maxHealth  * 100
 	return pctLife
@@ -66,7 +64,34 @@ function IsRecalling()
 	return false
 end
 
+	
 class "AutoUtil"
+
+function AutoUtil:__init()
+	itemKey = {}
+	_ccNames = 
+	{
+		["Cripple"] = 3,
+		["Stun"] = 5,
+		["Silence"] = 7,
+		["Taunt"] = 8,
+		["Polymorph"] = 9,
+		["Slow"] = 10,
+		["Snare"] = 11,
+		["Sleep"] = 18,
+		["Nearsight"] = 19,
+		["Fear"] = 21,
+		["Charm"] = 22,
+		["Poison"] = 23,
+		["Suppression"] = 24,
+		["Blind"] = 25,
+		-- ["Shred"] = 27,
+		["Flee"] = 28,
+		-- ["Knockup"] = 29,
+		["Airborne"] = 30,
+		["Disarm"] = 31
+	}
+end
 function AutoUtil:GetDistanceSqr(p1, p2)
 	assert(p1, "GetDistance: invalid argument: cannot calculate distance to "..type(p1))
 	assert(p2, "GetDistance: invalid argument: cannot calculate distance to "..type(p2))
@@ -76,6 +101,29 @@ end
 function AutoUtil:GetDistance(p1, p2)
 	return math.sqrt(self:GetDistanceSqr(p1, p2))
 end
+
+
+function AutoUtil:GetCCdEnemyInRange(origin, range, minimumCCTime, maximumCCTime)
+	--TODO: Give priority to certain targets in case of tie. Right now I prioritize based on maximum CC effect (not over stunning)	
+	local bestTarget
+	local bestCCTime = 0
+	for heroIndex = 1,Game.HeroCount()  do
+		local enemy = Game.Hero(heroIndex)
+		if enemy.isEnemy and self:GetDistance(origin, enemy.pos) <= range then
+			for buffIndex = 0, enemy.buffCount do
+				local buff = enemy:GetBuff(buffIndex)
+				if (buff.type == 5 or buff.type == 8 or buff.type == 21 or buff.type == 22 or buff.type == 24 or buff.type == 11) then					
+					if(buff.duration > minimumCCTime and buff.duration > bestCCTime and buff.duration < maximumCCTime) then
+						bestTarget = enemy
+						bestCCTime = buff.duration
+					end
+				end
+			end
+		end
+	end	
+	return bestTarget, bestCCTime
+end
+
 function AutoUtil:NearestEnemyDistance(entity)
 	local distance = 999999
 	for i = 1,Game.HeroCount()  do
@@ -88,6 +136,74 @@ function AutoUtil:NearestEnemyDistance(entity)
 		end
 	end
 	return distance
+end
+function AutoUtil:GetItemSlot(id)
+	for i = 6, 12 do
+		if myHero:GetItemData(i).itemID == id then
+			return i
+		end
+	end
+
+	return nil
+end
+
+function AutoUtil:IsItemReady(id, ward)
+	if not self.itemKey or #self.itemKey == 0 then
+		self.itemKey = 
+		{
+			HK_ITEM_1,
+			HK_ITEM_2,
+			HK_ITEM_3,
+			HK_ITEM_4,
+			HK_ITEM_5,
+			HK_ITEM_6,
+			HK_ITEM_7
+		}
+	end
+	local slot = self:GetItemSlot(id)
+	if slot then
+		return myHero:GetSpellData(slot).currentCd == 0 and not (ward and myHero:GetSpellData(slot).ammo == 0)
+	end
+end
+
+function AutoUtil:CastItem(unit, id, range)
+	if unit == myHero or self:GetDistance(myHero.pos, unit.pos) <= range then
+		local keyIndex = self:GetItemSlot(id) - 5
+		local key = self.itemKey[keyIndex]
+
+		if key then
+			if unit ~= myHero then
+				Control.CastSpell(key, unit.pos or unit)
+			else
+				Control.CastSpell(key, myHero)
+			end
+		end
+	end
+end
+function AutoUtil:HasBuffType(unit, buffType, duration)
+	for i = 0, 63 do
+		local Buff = unit:GetBuff(i)
+		if Buff.duration > duration and Buff.count > 0  and Buff.type == buffType then 
+			return true 
+		end
+	end
+	return false
+end
+
+
+function AutoUtil:AutoCrucible()
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly and Hero ~= myHero then
+			if AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() then
+				for ccName, ccType in pairs(_ccNames) do
+					if AIO.CleanseList[ccName] and AIO.CleanseList[ccName]:Value() and self:HasBuffType(Hero, ccType, AIO.CleanseList.CleanseTime:Value()) then
+						AutoUtil:CastItem(Hero, 3222, 650)
+					end
+				end
+			end
+		end
+	end
 end
 
 class "Brand"
@@ -323,8 +439,10 @@ end
 
 class "Nami"
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristiana", "Twitch", "Varus", "Vayne", "Xayah"}
-	
+
+
 function Nami:__init()	
+	AutoUtil()
 	print("Loaded [Auto] "..myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
@@ -342,8 +460,38 @@ end
 function Nami:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})
 	
+	
+	--This is a list of ADCs that we will want to help by using auto E on them and cleansing with crucible. Auto select all ADCs but let user toggle at will.
+	AIO:MenuElement({id = "HeroList", name = "Auto Assist List", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly then
+			if table.contains(_adcHeroes, Hero.charName) then
+				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+			else
+				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = false, toggle = false})				
+			end
+		end
+	end	
+	
+	--This lists the types of CC we are willing to use crucible to remove (On adcs only)
+	AIO:MenuElement({id = "CleanseList", name = "Auto Crucible List", type = MENU})
+	AIO.CleanseList:MenuElement({id = "CleanseTime", name = "Cleanse CC If Duration Over (Seconds)", value = .5, min = .1, max = 2, step = .1 })
+	AIO.CleanseList:MenuElement({id = "Suppression", name = "Suppression", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Stun", name = "Stun", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Sleep", name = "Sleep", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Polymorph", name = "Polymorph", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Taunt", name = "Taunt", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Charm", name = "Charm", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Fear", name = "Fear", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Blind", name = "Blind", value = false, toggle = true})	
+	AIO.CleanseList:MenuElement({id = "Snare", name = "Snare", value = false, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Slow", name = "Slow", value = false, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Poison", name = "Poison", value = false, toggle = true})
+	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interupt Delay", value = .25, min = .1, max = 1, step = .05 })
+	AIO.Skills:MenuElement({id = "QCCTiming", name = "Q Imobile Targets", value = .5, min = .1, max = 2, step = .1 })
 	
 	AIO.Skills:MenuElement({id = "WBouncePct", name = "W Health (Bounce)", value = 50, min = 1, max = 100, step = 5 })
 	AIO.Skills:MenuElement({id = "WBounceMana", name = "W Mana (Bounce)", value = 50, min = 5, max = 100, step = 5 })
@@ -394,7 +542,9 @@ function Nami:Tick()
 	end
 	
 	--Use crucible on carry if they are CCd
-	self:AutoCrucible()
+	if AutoUtil:IsItemReady(3222) then
+		AutoUtil:AutoCrucible()
+	end
 end
 
 
@@ -410,6 +560,13 @@ function Nami:AutoQInterupt()
 	if target ~= nil then
 		Control.CastSpell(HK_Q, target.pos)	
 	end	
+	
+	--Find a target that is already stunned for at least QCCTiming:Value(). 
+	--Don't stun them if the existing stun on them will last 1 second + the time for our Q to hit because that would waste the majority of our Qs stun duration
+	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.QCCTiming:Value(), 1 + Q.Delay)
+	if target then
+		Control.CastSpell(HK_Q, target.pos)	
+	end
 end
 
 function Nami:AutoWEmergency()
@@ -436,14 +593,9 @@ function Nami:AutoE()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
 		if  Hero.isAlly and Hero ~= myHero and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range and table.contains(_adcHeroes, Hero.charName) then
-			--Check for targeted spells on enemies. Useful for caster ADCs
 			local targetHandle = nil			
-			if Hero.activeSpell and Hero.activeSpell.valid and Hero.activeSpell.target then
+			if Hero.activeSpell and Hero.activeSpell.valid and Hero.activeSpell.target and Hero.activeSpell.isAutoAttack then
 				targetHandle = Hero.activeSpell.target
-			end
-			--Check for a pure auto attack with no modifiers (shouldn't be needed but havent tested fully without it. Remove later)
-			if Hero.attackData and Hero.attackData.state == STATE_WINDUP and Hero.attackData.target then
-				targetHandle = Hero.attackData.target
 			end
 			
 			if targetHandle then 
@@ -454,17 +606,6 @@ function Nami:AutoE()
 					end
 				end
 			end
-		end
-	end
-end
-
-function Nami:AutoCrucible()
-	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly and Hero ~= myHero then
-			--Check if they are hard CCd
-			--Check if they are our carry
-			--Cast Crucible
 		end
 	end
 end
