@@ -212,7 +212,10 @@ local WCastPos, WCastTime
 
 --Gets the time until our W will deal damage
 function Brand:GetWHitTime()
-	local deltaHitTime = WCastTime + W.Delay - Game.Timer()	
+	local deltaHitTime = 99999999
+	if( WCastTime) then
+		deltaHitTime = WCastTime + W.Delay - Game.Timer()
+	end
 	return deltaHitTime
 end
 
@@ -300,6 +303,8 @@ end
 
 --Will attempt to W or WQ any champions who are immobile (hourglass, using gapcloser)
 function Brand:AutoImobileCombo()
+
+	--Get Dashing Targets
 	local target = TPred:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.reactionTime:Value())
 	if target ~= nil then
 		if Ready(_W) then
@@ -309,12 +314,12 @@ function Brand:AutoImobileCombo()
 		end
 		
 		local wHitTime = self:GetWHitTime()
-		if Ready(_Q) and  wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target:GetPath(1), Q.Delay, Q.Speed) > wHitTime and not TPred:CheckMinionCollision(target, target.pos, Q.Delay, Q.Width, Q.Range, Q.Speed, myHero.pos) then
+		if Ready(_Q) and AutoUtil:GetDistance(myHero.pos, target.pos) <= Q.Range and wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target:GetPath(1), Q.Delay, Q.Speed) > wHitTime and not TPred:CheckMinionCollision(target, target.pos, Q.Delay, Q.Width, Q.Range, Q.Speed, myHero.pos) then
 			Control.CastSpell(HK_Q, target:GetPath(1))
 		end		
 	end
 	
-	--Check for stasis targets
+	--Get Statsis Target
 	local target = TPred:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.reactionTime:Value())
 	if target ~= nil then
 		if Ready(_W) then
@@ -324,10 +329,9 @@ function Brand:AutoImobileCombo()
 		end
 		
 		local wHitTime = self:GetWHitTime()
-		if Ready(_Q) and  wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target.pos, Q.Delay, Q.Speed) > wHitTime then
+		if Ready(_Q) and AutoUtil:GetDistance(myHero.pos, target.pos) <= Q.Range and  wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target.pos, Q.Delay, Q.Speed) > wHitTime and not TPred:CheckMinionCollision(target, target.pos, Q.Delay, Q.Width, Q.Range, Q.Speed, myHero.pos) then
 			Control.CastSpell(HK_Q, target.pos)
-		end
-		--Check if our Q will intercept after W and not hit minions on the way, if so cast it as well.		
+		end	
 	end
 end
 
@@ -355,14 +359,15 @@ function Velkoz:CreateMenu()
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	
+	
 	--%Mana needed for us to launch a Q vs immobile targets
 	AIO.Skills:MenuElement({id = "QMana", name = "Auto Q Mana", value = 25, min = 5, max = 100, step = 1 })
 	
 	--%Mana needed for us to use W to detonate passive or steal a kill
 	AIO.Skills:MenuElement({id = "WDetonateMana", name = "W Mana", value = 50, min = 5, max = 100, step = 5 })
 	
-	--Timing accuracy (seconds) for our E to land after hourglass/dash
-	AIO.Skills:MenuElement({id = "ETiming", name = "E Interupt Delay", value = .25, min = .1, max = 1, step = .05 })	
+	AIO.Skills:MenuElement({id = "ETiming", name = "E Interupt Delay", value = .25, min = .1, max = 1, step = .05 })
+	AIO.Skills:MenuElement({id = "ECCTiming", name = "E Imobile Targets", value = .5, min = .1, max = 2, step = .1 })	
 	
 	--Minimum E mana to use on stunned targets
 	AIO.Skills:MenuElement({id = "EMana", name = "Auto E Mana", value = 25, min = 5, max = 100, step = 1 })	
@@ -394,6 +399,10 @@ function Velkoz:Tick()
 	if Ready(_W) then
 		self:AutoWDetonate()
 	end
+	
+	if Ready(_Q) then
+		self:AutoQInterupt()
+	end
 end
 
 
@@ -423,6 +432,12 @@ function Velkoz:AutoEInterupt()
 	if target ~= nil then
 		Control.CastSpell(HK_E, target.pos)	
 	end	
+	
+	--Use E on Stunned Targets
+	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
+	if target then
+		Control.CastSpell(HK_E, target.pos)	
+	end
 end
 
 
@@ -437,17 +452,48 @@ function Velkoz:AutoWDetonate()
 	end
 end
 
+--Find an enemy that we can launch Q directly at. This means immobile, dashing or stasis targets who will not be blocked by minions.
+function Velkoz:AutoQInterupt()
+	
+	--Use Q to target the end of a gapcloser
+	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.ETiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_Q, target:GetPath(1))
+	end
+	
+	--Use Q to target the end of a hourglass stasis
+	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.ETiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_Q, target.pos)	
+	end	
+	
+	--Use Q on Stunned Targets
+	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.ECCTiming:Value(), 1 + Q.Delay)
+	if target and not TPred:CheckMinionCollision(target, target.pos, Q.Delay, Q.Width, Q.Range, Q.Speed, myHero.pos) then 
+		Control.CastSpell(HK_Q, target.pos)	
+	end
+end
+
 class "Nami"
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
-
+local _isLoaded = false
 
 function Nami:__init()	
 	AutoUtil()
+	Callback.Add("Tick", function() self:Tick() end)
+end
+
+--Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
+function Nami:TryLoad()
+	if Game.HeroCount() < 2 then
+		return false
+	end
+	
 	print("Loaded [Auto] "..myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
-	Callback.Add("Draw", function() self:Draw() end)
+	Callback.Add("Draw", function() self:Draw() end)	
+	return true
 end
 function Nami:LoadSpells()
 
@@ -458,8 +504,7 @@ function Nami:LoadSpells()
 end
 
 function Nami:CreateMenu()
-	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})
-	
+	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
 	
 	--This is a list of ADCs that we will want to help by using auto E on them and cleansing with crucible. Auto select all ADCs but let user toggle at will.
 	AIO:MenuElement({id = "HeroList", name = "Auto Assist List", type = MENU})	
@@ -519,7 +564,11 @@ function Nami:Draw()
 end
 
 function Nami:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
+
+	if(not _isLoaded) then
+		_isLoaded = Nami:TryLoad()
+	end
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
 		
 	--Try to interupt dashes or hourglass with Q if we can
 	if Ready(_Q) then 
