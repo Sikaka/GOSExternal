@@ -109,7 +109,7 @@ function AutoUtil:GetCCdEnemyInRange(origin, range, minimumCCTime, maximumCCTime
 	local bestCCTime = 0
 	for heroIndex = 1,Game.HeroCount()  do
 		local enemy = Game.Hero(heroIndex)
-		if enemy.isEnemy and self:GetDistance(origin, enemy.pos) <= range then
+		if enemy.isEnemy and isValidTarget(enemy, range) and self:GetDistance(origin, enemy.pos) <= range then
 			for buffIndex = 0, enemy.buffCount do
 				local buff = enemy:GetBuff(buffIndex)
 				if (buff.type == 5 or buff.type == 8 or buff.type == 21 or buff.type == 22 or buff.type == 24 or buff.type == 11) then					
@@ -309,7 +309,7 @@ function Brand:AutoImobileCombo()
 		end
 		
 		local wHitTime = self:GetWHitTime()
-		if Ready(_Q) and  wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target:GetPath(1), Q.Delay, Q.Speed) > wHitTime then
+		if Ready(_Q) and  wHitTime > 0 and TPred:GetSpellInterceptTime(myHero.pos, target:GetPath(1), Q.Delay, Q.Speed) > wHitTime and not TPred:CheckMinionCollision(target, target.pos, Q.Delay, Q.Width, Q.Range, Q.Speed, myHero.pos) then
 			Control.CastSpell(HK_Q, target:GetPath(1))
 		end		
 	end
@@ -438,7 +438,7 @@ function Velkoz:AutoWDetonate()
 end
 
 class "Nami"
-local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristiana", "Twitch", "Varus", "Vayne", "Xayah"}
+local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 
 
 function Nami:__init()	
