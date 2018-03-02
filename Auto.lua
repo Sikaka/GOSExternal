@@ -364,7 +364,8 @@ function Velkoz:CreateMenu()
 	AIO.Skills:MenuElement({id = "QMana", name = "Auto Q Mana", value = 25, min = 5, max = 100, step = 1 })
 	
 	--%Mana needed for us to use W to detonate passive or steal a kill
-	AIO.Skills:MenuElement({id = "WDetonateMana", name = "W Mana", value = 50, min = 5, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WDetonateMana", name = "W Detonate Mana", value = 50, min = 5, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WInteruptMana", name = "W Interupt Mana", value = 50, min = 5, max = 100, step = 5 })
 	
 	AIO.Skills:MenuElement({id = "ETiming", name = "E Interupt Delay", value = .25, min = .1, max = 1, step = .05 })
 	AIO.Skills:MenuElement({id = "ECCTiming", name = "E Imobile Targets", value = .5, min = .1, max = 2, step = .1 })	
@@ -396,11 +397,15 @@ function Velkoz:Tick()
 		self:AutoEInterupt()
 	end
 	
-	if Ready(_W) then
+	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WDetonateMana:Value() then
 		self:AutoWDetonate()
 	end
 	
-	if Ready(_Q) then
+	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
+		self:AutoQInterupt()
+	end
+	
+	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
 		self:AutoQInterupt()
 	end
 end
@@ -425,18 +430,27 @@ function Velkoz:AutoEInterupt()
 	local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_E, target:GetPath(1))
+		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInteruptMana:Value() then
+			Control.CastSpell(HK_W, target:GetPath(1))
+		end
 	end
 	
 	--Use E to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_E, target.pos)	
-	end	
+		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInteruptMana:Value() then
+			Control.CastSpell(HK_W, target.pos)
+		end
+	end		
 	
 	--Use E on Stunned Targets
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
-	if target then
+	if target and CurrentManaPct(myHero) >= AIO.Skills.EMana:Value() then
 		Control.CastSpell(HK_E, target.pos)	
+		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInteruptMana:Value() then
+			Control.CastSpell(HK_W, target.pos)
+		end
 	end
 end
 
