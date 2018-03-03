@@ -1,4 +1,4 @@
-local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger"}
+local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
 local Scriptname,Version,Author,LVersion = "[Auto]","v1.0","Sikaka","0.01"
@@ -18,6 +18,15 @@ end
 function CurrentPctMana(entity)
 	local pctMana =  entity.mana/entity.maxMana * 100
 	return pctMana
+end
+
+function GetHeroByHandle(handle)	
+	for ei = 1, Game.HeroCount() do
+		local Enemy = Game.Hero(ei)
+		if Enemy.isEnemy and Enemy.handle == handle then
+			return Enemy
+		end
+	end
 end
 
 function isValidTarget(obj,range)
@@ -365,9 +374,9 @@ function Velkoz:CreateMenu()
 	
 	--%Mana needed for us to use W to detonate passive or steal a kill
 	AIO.Skills:MenuElement({id = "WDetonateMana", name = "W Detonate Mana", value = 50, min = 5, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "WInteruptMana", name = "W Interupt Mana", value = 50, min = 5, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WInterruptMana", name = "W Interrupt Mana", value = 50, min = 5, max = 100, step = 5 })
 	
-	AIO.Skills:MenuElement({id = "ETiming", name = "E Interupt Delay", value = .25, min = .1, max = 1, step = .05 })
+	AIO.Skills:MenuElement({id = "ETiming", name = "E Interrupt Delay", value = .25, min = .1, max = 1, step = .05 })
 	AIO.Skills:MenuElement({id = "ECCTiming", name = "E Imobile Targets", value = .5, min = .1, max = 2, step = .1 })	
 	
 	--Minimum E mana to use on stunned targets
@@ -394,7 +403,7 @@ function Velkoz:Tick()
 	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
 	
 	if Ready(_E) then 
-		self:AutoEInterupt()
+		self:AutoEInterrupt()
 	end
 	
 	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WDetonateMana:Value() then
@@ -402,11 +411,11 @@ function Velkoz:Tick()
 	end
 	
 	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
-		self:AutoQInterupt()
+		self:AutoQInterrupt()
 	end
 	
 	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
-		self:AutoQInterupt()
+		self:AutoQInterrupt()
 	end
 end
 
@@ -425,12 +434,12 @@ function Velkoz:FindEnemyWithBuff(buffName, range, stackCount)
 	end
 end
 
-function Velkoz:AutoEInterupt()
+function Velkoz:AutoEInterrupt()
 	--Use E to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_E, target:GetPath(1))
-		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInteruptMana:Value() then
+		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInterruptMana:Value() then
 			Control.CastSpell(HK_W, target:GetPath(1))
 		end
 	end
@@ -439,7 +448,7 @@ function Velkoz:AutoEInterupt()
 	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_E, target.pos)	
-		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInteruptMana:Value() then
+		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInterruptMana:Value() then
 			Control.CastSpell(HK_W, target.pos)
 		end
 	end		
@@ -448,7 +457,7 @@ function Velkoz:AutoEInterupt()
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
 	if target and CurrentPctMana(myHero) >= AIO.Skills.EMana:Value() then
 		Control.CastSpell(HK_E, target.pos)	
-		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInteruptMana:Value() then
+		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInterruptMana:Value() then
 			Control.CastSpell(HK_W, target.pos)
 		end
 	end
@@ -467,7 +476,7 @@ function Velkoz:AutoWDetonate()
 end
 
 --Find an enemy that we can launch Q directly at. This means immobile, dashing or stasis targets who will not be blocked by minions.
-function Velkoz:AutoQInterupt()
+function Velkoz:AutoQInterrupt()
 	
 	--Use Q to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.ETiming:Value())
@@ -549,7 +558,7 @@ function Nami:CreateMenu()
 	AIO.CleanseList:MenuElement({id = "Poison", name = "Poison", value = false, toggle = true})
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
-	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interupt Delay", value = .25, min = .1, max = 1, step = .05 })
+	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interrupt Delay", value = .25, min = .1, max = 1, step = .05 })
 	AIO.Skills:MenuElement({id = "QCCTiming", name = "Q Imobile Targets", value = .5, min = .1, max = 2, step = .1 })
 	
 	AIO.Skills:MenuElement({id = "WBouncePct", name = "W Health (Bounce)", value = 50, min = 1, max = 100, step = 5 })
@@ -584,9 +593,9 @@ function Nami:Tick()
 	end
 	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
 		
-	--Try to interupt dashes or hourglass with Q if we can
+	--Try to interrupt dashes or hourglass with Q if we can
 	if Ready(_Q) then 
-		self:AutoQInterupt()
+		self:AutoQInterrupt()
 	end
 		
 	--Use W on myself or ally if it will also bounce to an enemy. 
@@ -611,7 +620,7 @@ function Nami:Tick()
 end
 
 
-function Nami:AutoQInterupt()
+function Nami:AutoQInterrupt()
 	--Use Q to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
 	if target ~= nil then
@@ -662,11 +671,9 @@ function Nami:AutoE()
 			end
 			
 			if targetHandle then 
-				for ei = 1, Game.HeroCount() do
-					local Enemy = Game.Hero(ei)
-					if Enemy.isEnemy and Enemy.handle == targetHandle then
-						Control.CastSpell(HK_E, Hero.pos)
-					end
+				local Enemy = GetHeroByHandle(targetHandle)
+				if Enemy and Enemy.isEnemy then
+					Control.CastSpell(HK_E, Hero.pos)
 				end
 			end
 		end
@@ -694,7 +701,7 @@ function Heimerdinger:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
-	AIO.Skills:MenuElement({id = "ETiming", name = "E Interupt Delay", value = .5, min = .1, max = 1, step = .05 })
+	AIO.Skills:MenuElement({id = "ETiming", name = "E Interrupt Delay", value = .5, min = .1, max = 1, step = .05 })
 	AIO.Skills:MenuElement({id = "ECCTiming", name = "E Imobile Targets", value = .5, min = .1, max = 2, step = .05 })
 	AIO.Skills:MenuElement({id = "EDistance", name = "Auto E Distance", value = 100, min = 50, max = 300, step = 10 })
 	AIO.Skills:MenuElement({id = "EMana", name = "Auto E Mana Limit", value = 50, min = 1, max = 100, step = 5 })
@@ -723,15 +730,18 @@ function Heimerdinger:Tick()
 	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
 	
 	
+	--Used to E enemies who are unlikely to be able to dodge. May or may not cast W on them after.
 	if Ready(_E) and CurrentPctMana(myHero) >= AIO.Skills.EMana:Value() then
-		self:EInterupt()
+		self:EInterrupt()
 	end
+	
+	--Used to W enemies even if we cant E them.
 	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
 		self:WImmobile()
 	end
 end
 
-
+--This is a secondary anti gap closer... I honestly think this will cause issues but lets try for now. The goal is to get targets dashing ONTOP of us to peel
 function Heimerdinger:GetDashingTarget(range, delay, speed)
 	local target
 	local endDistance = range
@@ -752,19 +762,18 @@ function Heimerdinger:GetDashingTarget(range, delay, speed)
 		return target, endDistance, interceptTime
 	end
 end
-function Heimerdinger:EInterupt()
+
+function Heimerdinger:EInterrupt()
 	--Use E to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
-		Control.CastSpell(HK_E, target:GetPath(1))		
-		self.CastW(target, target:GetPath(1))
+		Control.CastSpell(HK_E, target:GetPath(1))	
 	end
 	
 	--Use E to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_E, target.pos)	
-		self.CastW(target, target.pos)
 	end	
 	
 	
@@ -772,32 +781,129 @@ function Heimerdinger:EInterupt()
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
 	if target then
 		Control.CastSpell(HK_E, target.pos)
-		self.CastW(target, target.pos)
 	end
 	
 	--Use E on gapclosing enemies who are jumping VERY close to us. Note: This is not finished at all and will be buggy
 	local target, endDistance, interceptTime = self:GetDashingTarget(E.Range, E.Delay, E.Speed)
 	if target and endDistance <= AIO.Skills.EDistance:Value() and target.pathing and target.pathing.endPos then
 		Control.CastSpell(HK_E, target.pathing.endPos)
-		self.CastW(target, target.pathing.endPos)
 	end
 end
 
 function Heimerdinger:WImmobile()
+	--Use W to target the end of a gapcloser
+	local target = TPred:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.Skills.ETiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_E, target:GetPath(1))	
+	end
+	
+	--Use W to target the end of a hourglass stasis
+	local target = TPred:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.Skills.ETiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_E, target.pos)	
+	end	
+		
+	--Use W on stunned enemies
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, W.Range, AIO.Skills.ECCTiming:Value(), 1 + W.Delay)
 	if target then
-		self:CastW(target, target.pos)
-	end
+		Control.CastSpell(HK_E, target.pos)
+	end	
 end
 
 function Heimerdinger:CastW(target, pos)
 	if target and Ready(_W) then
 		--Check target health and R cooldown
 		if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
-			DelayAction(function()Control.CastSpell(HK_R) end,0.05)
-			DelayAction(function()Control.CastSpell(HK_W, pos) end,0.15)
-		else
+			Control.CastSpell(HK_R)			
 			DelayAction(function()Control.CastSpell(HK_W, pos) end,0.1)
+		else
+			Control.CastSpell(HK_W, pos)
+		end
+	end
+end
+
+
+
+class "Zilean"
+
+function Zilean:__init()	
+	AutoUtil()
+	Callback.Add("Tick", function() self:Tick() end)
+	print("Loaded [Auto] "..myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Draw", function() self:Draw() end)	
+end
+
+function Zilean:LoadSpells()
+	Q = {Range = 900, Width = 180,Delay = 0.25, Speed = 2050,  Sort = "circular"}
+end
+
+function Zilean:CreateMenu()
+	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
+	
+	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interrupt Delay", value = 1, min = .1, max = 2, step = .05 })
+	AIO.Skills:MenuElement({id = "QCCTiming", name = "Q Imobile Targets", value = .5, min = .1, max = 2, step = .05 })
+	AIO.Skills:MenuElement({id = "QStunMana", name = "Q Stun Mana", value = 15, min = 1, max = 100, step = 5 })	
+	
+	AIO.Skills:MenuElement({id = "QAccuracy", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	AIO.Skills:MenuElement({id = "QStunMana", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
+	
+	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
+end
+
+function Zilean:Draw()
+	if AIO.autoSkillsActive:Value() then
+		local textPos = myHero.pos:To2D()
+		Draw.Text("ON", 20, textPos.x - 25, textPos.y + 40, Draw.Color(220, 0, 255, 0))
+	end
+	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)    
+		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
+			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
+		end
+	end
+end
+
+function Zilean:Tick()
+	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
+	
+	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QStunMana:Value() then
+		self:QInterrupt()
+	end	
+end
+
+function Zilean:QInterrupt()
+	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_Q, target.pathing.endPos)
+		
+		if Ready(_W) then
+			DelayAction(function()Control.CastSpell(HK_W) end,0.15)
+			DelayAction(function()Control.CastSpell(HK_Q, target.pathing.endPos) end,0.3)
+		end
+	end
+	
+	--Use E to target the end of a hourglass stasis
+	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_Q, target.pos)
+		if Ready(_W) then
+			DelayAction(function()Control.CastSpell(HK_W) end,0.15)
+			DelayAction(function()Control.CastSpell(HK_Q, target.poss) end,0.3)
+		end
+	end	
+	
+	
+	--Use E on stunned enemies
+	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.QCCTiming:Value(), 1 + Q.Delay)
+	if target then
+		Control.CastSpell(HK_Q, target.pos)
+		if Ready(_W) then
+			DelayAction(function()Control.CastSpell(HK_W) end,0.15)
+			DelayAction(function()Control.CastSpell(HK_Q, target.poss) end,0.3)
 		end
 	end
 end
