@@ -628,6 +628,7 @@ function Nami:Tick()
 end
 
 
+
 function Nami:AutoQInterrupt()
 	--Use Q to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
@@ -782,8 +783,7 @@ function Heimerdinger:EInterrupt()
 	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_E, target.pos)	
-	end	
-	
+	end
 	
 	--Use E on stunned enemies
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
@@ -793,7 +793,7 @@ function Heimerdinger:EInterrupt()
 	
 	--Use E on gapclosing enemies who are jumping VERY close to us. Note: This is not finished at all and will be buggy
 	local target, endDistance, interceptTime = self:GetDashingTarget(E.Range, E.Delay, E.Speed)
-	if target and endDistance <= AIO.Skills.EDistance:Value() and target.pathing and target.pathing.endPos then
+	if target ~= nil and endDistance <= AIO.Skills.EDistance:Value() and target.pathing and target.pathing.endPos then
 		Control.CastSpell(HK_E, target.pathing.endPos)
 	end
 end
@@ -802,24 +802,24 @@ function Heimerdinger:WImmobile()
 	--Use W to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
-		Control.CastSpell(HK_E, target:GetPath(1))	
+		self:CastW(target,target:GetPath(1))
 	end
 	
 	--Use W to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
-		Control.CastSpell(HK_E, target.pos)	
+		self:CastW(target,target.pos)
 	end	
 		
 	--Use W on stunned enemies
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, W.Range, AIO.Skills.ECCTiming:Value(), 1 + W.Delay)
-	if target then
-		Control.CastSpell(HK_E, target.pos)
+	if target ~= nil then
+		self:CastW(target, target.pos)
 	end	
 end
 
 function Heimerdinger:CastW(target, pos)
-	if target and Ready(_W) then
+	if target ~= nil and Ready(_W) then
 		--Check target health and R cooldown
 		if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
 			Control.CastSpell(HK_R)			
@@ -914,7 +914,7 @@ function Zilean:Tick()
 	end
 		
 	--If both Q and E are on cooldown, cast W to refresh them!
-	if not Ready(_Q) and not Ready(_E) and Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
+	if myHero.levelData.lvl > 3 and not Ready(_Q) and not Ready(_E) and Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
 		Control.CastSpell(HK_W)
 	end
 	
