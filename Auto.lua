@@ -168,7 +168,7 @@ end
 
 function AutoUtil:NearestEnemy(entity)
 	local distance = 999999
-	local enemy
+	local enemy = nil
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
 		if isValidTarget(hero,range) and hero.team ~= myHero.team then
@@ -953,8 +953,8 @@ function Zilean:EPeel()
 		local Hero = Game.Hero(i)
 		--Its an ally, they are in range and we've set them as a carry. Lets peel for them!
 		if Hero.isAlly and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() and CurrentPctLife(Hero) <= AIO.Skills.EPeelHealth:Value() and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range + AIO.Skills.EPeelDistance:Value()then
-			local distance, target = AutoUtil:NearestEnemy(Hero.pos, myHero.pos, E.Range)			
-			if target and distance <= AIO.Skills.EPeelDistance:Value() and AutoUtil:GetDistance(myHero.pos, target.pos) < E.Range then
+			local distance, target = AutoUtil:NearestEnemy(Hero)	
+			if target ~= nil and distance <= AIO.Skills.EPeelDistance:Value() and AutoUtil:GetDistance(myHero.pos, target.pos) < E.Range then
 				Control.CastSpell(HK_E, target.pos)
 			end
 		end
