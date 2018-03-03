@@ -865,10 +865,10 @@ function Zilean:CreateMenu()
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interrupt Delay", value = 1, min = .1, max = 2, step = .05 })
 	AIO.Skills:MenuElement({id = "QCCTiming", name = "Q Imobile Targets", value = .5, min = .1, max = 2, step = .05 })
-	AIO.Skills:MenuElement({id = "QStunMana", name = "Q Stun Mana", value = 15, min = 1, max = 100, step = 5 })	
+	AIO.Skills:MenuElement({id = "QStunMana", name = "Q Stun Mana", value = 25, min = 1, max = 100, step = 5 })	
 	
 	AIO.Skills:MenuElement({id = "QAccuracy", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
-	AIO.Skills:MenuElement({id = "QStunMana", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "QMana", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
 	
 	
 	AIO.Skills:MenuElement({id = "EPeelDistance", name = "E Peel Distance", value = 250, min = 50, max = 500, step = 10 })
@@ -896,8 +896,10 @@ function Zilean:Tick()
 	if(not _isLoaded) then
 		_isLoaded = Zilean:TryLoad()
 	end
-	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
+	
 	--Check if a carry is about to die (will fall below X% in next sec): If so, cast R
+	
 	
 	--Use Q/Double Q on immobile targets
 	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QStunMana:Value() then
@@ -913,38 +915,49 @@ function Zilean:Tick()
 	if AutoUtil:IsItemReady(3222) then
 		AutoUtil:AutoCrucible()
 	end
+	
+	
+	--Use Q just based on hitchance
+	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
+		self:AimSingleQ()
+	end
+	
 end
 
 function Zilean:QInterrupt()
 	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
-	if target ~= nil then
-		Control.CastSpell(HK_Q, target.pathing.endPos)
-		
-		if Ready(_W) then
-			DelayAction(function()Control.CastSpell(HK_W) end,0.15)
-			DelayAction(function()Control.CastSpell(HK_Q, target.pathing.endPos) end,0.3)
-		end
+	if target ~= nil then		
+		CastMultiQ(target.pos)
 	end
 	
 	--Use Q to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
 	if target ~= nil then
-		Control.CastSpell(HK_Q, target.pos)
-		if Ready(_W) then
-			DelayAction(function()Control.CastSpell(HK_W) end,0.15)
-			DelayAction(function()Control.CastSpell(HK_Q, target.poss) end,0.3)
-		end
+		CastMultiQ(target.pos)
 	end	
 	
 	
 	--Use Q on stunned enemies
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.QCCTiming:Value(), 1 + Q.Delay)
-	if target then
-		Control.CastSpell(HK_Q, target.pos)
-		if Ready(_W) then
-			DelayAction(function()Control.CastSpell(HK_W) end,0.15)
-			DelayAction(function()Control.CastSpell(HK_Q, target.poss) end,0.3)
-		end
+	if target ~= nil then
+		CastMultiQ(target.pos)
+	end
+end
+
+function Zilean:AimSingleQ()
+	local target = CurrentTarget(Q.Range)
+	if target == nil then return end  
+	local castpos,HitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort)
+	if Ready(_Q) and HitChance >= AIO.Skills.QAccuracy:Value() then
+		Control.CastSpell(HK_Q, castpos)
+	end
+end
+
+function CastMultiQ(pos)
+	Control.CastSpell(HK_Q, pos)
+	if Ready(_W) then
+		DelayAction(function()Control.CastSpell(HK_W) end,0.15)
+		DelayAction(function()Control.CastSpell(HK_Q, pos) end,0.3)
 	end
 end
 
