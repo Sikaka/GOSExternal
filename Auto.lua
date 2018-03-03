@@ -291,7 +291,7 @@ function Brand:CreateMenu()
 	
 	AIO.Skills:MenuElement({id = "RCount", name = "Auto R Enemy Count", value = 3, min = 1, max = 5, step = 1})
 		
-	AIO:MenuElement({id = "comboActive", name = "Combo key",value = true, toggle = true, key = string.byte(" ")})
+	AIO:MenuElement({id = "comboActive", name = "Combo key",value = true, toggle = true,  key = 0x7A})
 	AIO:MenuElement({id = "reactionTime", name = "Target reaction time", value = .5, min = .1, max = 1, step = .05})
 end
 
@@ -833,10 +833,13 @@ end
 
 
 class "Zilean"
+local _carryHealthPercent = 	{}
+local _healthTick
 local _isLoaded = false
 function Zilean:__init()	
 	AutoUtil()
 	Callback.Add("Tick", function() self:Tick() end)
+	_healthTick = Game.Timer()
 end
 
 --Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
@@ -855,6 +858,7 @@ end
 function Zilean:LoadSpells()
 	Q = {Range = 900, Width = 180,Delay = 0.25, Speed = 2050,  Sort = "circular"}
 	E = {Range = 550}
+	R = {Range = 900}
 end
 
 function Zilean:CreateMenu()
@@ -869,11 +873,17 @@ function Zilean:CreateMenu()
 	
 	AIO.Skills:MenuElement({id = "QAccuracy", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
 	AIO.Skills:MenuElement({id = "QMana", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
-	
+		
+	AIO.Skills:MenuElement({id = "WMana", name = "W Mana", value = 30, min = 1, max = 100, step = 5 })
 	
 	AIO.Skills:MenuElement({id = "EPeelDistance", name = "E Peel Distance", value = 250, min = 50, max = 500, step = 10 })
 	AIO.Skills:MenuElement({id = "EPeelHealth", name = "E Peel Health", value = 50, min = 1, max = 100, step = 5 })
 	AIO.Skills:MenuElement({id = "EPeelMana", name = "E Peel Mana", value = 30, min = 1, max = 100, step = 5 })
+	
+	
+	AIO.Skills:MenuElement({id = "RMinHealth", name = "Auto R Health Pct", value = 20, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "RHealthLoss", name = "Auto R Damage Pct", value = 5, min = 1, max = 50, step = 1 })
+	AIO.Skills:MenuElement({id = "RHealthFrequency", name = "Auto R Damage Check Frequency", value = 1, min = .1, max = 1, step = .1 })
 	
 	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
 end
@@ -897,9 +907,16 @@ function Zilean:Tick()
 		_isLoaded = Zilean:TryLoad()
 	end
 	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
-	
-	--Check if a carry is about to die (will fall below X% in next sec): If so, cast R
-	
+		
+	--Try to revive carry
+	if Ready(_R) then
+		self:AutoR()
+	end
+		
+	--If both Q and E are on cooldown, cast W to refresh them!
+	if not Ready(_Q) and not Ready(_E) and Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
+		Control.CastSpell(HK_W)
+	end
 	
 	--Use Q/Double Q on immobile targets
 	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QStunMana:Value() then
@@ -921,7 +938,6 @@ function Zilean:Tick()
 	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
 		self:AimSingleQ()
 	end
-	
 end
 
 function Zilean:QInterrupt()
@@ -934,8 +950,7 @@ function Zilean:QInterrupt()
 	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
 	if target ~= nil then
 		CastMultiQ(target.pos)
-	end	
-	
+	end		
 	
 	--Use Q on stunned enemies
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.QCCTiming:Value(), 1 + Q.Delay)
@@ -965,10 +980,38 @@ function Zilean:EPeel()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
 		--Its an ally, they are in range and we've set them as a carry. Lets peel for them!
-		if Hero.isAlly and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() and CurrentPctLife(Hero) <= AIO.Skills.EPeelHealth:Value() and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range + AIO.Skills.EPeelDistance:Value()then
+		if Hero.isAlly and CurrentPctLife(Hero) <= AIO.Skills.EPeelHealth:Value() and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range + AIO.Skills.EPeelDistance:Value()then
 			local distance, target = AutoUtil:NearestEnemy(Hero)	
 			if target ~= nil and distance <= AIO.Skills.EPeelDistance:Value() and AutoUtil:GetDistance(myHero.pos, target.pos) < E.Range then
 				Control.CastSpell(HK_E, target.pos)
+			end
+		end
+	end
+end
+
+function Zilean:AutoR()
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly and AutoUtil:GetDistance(myHero.pos, Hero.pos) < R.Range and CurrentPctLife(Hero) <= AIO.Skills.RMinHealth:Value() and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() and _carryHealthPercent[Hero.charName] then			
+			local deltaLifeLost = _carryHealthPercent[Hero.charName] - CurrentPctLife(Hero)
+			if deltaLifeLost >= AIO.Skills.RHealthLoss:Value() then
+				Control.CastSpell(HK_R, Hero.pos)
+			end
+		end
+	end
+	
+	self:UpdateAllyHealth()	
+end
+
+function Zilean:UpdateAllyHealth()
+	local deltaTick = Game.Timer() - _healthTick
+	if deltaTick >= AIO.Skills.RHealthFrequency:Value() then
+		_carryHealthPercent = {}
+		_healthTick = Game.Timer()
+		for i = 1, Game.HeroCount() do
+			local Hero = Game.Hero(i)
+			if Hero.isAlly and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() then
+				_carryHealthPercent[Hero.charName] = CurrentPctLife(Hero)				
 			end
 		end
 	end
