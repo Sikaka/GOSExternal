@@ -1,4 +1,4 @@
-local Heroes = {"Nami","Brand", "Velkoz"}
+local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
 local Scriptname,Version,Author,LVersion = "[Auto]","v1.0","Sikaka","0.01"
@@ -669,6 +669,177 @@ function Nami:AutoE()
 					end
 				end
 			end
+		end
+	end
+end
+
+class "Heimerdinger"
+local _isLoaded = false
+
+function Heimerdinger:__init()	
+	AutoUtil()
+	Callback.Add("Tick", function() self:Tick() end)
+end
+
+--Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
+function Heimerdinger:TryLoad()
+	if Game.HeroCount() < 2 then
+		return false
+	end
+	
+	print("Loaded [Auto] "..myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Draw", function() self:Draw() end)	
+	return true
+end
+function Heimerdinger:LoadSpells()
+	Q = {Range = 450, Width = 55,Delay = 0.25, Speed = math.huge,  Sort = "circular"}
+	W = {Range = 1325, Width = 55, Delay = 0.25, Speed = 2050, Sort = "line", Collision = true}
+	E = { Range = 970, Width = 250, Delay = 0.25, Speed = 1200, Sort = "circular"}
+end
+
+function Heimerdinger:CreateMenu()
+	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
+	
+	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	AIO.Skills:MenuElement({id = "ETiming", name = "E Interupt Delay", value = .5, min = .1, max = 1, step = .05 })
+	AIO.Skills:MenuElement({id = "ECCTiming", name = "E Imobile Targets", value = .5, min = .1, max = 2, step = .05 })
+	AIO.Skills:MenuElement({id = "EDistance", name = "Auto E Distance", value = 100, min = 50, max = 300, step = 10 })
+	AIO.Skills:MenuElement({id = "EMana", name = "Auto E Mana Limit", value = 50, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WMana", name = "Auto W Mana Limit", value = 50, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "RWMinHP", name = "RW Minimum Life", value = 200, min = 100, max = 3000, step = 100 })	
+	AIO.Skills:MenuElement({id = "RWMaxHP", name = "RW Maximum Life", value = 1000, min = 100, max = 3000, step = 100 })	
+	
+	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
+end
+
+function Heimerdinger:Draw()
+	if AIO.autoSkillsActive:Value() then
+		local textPos = myHero.pos:To2D()
+		Draw.Text("ON", 20, textPos.x - 25, textPos.y + 40, Draw.Color(220, 0, 255, 0))
+	end
+	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)    
+		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
+			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
+		end
+	end
+end
+
+function Heimerdinger:Tick()
+
+	if(not _isLoaded) then
+		_isLoaded = Heimerdinger:TryLoad()
+	end
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
+	
+	
+	if Ready(_E) and CurrentPctMana(myHero) >= AIO.Skills.EMana:Value() then
+		self:EInterupt()
+	end
+	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
+		self:WImmobile()
+	end
+end
+
+
+function Heimerdinger:GetDashingTarget(range, delay, speed)
+	local target
+	local endDistance = range
+	local interceptTime = 9999
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500 then
+			local dashEndPosition = t:GetPath(1)
+			if AutoUtil:GetDistance(myHero.pos, dashEndPosition) < endDistance then
+				target = t
+				endDistance = AutoUtil:GetDistance(myHero.pos, dashEndPosition)
+				interceptTime = TPred:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
+			end	
+		end
+	end
+	
+	if target then
+		return target, endDistance, interceptTime
+	end
+end
+function Heimerdinger:EInterupt()
+	--Use E to target the end of a gapcloser
+	local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_E, target:GetPath(1))
+		
+		if Ready(_W) then
+			--Check target health and R cooldown
+			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
+				Control.CastSpell(HK_R)
+				--Delay casting our W by 0.15 seconds to let it activate?
+				Control.CastSpell(HK_W, target:GetPath(1))
+			else
+				Control.CastSpell(HK_W, target:GetPath(1))
+			end
+		end
+	end
+	
+	--Use E to target the end of a hourglass stasis
+	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
+	if target ~= nil then
+		Control.CastSpell(HK_E, target.pos)	
+		if Ready(_W) then
+			--Check target health and R cooldown
+			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
+				Control.CastSpell(HK_R)
+				--Delay casting our W by 0.15 seconds to let it activate?
+				Control.CastSpell(HK_W, target.pos)
+			else
+				Control.CastSpell(HK_W, target.pos)
+			end
+		end
+	end	
+	
+	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
+	if target then
+		Control.CastSpell(HK_E, target.pos)
+		if Ready(_W) then
+			--Check target health and R cooldown
+			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
+				Control.CastSpell(HK_R)
+				--Delay casting our W by 0.15 seconds to let it activate?
+				Control.CastSpell(HK_W, target.pos)
+			else
+				Control.CastSpell(HK_W, target.pos)
+			end
+		end
+	end
+	
+	local target, endDistance, interceptTime = self:GetDashingTarget(E.Range, E.Delay, E.Speed)
+	if target and endDistance <= AIO.Skills.EDistance:Value() then
+		Control.CastSpell(HK_E, target.pos)
+		if Ready(_W) then
+			--Check target health and R cooldown
+			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
+				Control.CastSpell(HK_R)
+				--Delay casting our W by 0.15 seconds to let it activate?
+				Control.CastSpell(HK_W, target:GetPath(1))
+			else
+				Control.CastSpell(HK_W, target:GetPath(1))
+			end
+		end
+	end
+end
+
+function Heimerdinger:WImmobile()
+	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, W.Range, AIO.Skills.ECCTiming:Value(), 1 + W.Delay)
+	if target then
+		--Check target health and R cooldown
+		if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
+			Control.CastSpell(HK_R)
+			--Delay casting our W by 0.15 seconds to let it activate?
+			Control.CastSpell(HK_W, target.pos)
+		else
+			Control.CastSpell(HK_W, target.pos)
 		end
 	end
 end
