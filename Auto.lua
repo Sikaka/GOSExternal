@@ -1,4 +1,5 @@
 local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean"}
+local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
 local Scriptname,Version,Author,LVersion = "[Auto]","v1.0","Sikaka","0.01"
@@ -101,6 +102,37 @@ function AutoUtil:__init()
 		["Disarm"] = 31
 	}
 end
+
+function AutoUtil:SupportMenu(AIO)	
+	--This is a list of ADCs that we will want to help by using auto E on them and cleansing with crucible. Auto select all ADCs but let user toggle at will.	
+	AIO:MenuElement({id = "HeroList", name = "Auto Assist List", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly then
+			if table.contains(_adcHeroes, Hero.charName) then
+				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+			else
+				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = false, toggle = false})				
+			end
+		end
+	end	
+	
+	--This lists the types of CC we are willing to use crucible to remove (On adcs only)
+	AIO:MenuElement({id = "CleanseList", name = "Auto Crucible List", type = MENU})
+	AIO.CleanseList:MenuElement({id = "CleanseTime", name = "Cleanse CC If Duration Over (Seconds)", value = .5, min = .1, max = 2, step = .1 })
+	AIO.CleanseList:MenuElement({id = "Suppression", name = "Suppression", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Stun", name = "Stun", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Sleep", name = "Sleep", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Polymorph", name = "Polymorph", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Taunt", name = "Taunt", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Charm", name = "Charm", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Fear", name = "Fear", value = true, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Blind", name = "Blind", value = false, toggle = true})	
+	AIO.CleanseList:MenuElement({id = "Snare", name = "Snare", value = false, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Slow", name = "Slow", value = false, toggle = true})
+	AIO.CleanseList:MenuElement({id = "Poison", name = "Poison", value = false, toggle = true})
+end
+
 function AutoUtil:GetDistanceSqr(p1, p2)
 	assert(p1, "GetDistance: invalid argument: cannot calculate distance to "..type(p1))
 	assert(p2, "GetDistance: invalid argument: cannot calculate distance to "..type(p2))
@@ -133,18 +165,21 @@ function AutoUtil:GetCCdEnemyInRange(origin, range, minimumCCTime, maximumCCTime
 	return bestTarget, bestCCTime
 end
 
-function AutoUtil:NearestEnemyDistance(entity)
+
+function AutoUtil:NearestEnemy(entity)
 	local distance = 999999
+	local enemy
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
 		if isValidTarget(hero,range) and hero.team ~= myHero.team then
 			local d = self:GetDistance(entity.pos, hero.pos)
 			if d < distance then
 				distance = d
+				enemy = hero
 			end
 		end
 	end
-	return distance
+	return distance, enemy
 end
 function AutoUtil:GetItemSlot(id)
 	for i = 6, 12 do
@@ -498,7 +533,6 @@ function Velkoz:AutoQInterrupt()
 end
 
 class "Nami"
-local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 local _isLoaded = false
 
 function Nami:__init()	
@@ -529,33 +563,7 @@ end
 function Nami:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
 	
-	--This is a list of ADCs that we will want to help by using auto E on them and cleansing with crucible. Auto select all ADCs but let user toggle at will.
-	AIO:MenuElement({id = "HeroList", name = "Auto Assist List", type = MENU})	
-	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly then
-			if table.contains(_adcHeroes, Hero.charName) then
-				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
-			else
-				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = false, toggle = false})				
-			end
-		end
-	end	
-	
-	--This lists the types of CC we are willing to use crucible to remove (On adcs only)
-	AIO:MenuElement({id = "CleanseList", name = "Auto Crucible List", type = MENU})
-	AIO.CleanseList:MenuElement({id = "CleanseTime", name = "Cleanse CC If Duration Over (Seconds)", value = .5, min = .1, max = 2, step = .1 })
-	AIO.CleanseList:MenuElement({id = "Suppression", name = "Suppression", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Stun", name = "Stun", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Sleep", name = "Sleep", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Polymorph", name = "Polymorph", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Taunt", name = "Taunt", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Charm", name = "Charm", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Fear", name = "Fear", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Blind", name = "Blind", value = false, toggle = true})	
-	AIO.CleanseList:MenuElement({id = "Snare", name = "Snare", value = false, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Slow", name = "Slow", value = false, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Poison", name = "Poison", value = false, toggle = true})
+	AutoUtil:SupportMenu(AIO)
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interrupt Delay", value = .25, min = .1, max = 1, step = .05 })
@@ -654,7 +662,7 @@ function Nami:AutoWBounce()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
 		if Hero.isAlly and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= W.Range and CurrentPctLife(Hero) <= AIO.Skills.WBouncePct:Value() then
-			if AutoUtil:NearestEnemyDistance(Hero) < 500 then
+			if AutoUtil:NearestEnemy(Hero) < 500 then
 				Control.CastSpell(HK_W, Hero.pos)
 			end
 		end
@@ -825,22 +833,34 @@ end
 
 
 class "Zilean"
-
+local _isLoaded = false
 function Zilean:__init()	
 	AutoUtil()
 	Callback.Add("Tick", function() self:Tick() end)
+end
+
+--Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
+function Zilean:TryLoad()
+	if Game.HeroCount() < 2 then
+		return false
+	end
+	
 	print("Loaded [Auto] "..myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
 	Callback.Add("Draw", function() self:Draw() end)	
+	return true
 end
 
 function Zilean:LoadSpells()
 	Q = {Range = 900, Width = 180,Delay = 0.25, Speed = 2050,  Sort = "circular"}
+	E = {Range = 550}
 end
 
 function Zilean:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
+	
+	AutoUtil:SupportMenu(AIO)
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interrupt Delay", value = 1, min = .1, max = 2, step = .05 })
@@ -849,6 +869,11 @@ function Zilean:CreateMenu()
 	
 	AIO.Skills:MenuElement({id = "QAccuracy", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
 	AIO.Skills:MenuElement({id = "QStunMana", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
+	
+	
+	AIO.Skills:MenuElement({id = "EPeelDistance", name = "E Peel Distance", value = 250, min = 50, max = 500, step = 10 })
+	AIO.Skills:MenuElement({id = "EPeelHealth", name = "E Peel Health", value = 50, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "EPeelMana", name = "E Peel Mana", value = 30, min = 1, max = 100, step = 5 })
 	
 	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
 end
@@ -867,12 +892,27 @@ function Zilean:Draw()
 	end
 end
 
-function Zilean:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
+function Zilean:Tick()	
+	if(not _isLoaded) then
+		_isLoaded = Zilean:TryLoad()
+	end
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
+	--Check if a carry is about to die (will fall below X% in next sec): If so, cast R
 	
+	--Use Q/Double Q on immobile targets
 	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QStunMana:Value() then
 		self:QInterrupt()
 	end	
+	
+	--Slow enemy if they are too close to our carry
+	if Ready(_E) and CurrentPctMana(myHero) >= AIO.Skills.EPeelMana:Value() then
+		self:EPeel()
+	end
+	
+	--Use crucible on carry if they are CCd
+	if AutoUtil:IsItemReady(3222) then
+		AutoUtil:AutoCrucible()
+	end
 end
 
 function Zilean:QInterrupt()
@@ -886,7 +926,7 @@ function Zilean:QInterrupt()
 		end
 	end
 	
-	--Use E to target the end of a hourglass stasis
+	--Use Q to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_Q, target.pos)
@@ -897,13 +937,26 @@ function Zilean:QInterrupt()
 	end	
 	
 	
-	--Use E on stunned enemies
+	--Use Q on stunned enemies
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.QCCTiming:Value(), 1 + Q.Delay)
 	if target then
 		Control.CastSpell(HK_Q, target.pos)
 		if Ready(_W) then
 			DelayAction(function()Control.CastSpell(HK_W) end,0.15)
 			DelayAction(function()Control.CastSpell(HK_Q, target.poss) end,0.3)
+		end
+	end
+end
+
+function Zilean:EPeel()
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		--Its an ally, they are in range and we've set them as a carry. Lets peel for them!
+		if Hero.isAlly and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() and CurrentPctLife(Hero) <= AIO.Skills.EPeelHealth:Value() and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range + AIO.Skills.EPeelDistance:Value()then
+			local distance, target = AutoUtil:NearestEnemy(Hero.pos, myHero.pos, E.Range)			
+			if target and distance <= AIO.Skills.EPeelDistance:Value() and AutoUtil:GetDistance(myHero.pos, target.pos) < E.Range then
+				Control.CastSpell(HK_E, target.pos)
+			end
 		end
 	end
 end
