@@ -674,25 +674,16 @@ function Nami:AutoE()
 end
 
 class "Heimerdinger"
-local _isLoaded = false
 
 function Heimerdinger:__init()	
 	AutoUtil()
 	Callback.Add("Tick", function() self:Tick() end)
-end
-
---Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
-function Heimerdinger:TryLoad()
-	if Game.HeroCount() < 2 then
-		return false
-	end
-	
 	print("Loaded [Auto] "..myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
 	Callback.Add("Draw", function() self:Draw() end)	
-	return true
 end
+
 function Heimerdinger:LoadSpells()
 	Q = {Range = 450, Width = 55,Delay = 0.25, Speed = math.huge,  Sort = "circular"}
 	W = {Range = 1325, Width = 55, Delay = 0.25, Speed = 2050, Sort = "line", Collision = true}
@@ -729,11 +720,7 @@ function Heimerdinger:Draw()
 end
 
 function Heimerdinger:Tick()
-
-	if(not _isLoaded) then
-		_isLoaded = Heimerdinger:TryLoad()
-	end
-	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
+	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end	
 	
 	
 	if Ready(_E) and CurrentPctMana(myHero) >= AIO.Skills.EMana:Value() then
@@ -769,77 +756,48 @@ function Heimerdinger:EInterupt()
 	--Use E to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
-		Control.CastSpell(HK_E, target:GetPath(1))
-		
-		if Ready(_W) then
-			--Check target health and R cooldown
-			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
-				Control.CastSpell(HK_R)
-				--Delay casting our W by 0.15 seconds to let it activate?
-				Control.CastSpell(HK_W, target:GetPath(1))
-			else
-				Control.CastSpell(HK_W, target:GetPath(1))
-			end
-		end
+		Control.CastSpell(HK_E, target:GetPath(1))		
+		self.CastW(target, target:GetPath(1))
 	end
 	
 	--Use E to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
 	if target ~= nil then
 		Control.CastSpell(HK_E, target.pos)	
-		if Ready(_W) then
-			--Check target health and R cooldown
-			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
-				Control.CastSpell(HK_R)
-				--Delay casting our W by 0.15 seconds to let it activate?
-				Control.CastSpell(HK_W, target.pos)
-			else
-				Control.CastSpell(HK_W, target.pos)
-			end
-		end
+		self.CastW(target, target.pos)
 	end	
 	
+	
+	--Use E on stunned enemies
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
 	if target then
 		Control.CastSpell(HK_E, target.pos)
-		if Ready(_W) then
-			--Check target health and R cooldown
-			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
-				Control.CastSpell(HK_R)
-				--Delay casting our W by 0.15 seconds to let it activate?
-				Control.CastSpell(HK_W, target.pos)
-			else
-				Control.CastSpell(HK_W, target.pos)
-			end
-		end
+		self.CastW(target, target.pos)
 	end
 	
+	--Use E on gapclosing enemies who are jumping VERY close to us. Note: This is not finished at all and will be buggy
 	local target, endDistance, interceptTime = self:GetDashingTarget(E.Range, E.Delay, E.Speed)
-	if target and endDistance <= AIO.Skills.EDistance:Value() then
-		Control.CastSpell(HK_E, target.pos)
-		if Ready(_W) then
-			--Check target health and R cooldown
-			if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
-				Control.CastSpell(HK_R)
-				--Delay casting our W by 0.15 seconds to let it activate?
-				Control.CastSpell(HK_W, target:GetPath(1))
-			else
-				Control.CastSpell(HK_W, target:GetPath(1))
-			end
-		end
+	if target and endDistance <= AIO.Skills.EDistance:Value() and target.pathing and target.pathing.endPos then
+		Control.CastSpell(HK_E, target.pathing.endPos)
+		self.CastW(target, target.pathing.endPos)
 	end
 end
 
 function Heimerdinger:WImmobile()
 	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, W.Range, AIO.Skills.ECCTiming:Value(), 1 + W.Delay)
 	if target then
+		self:CastW(target, target.pos)
+	end
+end
+
+function Heimerdinger:CastW(target, pos)
+	if target and Ready(_W) then
 		--Check target health and R cooldown
 		if Ready(_R) and target.health >= AIO.Skills.RWMinHP:Value() and target.health <= AIO.Skills.RWMaxHP:Value() then
-			Control.CastSpell(HK_R)
-			--Delay casting our W by 0.15 seconds to let it activate?
-			Control.CastSpell(HK_W, target.pos)
+			DelayAction(function()Control.CastSpell(HK_R) end,0.05)
+			DelayAction(function()Control.CastSpell(HK_W, pos) end,0.15)
 		else
-			Control.CastSpell(HK_W, target.pos)
+			DelayAction(function()Control.CastSpell(HK_W, pos) end,0.1)
 		end
 	end
 end
