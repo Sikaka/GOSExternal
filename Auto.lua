@@ -77,6 +77,20 @@ end
 	
 class "AutoUtil"
 
+function AutoUtil:FindEnemyWithBuff(buffName, range, stackCount)
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)    
+		if Hero.isEnemy and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= range then
+			for bi = 1, Hero.buffCount do 
+			local Buff = Hero:GetBuff(bi)
+				if Buff.name == buffName and Buff.duration > 0 and Buff.count >= stackCount then
+					return Hero
+				end
+			end
+		end
+	end
+end
+
 function AutoUtil:__init()
 	itemKey = {}
 	_ccNames = 
@@ -238,7 +252,7 @@ end
 function AutoUtil:AutoCrucible()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
-		if Hero.isAlly and Hero ~= myHero then
+		if Hero.isAlly and Hero.isAlive and Hero ~= myHero then
 			if AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() then
 				for ccName, ccType in pairs(_ccNames) do
 					if AIO.CleanseList[ccName] and AIO.CleanseList[ccName]:Value() and self:HasBuffType(Hero, ccType, AIO.CleanseList.CleanseTime:Value()) then
@@ -277,9 +291,21 @@ function Brand:LoadSpells()
 	R = {Range = 750, Width = 0, Delay = 0.25, Speed = 1700, Collision = false, aoe = false, Sort = "circular"}
 end
 
-function Brand:CreateMenu()
+function Brand:CreateMenu()	
+	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] "..myHero.charName})	
 	
-	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] "..myHero.charName})
+	AIO:MenuElement({id = "TargetList", name = "Auto W List", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isEnemy then
+			if table.contains(_adcHeroes, Hero.charName) then
+				AIO.TargetList:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+			else
+				AIO.TargetList:MenuElement({id = Hero.charName, name = Hero.charName, value = false, toggle = false})				
+			end
+		end
+	end
+	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id = "QAcc", name = "Auto Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
 	
@@ -317,9 +343,9 @@ function Brand:Tick()
 	local target = CurrentTarget(W.Range)
 	if target == nil then return end
 	local castpos,HitChance, pos = TPred:GetBestCastPosition(target, W.Delay , W.Width, W.Range, W.Speed, myHero.pos, W.Collision, W.Sort, AIO.reactionTime:Value())
-	if Ready(_W) and HitChance >= AIO.Skills.WAcc:Value() and myHero.mana/myHero.maxMana >= AIO.Skills.WMan:Value() / 100 then
+	if Ready(_W) and HitChance >= AIO.Skills.WAcc:Value() and AIO.TargetList[target.charName] and AIO.TargetList[target.charName]:Value() and myHero.mana/myHero.maxMana >= AIO.Skills.WMan:Value() / 100 then
 		Control.CastSpell(HK_W, castpos)
-	end
+	end	
 	
 	local target = CurrentTarget(E.Range)
 	if target == nil then return end
@@ -455,19 +481,6 @@ function Velkoz:Tick()
 end
 
 
-function Velkoz:FindEnemyWithBuff(buffName, range, stackCount)
-	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)    
-		if Hero.isEnemy and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= range then
-			for bi = 1, Hero.buffCount do 
-			local Buff = Hero:GetBuff(bi)
-				if Buff.name == buffName and Buff.duration > 0 and Buff.count >= stackCount then
-					return Hero
-				end
-			end
-		end
-	end
-end
 
 function Velkoz:AutoEInterrupt()
 	--Use E to target the end of a gapcloser
@@ -501,7 +514,7 @@ end
 
 --Find an enemy with 2 stacks of passive on them and use W to pop it.
 function Velkoz:AutoWDetonate()
-	local Enemy = self:FindEnemyWithBuff("velkozresearchstack", W.Range, 2)
+	local Enemy = AutoUtil:FindEnemyWithBuff("velkozresearchstack", W.Range, 2)
 	if Enemy ~= nil then	
 		local castpos,HitChance, pos = TPred:GetBestCastPosition(Enemy, W.Delay , W.Width, W.Range, W.Speed, myHero.pos, W.Collision, W.Sort)
 		if HitChance >= 2 then
@@ -864,8 +877,7 @@ end
 function Zilean:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
 	
-	AutoUtil:SupportMenu(AIO)
-	
+	AutoUtil:SupportMenu(AIO)	
 	
 	AIO:MenuElement({id = "TargetList", name = "Auto Q List", type = MENU})	
 	for i = 1, Game.HeroCount() do
@@ -889,6 +901,7 @@ function Zilean:CreateMenu()
 	AIO.Skills:MenuElement({id = "QMana", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
 		
 	AIO.Skills:MenuElement({id = "WMana", name = "W Mana", value = 30, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WCooldown", name = "W Minimum Cooldown", value = 3.0, min = 1.0, max = 10.0, step = .5 })
 	
 	AIO.Skills:MenuElement({id = "EPeelDistance", name = "E Peel Distance", value = 250, min = 50, max = 500, step = 10 })
 	AIO.Skills:MenuElement({id = "EPeelHealth", name = "E Peel Health", value = 50, min = 1, max = 100, step = 5 })
@@ -927,9 +940,11 @@ function Zilean:Tick()
 		self:AutoR()
 	end
 		
-	--If both Q and E are on cooldown, cast W to refresh them!
+	--If both Q and E are on cooldown and not about to come back up on their own, cast W to refresh them!
 	if myHero.levelData.lvl > 3 and not Ready(_Q) and not Ready(_E) and Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
-		Control.CastSpell(HK_W)
+		if myHero:GetSpellData(_Q).currentCd >= AIO.Skills.WCooldown:Value() or myHero:GetSpellData(_E).currentCd >= AIO.Skills.WCooldown:Value() then		
+			Control.CastSpell(HK_W)
+		end
 	end
 	
 	--Use Q/Double Q on immobile targets
@@ -973,7 +988,11 @@ function Zilean:QInterrupt()
 end
 
 function Zilean:AimSingleQ()
-	local target = CurrentTarget(Q.Range)
+	local target = AutoUtil:FindEnemyWithBuff("ZileanQEnemyBomb", Q.Range, 0)
+	if target == nil then
+		target = CurrentTarget(Q.Range)
+	end
+	
 	if target == nil then return end  
 	local castpos,HitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort)
 	if Ready(_Q) and AIO.TargetList[target.charName] and AIO.TargetList[target.charName]:Value() and HitChance >= AIO.Skills.QAccuracy:Value() then
@@ -981,11 +1000,16 @@ function Zilean:AimSingleQ()
 	end
 end
 
-function CastMultiQ(pos)
+function CastMultiQ(target, pos)
 	Control.CastSpell(HK_Q, pos)
+	local delay = 0.15
 	if Ready(_W) then
-		DelayAction(function()Control.CastSpell(HK_W) end,0.15)
-		DelayAction(function()Control.CastSpell(HK_Q, pos) end,0.3)
+		if Ready(_E) and AutoUtil:GetDistance(myHero.pos, target.pos) <= E.Range then		
+			DelayAction(function()Control.CastSpell(HK_E, target.pos) end,delay)
+			delay  = delay + 0.15
+		end
+		DelayAction(function()Control.CastSpell(HK_W) end,delay)
+		DelayAction(function()Control.CastSpell(HK_Q, pos) end,delay + 0.15)
 	end
 end
 
