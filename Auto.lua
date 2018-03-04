@@ -942,7 +942,7 @@ function Zilean:Tick()
 		
 	--If both Q and E are on cooldown and not about to come back up on their own, cast W to refresh them!
 	if myHero.levelData.lvl > 3 and not Ready(_Q) and not Ready(_E) and Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
-		if myHero:GetSpellData(_Q).currentCd >= AIO.Skills.WCooldown:Value() or myHero:GetSpellData(_E).currentCd >= AIO.Skills.WCooldown:Value() then		
+		if myHero:GetSpellData(_Q).currentCd >= AIO.Skills.WCooldown:Value() and myHero:GetSpellData(_E).currentCd >= AIO.Skills.WCooldown:Value() then		
 			Control.CastSpell(HK_W)
 		end
 	end
