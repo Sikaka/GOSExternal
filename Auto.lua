@@ -365,7 +365,7 @@ function Brand:AutoImobileCombo()
 	
 	--Get Statsis Target
 	local target = TPred:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.reactionTime:Value())
-	if target ~= nil then
+	if target ~= nil  and target.isEnemy then
 		if Ready(_W) then
 			Control.CastSpell(HK_W, target.pos)
 			WCastPos = target.pos
@@ -481,7 +481,7 @@ function Velkoz:AutoEInterrupt()
 	
 	--Use E to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil then
+	if target ~= nil  and target.isEnemy then
 		Control.CastSpell(HK_E, target.pos)	
 		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInterruptMana:Value() then
 			Control.CastSpell(HK_W, target.pos)
@@ -521,7 +521,7 @@ function Velkoz:AutoQInterrupt()
 	
 	--Use Q to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil then
+	if target ~= nil  and target.isEnemy then
 		Control.CastSpell(HK_Q, target.pos)	
 	end	
 	
@@ -632,13 +632,13 @@ end
 function Nami:AutoQInterrupt()
 	--Use Q to target the end of a gapcloser
 	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
-	if target ~= nil then
+	if target ~= nil and target.isEnemy then
 		Control.CastSpell(HK_Q, target:GetPath(1))
 	end
 	
 	--Use Q to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
-	if target ~= nil then
+	if target ~= nil and target.isEnemy then
 		Control.CastSpell(HK_Q, target.pos)	
 	end	
 	
@@ -653,7 +653,7 @@ end
 function Nami:AutoWEmergency()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
-		if Hero.isAlly and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= W.Range and CurrentPctLife(Hero) <= AIO.Skills.WEmergencyPct:Value() then
+		if Hero.isAlly and Hero.alive and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= W.Range and CurrentPctLife(Hero) <= AIO.Skills.WEmergencyPct:Value() then
 			Control.CastSpell(HK_W, Hero.pos)			
 		end
 	end
@@ -662,7 +662,7 @@ end
 function Nami:AutoWBounce()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
-		if Hero.isAlly and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= W.Range and CurrentPctLife(Hero) <= AIO.Skills.WBouncePct:Value() then
+		if Hero.isAlly and Hero.alive and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= W.Range and CurrentPctLife(Hero) <= AIO.Skills.WBouncePct:Value() then
 			if AutoUtil:NearestEnemy(Hero) < 500 then
 				Control.CastSpell(HK_W, Hero.pos)
 			end
@@ -673,7 +673,7 @@ end
 function Nami:AutoE()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
-		if  Hero.isAlly and Hero ~= myHero and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range and table.contains(_adcHeroes, Hero.charName) then
+		if  Hero.isAlly and Hero.alive and Hero ~= myHero and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range and table.contains(_adcHeroes, Hero.charName) then
 			local targetHandle = nil			
 			if Hero.activeSpell and Hero.activeSpell.valid and Hero.activeSpell.target and Hero.activeSpell.isAutoAttack then
 				targetHandle = Hero.activeSpell.target
@@ -781,7 +781,7 @@ function Heimerdinger:EInterrupt()
 	
 	--Use E to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil then
+	if target ~= nil and target.isEnemy then
 		Control.CastSpell(HK_E, target.pos)	
 	end
 	
@@ -807,7 +807,7 @@ function Heimerdinger:WImmobile()
 	
 	--Use W to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil then
+	if target ~= nil  and target.isEnemy then
 		self:CastW(target,target.pos)
 	end	
 		
@@ -865,6 +865,20 @@ function Zilean:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
 	
 	AutoUtil:SupportMenu(AIO)
+	
+	
+	AIO:MenuElement({id = "TargetList", name = "Auto Q List", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isEnemy then
+			if table.contains(_adcHeroes, Hero.charName) then
+				AIO.TargetList:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+			else
+				AIO.TargetList:MenuElement({id = Hero.charName, name = Hero.charName, value = false, toggle = false})				
+			end
+		end
+	end	
+	
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interrupt Delay", value = 1, min = .1, max = 2, step = .05 })
@@ -931,8 +945,7 @@ function Zilean:Tick()
 	--Use crucible on carry if they are CCd
 	if AutoUtil:IsItemReady(3222) then
 		AutoUtil:AutoCrucible()
-	end
-	
+	end	
 	
 	--Use Q just based on hitchance
 	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
@@ -948,7 +961,7 @@ function Zilean:QInterrupt()
 	
 	--Use Q to target the end of a hourglass stasis
 	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
-	if target ~= nil then
+	if target ~= nil  and target.isEnemy then
 		CastMultiQ(target.pos)
 	end		
 	
@@ -963,7 +976,7 @@ function Zilean:AimSingleQ()
 	local target = CurrentTarget(Q.Range)
 	if target == nil then return end  
 	local castpos,HitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort)
-	if Ready(_Q) and HitChance >= AIO.Skills.QAccuracy:Value() then
+	if Ready(_Q) and AIO.TargetList[target.charName] and AIO.TargetList[target.charName]:Value() and HitChance >= AIO.Skills.QAccuracy:Value() then
 		Control.CastSpell(HK_Q, castpos)
 	end
 end
