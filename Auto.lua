@@ -172,6 +172,21 @@ function AutoUtil:GetDistance(p1, p2)
 	return math.sqrt(self:GetDistanceSqr(p1, p2))
 end
 
+function AutoUtil:GetChannelingEnemyInRange(origin, range, minimumChannelTime)
+	local bestTarget
+	local bestCCTime = minimumChannelTime
+	for heroIndex = 1,Game.HeroCount()  do
+		local enemy = Game.Hero(heroIndex)
+		if enemy.isEnemy and isValidTarget(enemy, range) and self:GetDistance(origin, enemy.pos) <= range and enemy.activeSpell and enemy.activeSpell.valid and enemy.activeSpell.isChanneling then
+			local channelRemaining = enemy.activeSpell.castEntTime - Game.Timer()
+			if channelTimeRemaining > bestCCTime then
+				bestTarget = enemy
+				bestCCTime = buff.duration
+			end
+		end
+	end	
+	return bestTarget, bestCCTime
+end
 
 function AutoUtil:GetCCdEnemyInRange(origin, range, minimumCCTime, maximumCCTime)
 	--TODO: Give priority to certain targets in case of tie. Right now I prioritize based on maximum CC effect (not over stunning)	
@@ -571,7 +586,7 @@ end
 
 --Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
 function Nami:TryLoad()
-	if Game.HeroCount() < 2 then
+	if Game.Timer() < 10 then
 		return false
 	end
 	
@@ -873,7 +888,7 @@ end
 
 --Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
 function Zilean:TryLoad()
-	if Game.HeroCount() < 2 then
+	if Game.Timer() < 10 then
 		return false
 	end
 	
@@ -1070,7 +1085,7 @@ end
 
 --Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
 function Soraka:TryLoad()
-	if Game.HeroCount() < 2 then
+	if Game.Timer() < 10 then
 		return false
 	end
 	
@@ -1091,11 +1106,20 @@ function Soraka:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
 	
 	AutoUtil:SupportMenu(AIO)	
+	AIO:MenuElement({id = "ExhaustList", name = "Exhaust List", type = MENU})
+	AIO.ExhaustList:MenuElement({id = "EnemyDistance", name = "Peel Distance", value = 300, min = 100, max = 1000, step = 25 })	
+	AIO.ExhaustList:MenuElement({id = "AllyHealth", name = "Ally Health", value = 75, min = 1, max = 100, step = 5 })			
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isEnemy then
+			AIO.ExhaustList:MenuElement({id = Hero.charName, name = Hero.charName, value = false })				
+		end
+	end		
 	AIO:MenuElement({id = "HealList", name = "Heal List", type = MENU})	
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
 		if Hero.isAlly and Hero ~= myHero then
-			AIO.HealList:MenuElement({id = Hero.charName, name = Hero.charName, value = 30, min = 1, max = 100, step = 5 })				
+			AIO.HealList:MenuElement({id = Hero.charName, name = Hero.charName, value = 50, min = 1, max = 100, step = 5 })				
 		end
 	end		
 	
@@ -1109,9 +1133,8 @@ function Soraka:CreateMenu()
 	AIO.Skills:MenuElement({id = "QAccuracy", tooltip = "Lower means it will cast more often, higher means it will be more accurate", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
 	AIO.Skills:MenuElement({id = "QMana", tooltip ="Minimum mana percent to auto cast Q", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
 	
-	AIO.Skills:MenuElement({id = "WHealth", tooltip ="How low must an ally be before we heal them", name = "W Health", value = 50, min = 1, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "WMinHealth", tooltip ="How high must our health be to heal", name = "W Minimum Health", value = 40, min = 1, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "WMinMana", tooltip ="How high must our mana be to heal", name = "W Minimum Mana", value = 20, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WHealth", tooltip ="How high must our health be to heal", name = "W Minimum Health", value = 40, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WMana", tooltip ="How high must our mana be to heal", name = "W Minimum Mana", value = 20, min = 1, max = 100, step = 5 })
 		
 	AIO.Skills:MenuElement({id = "RCount", tooltip = "How many allies must be below 40pct for ultimate to cast", name = "Auto Ult Ally #", value = 2, min = 1, max = 5, step = 1 })
 			
@@ -1142,11 +1165,11 @@ function Soraka:Tick()
 	if(not _isLoaded) then
 		_isLoaded = Soraka:TryLoad()
 	end
-	
+	self:GetExhaust()
 	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
 	
 	--Cast W on low health carries nearby
-	if Ready(_W) and CurrentPctLife(myHero) >= AIO.Skills.WMinHealth:Value() and CurrentPctMana(myHero) >= AIO.Skills.WMinMana:Value() then
+	if Ready(_W) and CurrentPctLife(myHero) >= AIO.Skills.WHealth:Value() and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
 		self:AutoW()
 	end
 	
@@ -1169,22 +1192,29 @@ function Soraka:Tick()
 	if Ready(_R) and self:GetLowHealthAllyCount() >= AIO.Skills.RCount:Value() then
 		Control.CastSpell(HK_R)
 	end
+	
+	self:AutoExhaust()
 end
 
 function Soraka:AutoW()
 
 	if _spellsLastCast and _spellsLastCast.HK_W and Game.Timer() - _spellsLastCast.HK_W  < .5 then return end	
-	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly and Hero ~= myHero and Hero.alive and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= W.Range and CurrentPctLife(Hero) <= AIO.Skills.WHealth:Value() and AIO.HealList[Hero.charName] and AIO.HealList[Hero.charName]:Value() then
-			self.CastW(HK_W, Hero.pos)
-		end
+	local target = self:GetHealingTarget()
+	if target ~= nil then
+		self.CastW(HK_W, target.pos)
 	end
 end
 
 function Soraka:HitImmobileTargets()
 
 	if Ready(_E) then
+		
+		--Use E to interrupt any enemies in range who are channeling an ability for at least .5 seconds
+		local target = AutoUtil.GetChannelingEnemyInRange(myHero.pos, E.Range, .5)
+		if target ~= nil then
+			Control.CastSpell(HK_E, target.pos)
+		end
+		
 		--Use E to target the end of a gapcloser
 		local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.InteruptDelay:Value())
 		if target ~= nil then
@@ -1205,6 +1235,12 @@ function Soraka:HitImmobileTargets()
 	end
 	
 	if Ready(_Q) then
+		--Use Q to hit enemies who are using a channel longer than .5 seconds
+		local target = AutoUtil.GetChannelingEnemyInRange(myHero.pos, Q.Range, .5)
+		if target ~= nil then
+			Control.CastSpell(HK_Q, target.pos)
+		end
+		
 		--Use Q to target the end of a gapcloser
 		local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.InteruptDelay:Value())
 		if target ~= nil then
@@ -1290,4 +1326,54 @@ function Soraka:CastQ(position, delay)
 	_spellsLastCast[HK_Q] = Game.Timer()
 	Control.CastSpell(HK_Q, position)
 	
+end
+
+function Soraka:GetExhaust()
+	local exhaustHotkey
+	local exhaustData = myHero:GetSpellData(SUMMONER_1)
+	if exhaustData.name ~= "SummonerExhaust" then
+		exhaustData = myHero:GetSpellData(SUMMONER_2)
+		exhaustHotkey = HK_SUMMONER_2
+	else 
+		exhaustHotkey = HK_SUMMONER_1
+	end
+	
+	if exhaustData.name == "SummonerExhaust" and exhaustData.currentCd == 0 then 
+		return exhaustHotkey
+	end	
+end
+
+function Soraka:AutoExhaust()	
+
+	local exhaustHotkey = self:GetExhaust()	
+	if not exhaustHotkey then return end
+	
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		--It's an enemy who is within exhaust range and is toggled ON in ExhaustList
+		if enemy.isEnemy and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= 650 + enemy.boundingRadius and isValidTarget(enemy, 650) and AIO.ExhaustList[enemy.charName] and AIO.ExhaustList[enemy.charName]:Value() then
+			for allyIndex = 1, Game.HeroCount() do
+				local ally = Game.Hero(allyIndex)
+				if AutoUtil:GetDistance(enemy.pos, ally.pos) <= AIO.ExhaustList.EnemyDistance:Value() and CurrentPctLife(ally) <= AIO.ExhaustList.AllyHealth:Value() then
+					Control.CastSpell(exhaustHotkey, enemy)
+				end
+			end
+		end
+	end
+end
+
+function Soraka:GetHealingTarget()	
+	local targets = {}
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly and hero ~= myHero and hero.alive and AutoUtil:GetDistance(myHero.pos, hero.pos) <= W.Range + hero.boundingRadius and AIO.HealList[hero.charName] and AIO.HealList[hero.charName]:Value() >= CurrentPctLife(hero) then		
+			local pctLife = CurrentPctLife(hero)
+			table.insert(targets, {hero, pctLife})
+		end
+	end
+	
+	table.sort(targets, function( a, b ) return a[2] < b[2] end)	
+	if #targets > 0 then
+		return targets[1][1]
+	end
 end
