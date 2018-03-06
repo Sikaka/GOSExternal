@@ -1094,14 +1094,10 @@ function Soraka:CreateMenu()
 	AIO:MenuElement({id = "HealList", name = "Heal List", type = MENU})	
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
-		if Hero.isAlly then
+		if Hero.isAlly and Hero ~= myHero then
 			AIO.HealList:MenuElement({id = Hero.charName, name = Hero.charName, value = 30, min = 1, max = 100, step = 5 })				
 		end
-	end	
-	
-	--AIO:MenuElement({id = "Drawing", name = "Drawing", type = MENU})
-	--AIO.Drawing.MenuElement({id = "DrawQRange", name = "Draw Q Range",value = true})
-	--AIO.Drawing.MenuElement({id = "DrawWRange", name = "Draw W Range",value = true })
+	end		
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id="InteruptDelay", tooltip = "Maximum time our spell should hit after a dash or hourglass ends", name = "Interrupt Delay", value = .75, min = .1, max = 2, step = .05})
@@ -1109,7 +1105,7 @@ function Soraka:CreateMenu()
 	AIO.Skills:MenuElement({id = "ImmobileMana", tooltip ="Minimum mana to cast spells on immobile targets", name = "Immobile Mana", value = 30, min = 1, max = 100, step = 5 })
 			
 			
-	AIO.Skills:MenuElement({id = "QRadius", tooltip = "How far a cast position must be from our mouse to auto cast Q", name = "Mouse Targeting Radius", value = 200, min = 50, max = 500, step = 25 })
+	AIO.Skills:MenuElement({id = "QRadius", tooltip = "How far a cast position must be from our mouse to auto cast Q", name = "Mouse Targeting Radius", value = 250, min = 100, max = 1000, step = 25 })
 	AIO.Skills:MenuElement({id = "QAccuracy", tooltip = "Lower means it will cast more often, higher means it will be more accurate", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
 	AIO.Skills:MenuElement({id = "QMana", tooltip ="Minimum mana percent to auto cast Q", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
 	
