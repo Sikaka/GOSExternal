@@ -1277,6 +1277,10 @@ function Soraka:Tick()
 		self:AutoExhaust()
 	end
 	
+	if Ready(_E) and AIO.Spells.E.Killsteal:Value() then
+		self:KillstealE()
+	end
+		
 	UpdateAllyHealth()
 end
 
@@ -1481,6 +1485,29 @@ function Soraka:AutoExhaust()
 					Control.CastSpell(exhaustHotkey, enemy)
 				end
 			end
+		end
+	end
+end
+
+function Soraka:KillstealE()
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.isEnemy and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= E.Range then		
+			--This is SO SO SO OVERKILL but it will be accurate to ensure you get the last hit. It does not account for incoming damage is all.
+			local spellLevel = myHero:GetSpellData(_E).level
+			local eDamage = 70 + (spellLevel -1) * 30 + myHero.ap * 0.4			
+			local targetMR = enemy.magicResist * myHero.magicPenPercent - myHero.magicPen	
+
+			local damageReduction = 100 / ( 100 + targetMR)
+			if targetMR < 0 then
+				damageReduction = 2 - (100 / (100 - targetMR))
+			end
+			
+			local damage = eDamage * damageReduction
+			
+			if damage >= enemy.health then
+				Control.CastSpell(HK_E, enemy.pos)
+			end			
 		end
 	end
 end
