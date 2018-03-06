@@ -1,4 +1,4 @@
-local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean"}
+local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean", "Soraka"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -76,6 +76,21 @@ end
 
 	
 class "AutoUtil"
+
+
+function AutoUtil:UpdateAllyHealth()
+	local deltaTick = Game.Timer() - _healthTick
+	if deltaTick >= AIO.Skills.RHealthFrequency:Value() then
+		_carryHealthPercent = {}
+		_healthTick = Game.Timer()
+		for i = 1, Game.HeroCount() do
+			local Hero = Game.Hero(i)
+			if Hero.isAlly and AIO["HeroList"] and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() then
+				_carryHealthPercent[Hero.charName] = CurrentPctLife(Hero)				
+			end
+		end
+	end
+end
 
 function AutoUtil:FindEnemyWithBuff(buffName, range, stackCount)
 	for i = 1, Game.HeroCount() do
@@ -167,6 +182,7 @@ function AutoUtil:GetCCdEnemyInRange(origin, range, minimumCCTime, maximumCCTime
 		if enemy.isEnemy and isValidTarget(enemy, range) and self:GetDistance(origin, enemy.pos) <= range then
 			for buffIndex = 0, enemy.buffCount do
 				local buff = enemy:GetBuff(buffIndex)
+				
 				if (buff.type == 5 or buff.type == 8 or buff.type == 21 or buff.type == 22 or buff.type == 24 or buff.type == 11) then					
 					if(buff.duration > minimumCCTime and buff.duration > bestCCTime and buff.duration < maximumCCTime) then
 						bestTarget = enemy
@@ -1037,19 +1053,236 @@ function Zilean:AutoR()
 		end
 	end
 	
-	self:UpdateAllyHealth()	
+	AutoUtil:UpdateAllyHealth()	
 end
 
-function Zilean:UpdateAllyHealth()
-	local deltaTick = Game.Timer() - _healthTick
-	if deltaTick >= AIO.Skills.RHealthFrequency:Value() then
-		_carryHealthPercent = {}
-		_healthTick = Game.Timer()
-		for i = 1, Game.HeroCount() do
-			local Hero = Game.Hero(i)
-			if Hero.isAlly and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() then
-				_carryHealthPercent[Hero.charName] = CurrentPctLife(Hero)				
-			end
+class "Soraka"
+
+local _spellsLastCast = {}
+local _carryHealthPercent = 	{}
+local _healthTick
+local _isLoaded = false
+function Soraka:__init()	
+	AutoUtil()
+	Callback.Add("Tick", function() self:Tick() end)
+	_healthTick = Game.Timer()
+end
+
+--Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
+function Soraka:TryLoad()
+	if Game.HeroCount() < 2 then
+		return false
+	end
+	
+	print("Loaded [Auto] "..myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Draw", function() self:Draw() end)	
+	return true
+end
+
+function Soraka:LoadSpells()
+	Q = {Range = 800, Width = 235,Delay = 0.25, Speed = 1150,  Sort = "circular"}
+	W = {Range = 550 }
+	E = {Range = 925, Width = 300, Delay = 0.25, Speed = math.huge, Sort = "circular"}
+end
+
+function Soraka:CreateMenu()
+	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
+	
+	AutoUtil:SupportMenu(AIO)	
+	AIO:MenuElement({id = "HealList", name = "Heal List", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly then
+			AIO.HealList:MenuElement({id = Hero.charName, name = Hero.charName, value = 30, min = 1, max = 100, step = 5 })				
+		end
+	end	
+	
+	
+	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	AIO.Skills:MenuElement({id="InteruptDelay", tooltip = "Maximum time our spell should hit after a dash or hourglass ends", name = "Interrupt Delay", value = .75, min = .1, max = 2, step = .05})
+	AIO.Skills:MenuElement({id="CCDelay", tooltip = "Minimum CC duration to cause our spells to cast automatically", name = "CC Threshold", value = .5, min = .1, max = 2, step = .05})
+	AIO.Skills:MenuElement({id = "ImmobileMana", tooltip ="Minimum mana to cast spells on immobile targets", name = "Immobile Mana", value = 30, min = 1, max = 100, step = 5 })
+			
+			
+	AIO.Skills:MenuElement({id = "QRadius", tooltip = "How far a cast position must be from our mouse to auto cast Q", name = "Mouse Targeting Radius", value = 200, min = 50, max = 500, step = 25 })
+	AIO.Skills:MenuElement({id = "QAccuracy", tooltip = "Lower means it will cast more often, higher means it will be more accurate", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	AIO.Skills:MenuElement({id = "QMana", tooltip ="Minimum mana percent to auto cast Q", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
+	
+	AIO.Skills:MenuElement({id = "WHealth", tooltip ="How low must an ally be before we heal them", name = "W Health", value = 50, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WMinHealth", tooltip ="How high must our health be to heal", name = "W Minimum Health", value = 40, min = 1, max = 100, step = 5 })
+	AIO.Skills:MenuElement({id = "WMinMana", tooltip ="How high must our mana be to heal", name = "W Minimum Mana", value = 20, min = 1, max = 100, step = 5 })
+		
+	AIO.Skills:MenuElement({id = "RCount", tooltip = "How many allies must be below 40pct for ultimate to cast", name = "Auto Ult Ally #", value = 2, min = 1, max = 5, step = 1 })
+			
+	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
+end
+
+function Soraka:Draw()
+	if AIO.autoSkillsActive:Value() then
+		local textPos = myHero.pos:To2D()
+		Draw.Text("ON", 20, textPos.x - 25, textPos.y + 40, Draw.Color(220, 0, 255, 0))
+	end
+	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)    
+		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
+			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
 		end
 	end
+end
+
+function Soraka:Tick()	
+	if(not _isLoaded) then
+		_isLoaded = Soraka:TryLoad()
+	end
+	
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
+	
+	--Cast W on low health carries nearby
+	if Ready(_W) and CurrentPctLife(myHero) >= AIO.Skills.WMinHealth:Value() and CurrentPctMana(myHero) >= AIO.Skills.WMinMana:Value() then
+		self:AutoW()
+	end
+	
+	--Cast E and or Q on targets that aren't mobile
+	if CurrentPctMana(myHero) >= AIO.Skills.ImmobileMana:Value() then
+		self:HitImmobileTargets()
+	end
+	
+	--Cast Q on targets near our mouse (based on accuracy)
+	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
+		self:HitTargetsNearMouse()
+	end
+	
+	--Use crucible on carry if they are CCd
+	if AutoUtil:IsItemReady(3222) then
+		AutoUtil:AutoCrucible()
+	end
+	
+	--Use R if enough allies are below 40% health
+	if Ready(_R) and self:GetLowHealthAllyCount() >= AIO.Skills.RCount:Value() then
+		Control.CastSpell(HK_R)
+	end
+end
+
+function Soraka:AutoW()
+
+	if _spellsLastCast and _spellsLastCast.HK_W and Game.Timer() - _spellsLastCast.HK_W  < .5 then return end	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly and Hero ~= myHero and Hero.alive and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= W.Range and CurrentPctLife(Hero) <= AIO.Skills.WHealth:Value() and AIO.HealList[Hero.charName] and AIO.HealList[Hero.charName]:Value() then
+			self.CastW(HK_W, Hero.pos)
+		end
+	end
+end
+
+function Soraka:HitImmobileTargets()
+
+	if Ready(_E) then
+		--Use E to target the end of a gapcloser
+		local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.InteruptDelay:Value())
+		if target ~= nil then
+			Control.CastSpell(HK_E, target:GetPath(1))
+		end
+		
+		--Use E to target the end of a hourglass stasis
+		local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.InteruptDelay:Value())
+		if target ~= nil  and target.isEnemy then
+			Control.CastSpell(HK_E, target.pos)	
+		end		
+		
+		--Use E on Stunned Targets
+		local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.CCDelay:Value(), 1 + E.Delay)
+		if target then
+			Control.CastSpell(HK_E, target.pos)	
+		end
+	end
+	
+	if Ready(_Q) then
+		--Use Q to target the end of a gapcloser
+		local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.InteruptDelay:Value())
+		if target ~= nil then
+			Control.CastSpell(HK_Q, target:GetPath(1))
+		end
+		
+		--Use Q to target the end of a hourglass stasis
+		local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.InteruptDelay:Value())
+		if target ~= nil  and target.isEnemy then
+			Control.CastSpell(HK_Q, target.pos)	
+		end		
+		
+		--Use Q on Stunned Targets
+		local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.CCDelay:Value(), 1 + Q.Delay)
+		if target then
+			Control.CastSpell(HK_Q, target.pos)	
+		end
+	end
+end
+
+function Soraka:HitTargetsNearMouse()	
+	
+	--If we JUST tried to cast, dont move the mouse and try to cast again.
+	if _spellsLastCast and _spellsLastCast.HK_Q and Game.Timer() - _spellsLastCast.HK_Q  < .5 then return end	
+	
+	--Get the highest accuracy target near our mouse that is within QRadius
+	local targets = {}
+	for i = 1, Game.HeroCount() do
+		local target = Game.Hero(i)
+		if target.isEnemy and isValidTarget(target, Q.Range) and target.alive then
+			local castPos,hitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort)
+			if hitChance > 0 and AutoUtil:GetDistance(mousePos, target.pos) <= AIO.Skills.QRadius:Value() then
+				local lookupValue ={target.charName, castPos, hitChance}
+				table.insert(targets, lookupValue)
+			end
+		end
+	end	
+	
+	--Sort the table so that we aim for the highest hitchance target possible
+	table.sort(targets, function( a, b ) return a[3] > b[3] end)	
+	if #targets > 0 then
+		if targets[1][3] >= AIO.Skills.QAccuracy:Value() then
+			self.CastQ(HK_Q, targets[1][2], 0.5)
+			return
+		end
+	end
+end
+
+--Returns the total number of allies below 40% health. Soraka ult heals 50% more on these targets so we should really use this as our threshold and save W for healing ADCs.
+function Soraka:GetLowHealthAllyCount()
+	local count = 0
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly and hero.alive and CurrentPctLife(hero) <= 40 then
+			count = count + 1
+		end
+	end
+	
+	return count
+end
+
+
+function Soraka:CastW(position, delay)
+	if not delay then
+		delay = 0.5
+	end
+	
+	if _spellsLastCast and _spellsLastCast[HK_W] and Game.Timer() - _spellsLastCast[HK_W]  < delay then return end	
+	
+	
+	_spellsLastCast[HK_W] = Game.Timer()
+	Control.CastSpell(HK_W, position)
+	
+end
+function Soraka:CastQ(position, delay)
+	if not delay then
+		delay = 0.5
+	end
+	
+	if _spellsLastCast and _spellsLastCast[HK_Q] and Game.Timer() - _spellsLastCast[HK_Q]  < delay then return end	
+	
+	
+	_spellsLastCast[HK_Q] = Game.Timer()
+	Control.CastSpell(HK_Q, position)
+	
 end
