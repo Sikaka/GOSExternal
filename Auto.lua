@@ -1099,6 +1099,9 @@ function Soraka:CreateMenu()
 		end
 	end	
 	
+	--AIO:MenuElement({id = "Drawing", name = "Drawing", type = MENU})
+	--AIO.Drawing.MenuElement({id = "DrawQRange", name = "Draw Q Range",value = true})
+	--AIO.Drawing.MenuElement({id = "DrawWRange", name = "Draw W Range",value = true })
 	
 	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	AIO.Skills:MenuElement({id="InteruptDelay", tooltip = "Maximum time our spell should hit after a dash or hourglass ends", name = "Interrupt Delay", value = .75, min = .1, max = 2, step = .05})
@@ -1117,6 +1120,7 @@ function Soraka:CreateMenu()
 	AIO.Skills:MenuElement({id = "RCount", tooltip = "How many allies must be below 40pct for ultimate to cast", name = "Auto Ult Ally #", value = 2, min = 1, max = 5, step = 1 })
 			
 	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
+	AIO:MenuElement({id = "DrawRange", name = "Draw Skill Range",value = true, toggle = true, key = 0x79 })
 end
 
 function Soraka:Draw()
@@ -1130,6 +1134,11 @@ function Soraka:Draw()
 		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
 			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
 		end
+	end
+	
+	if AIO.DrawRange:Value() then
+		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 200, 0,0))
+		Draw.Circle(myHero.pos, W.Range, Draw.Color(150, 0, 200,0))
 	end
 end
 
@@ -1230,7 +1239,7 @@ function Soraka:HitTargetsNearMouse()
 	for i = 1, Game.HeroCount() do
 		local target = Game.Hero(i)
 		if target.isEnemy and isValidTarget(target, Q.Range) and target.alive then
-			local castPos,hitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort)
+			local castPos,hitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort,0.0)
 			if hitChance > 0 and AutoUtil:GetDistance(mousePos, target.pos) <= AIO.Skills.QRadius:Value() then
 				local lookupValue ={target.charName, castPos, hitChance}
 				table.insert(targets, lookupValue)
