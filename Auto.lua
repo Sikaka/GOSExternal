@@ -1,3 +1,5 @@
+local _carryHealthPercent = {}
+local _healthTick = 1
 local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean", "Soraka"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
@@ -74,23 +76,23 @@ function IsRecalling()
 	return false
 end
 
-	
-class "AutoUtil"
-
-
-function AutoUtil:UpdateAllyHealth()
-	local deltaTick = Game.Timer() - _healthTick
-	if deltaTick >= AIO.Skills.RHealthFrequency:Value() then
-		_carryHealthPercent = {}
+function UpdateAllyHealth()
+	local deltaTick = Game.Timer() - _healthTick	
+	if deltaTick >= 1 then	
+		 _carryHealthPercent = {}
 		_healthTick = Game.Timer()
 		for i = 1, Game.HeroCount() do
 			local Hero = Game.Hero(i)
-			if Hero.isAlly and AIO["HeroList"] and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() then
+			if Hero.isAlly and Hero.alive then	
 				_carryHealthPercent[Hero.charName] = CurrentPctLife(Hero)				
 			end
-		end
-	end
+		end		
+	end	
+	
 end
+
+	
+class "AutoUtil"
 
 function AutoUtil:FindEnemyWithBuff(buffName, range, stackCount)
 	for i = 1, Game.HeroCount() do
@@ -132,34 +134,46 @@ function AutoUtil:__init()
 	}
 end
 
-function AutoUtil:SupportMenu(AIO)	
-	--This is a list of ADCs that we will want to help by using auto E on them and cleansing with crucible. Auto select all ADCs but let user toggle at will.	
-	AIO:MenuElement({id = "HeroList", name = "Auto Assist List", type = MENU})	
+function AutoUtil:SupportMenu(AIO)			
+	---[ITEM SETTINGS]---
+	AIO:MenuElement({id = "Items", name = "Item Settings", type = MENU})	
+	
+	---[LOCKET SETTINGS]---
+	AIO.Items:MenuElement({id = "Locket", name = "Locket", type = MENU})
+	AIO.Items.Locket:MenuElement({id = "Threshold", tooltip = "How much damage allies received in last second", name = "Ally Damage Threshold", value = 15, min = 1, max = 80, step = 1 })
+	AIO.Items.Locket:MenuElement({id="Count", tooltip = "How many allies must have been injured in last second to cast", name = "Ally Count", value = 3, min = 1, max = 5, step = 1 })
+	AIO.Items.Locket:MenuElement({id="Enabled", name="Enabled", value = true})
+	
+	---[CRUCIBLE SETTINGS]---
+	AIO.Items:MenuElement({id = "Crucible", name = "Crucible", type = MENU})
+	AIO.Items.Crucible:MenuElement({id = "Targets", name = "Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly then
-			if table.contains(_adcHeroes, Hero.charName) then
-				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		local hero = Game.Hero(i)
+		if hero.isAlly and myHero ~= hero then			
+			if table.contains(_adcHeroes, hero.charName) then
+				AIO.Items.Crucible.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 			else
-				AIO.HeroList:MenuElement({id = Hero.charName, name = Hero.charName, value = false, toggle = false})				
+				AIO.Items.Crucible.Targets:MenuElement({id = hero.charName, name = hero.charName, value = false })
 			end
 		end
 	end	
+	AIO.Items.Crucible:MenuElement({id = "CC", name = "CC Settings", type = MENU})
+	AIO.Items.Crucible.CC:MenuElement({id = "CleanseTime", name = "Cleanse CC If Duration Over (Seconds)", value = .5, min = .1, max = 2, step = .1 })
+	AIO.Items.Crucible.CC:MenuElement({id = "Suppression", name = "Suppression", value = true, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Stun", name = "Stun", value = true, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Sleep", name = "Sleep", value = true, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Polymorph", name = "Polymorph", value = true, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Taunt", name = "Taunt", value = true, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Charm", name = "Charm", value = true, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Fear", name = "Fear", value = true, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Blind", name = "Blind", value = false, toggle = true})	
+	AIO.Items.Crucible.CC:MenuElement({id = "Snare", name = "Snare", value = false, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Slow", name = "Slow", value = false, toggle = true})
+	AIO.Items.Crucible.CC:MenuElement({id = "Poison", name = "Poison", value = false, toggle = true})
 	
-	--This lists the types of CC we are willing to use crucible to remove (On adcs only)
-	AIO:MenuElement({id = "CleanseList", name = "Auto Crucible List", type = MENU})
-	AIO.CleanseList:MenuElement({id = "CleanseTime", name = "Cleanse CC If Duration Over (Seconds)", value = .5, min = .1, max = 2, step = .1 })
-	AIO.CleanseList:MenuElement({id = "Suppression", name = "Suppression", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Stun", name = "Stun", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Sleep", name = "Sleep", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Polymorph", name = "Polymorph", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Taunt", name = "Taunt", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Charm", name = "Charm", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Fear", name = "Fear", value = true, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Blind", name = "Blind", value = false, toggle = true})	
-	AIO.CleanseList:MenuElement({id = "Snare", name = "Snare", value = false, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Slow", name = "Slow", value = false, toggle = true})
-	AIO.CleanseList:MenuElement({id = "Poison", name = "Poison", value = false, toggle = true})
+	---[REDEMPTION SETTINGS]---
+	AIO.Items:MenuElement({id = "Redemption", name = "Redemption", type = MENU})
+	AIO.Items.Redemption:MenuElement({id = "XXX", name = "---NOT YET DONE---", type = MENU})
 end
 
 function AutoUtil:GetDistanceSqr(p1, p2)
@@ -283,15 +297,31 @@ end
 function AutoUtil:AutoCrucible()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
-		if Hero.isAlly and Hero.isAlive and Hero ~= myHero then
-			if AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() then
+		if Hero.isAlly and Hero.alive and Hero ~= myHero then
+			if AIO.Items.Crucible.Targets[Hero.charName] and AIO.Items.Crucible.Targets[Hero.charName]:Value() then
 				for ccName, ccType in pairs(_ccNames) do
-					if AIO.CleanseList[ccName] and AIO.CleanseList[ccName]:Value() and self:HasBuffType(Hero, ccType, AIO.CleanseList.CleanseTime:Value()) then
+					if AIO.Items.Crucible.CC[ccName] and AIO.Items.Crucible.CC[ccName]:Value() and self:HasBuffType(Hero, ccType, Items.Crucible.CC.CleanseTime:Value()) then
 						AutoUtil:CastItem(Hero, 3222, 650)
 					end
 				end
 			end
 		end
+	end
+end
+
+function AutoUtil:AutoLocket()
+	local injuredCount = 0
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if _carryHealthPercent and _carryHealthPercent[Hero.charName] and Hero.isAlly and Hero.alive and self:GetDistance(myHero.pos, Hero.pos) <= 700 then
+			local deltaLifeLost = _carryHealthPercent[Hero.charName] - CurrentPctLife(Hero)			
+			if deltaLifeLost >= AIO.Items.Locket.Threshold:Value() then
+				injuredCount = injuredCount + 1
+			end
+		end
+	end	
+	if injuredCount >= AIO.Items.Locket.Count:Value() then	
+		AutoUtil:CastItem(myHero, 3190, math.huge)
 	end
 end
 
@@ -593,7 +623,8 @@ function Nami:TryLoad()
 	print("Loaded [Auto] "..myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Draw", function() self:Draw() end)	
+	Callback.Add("Draw", function() self:Draw() end)
+	UpdateAllyHealth()	
 	return true
 end
 function Nami:LoadSpells()
@@ -668,6 +699,11 @@ function Nami:Tick()
 	--Use crucible on carry if they are CCd
 	if AutoUtil:IsItemReady(3222) then
 		AutoUtil:AutoCrucible()
+	end
+	
+	--Use Locket
+	if AutoUtil:IsItemReady(3190) then
+		AutoUtil:AutoLocket()
 	end
 end
 
@@ -877,13 +913,10 @@ end
 
 
 class "Zilean"
-local _carryHealthPercent = 	{}
-local _healthTick
 local _isLoaded = false
 function Zilean:__init()	
 	AutoUtil()
 	Callback.Add("Tick", function() self:Tick() end)
-	_healthTick = Game.Timer()
 end
 
 --Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
@@ -910,53 +943,78 @@ function Zilean:CreateMenu()
 	
 	AutoUtil:SupportMenu(AIO)	
 	
-	AIO:MenuElement({id = "TargetList", name = "Auto Q List", type = MENU})	
+	---[SPELL SETTINGS]---
+	AIO:MenuElement({id = "Spells", name = "Spell Settings", type = MENU})
+	
+	AIO.Spells:MenuElement({id = "General", name = "General", type = MENU})
+	AIO.Spells.General:MenuElement({id="InteruptDelay", tooltip = "Maximum time our spell should hit after a dash or hourglass ends", name = "Interrupt Delay", value = .75, min = .1, max = 2, step = .05})
+	AIO.Spells.General:MenuElement({id="CCDelay", tooltip = "Minimum CC duration to cause our spells to cast automatically", name = "CC Threshold", value = .5, min = .1, max = 2, step = .05})
+	AIO.Spells.General:MenuElement({id = "ImmobileMana", tooltip ="Minimum mana to cast spells on immobile targets", name = "Immobile Mana", value = 30, min = 1, max = 100, step = 5 })	
+	AIO.Spells.General:MenuElement({id = "DrawSpells", tooltip ="Draw W and Q ranges", name = "Draw Spell Range", value = true})
+	
+	AIO.Spells:MenuElement({id = "Exhaust", name = "Exhaust", type = MENU})
+	AIO.Spells.Exhaust:MenuElement({id ="Targets", name ="Target List", type = MENU})
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isEnemy then
-			if table.contains(_adcHeroes, Hero.charName) then
-				AIO.TargetList:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			AIO.Spells.Exhaust.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
+	AIO.Spells.Exhaust:MenuElement({id = "Health", tooltip ="How low health allies must be to use exhaust", name = "Ally Health", value = 40, min = 1, max = 100, step = 5 })	
+	AIO.Spells.Exhaust:MenuElement({id = "Radius", tooltip ="How close targets must be to allies to use exhaust", name = "Peel Distance", value = 200, min = 100, max = 1000, step = 25 })
+	AIO.Spells.Exhaust:MenuElement({id="Enabled", name="Enabled", value = false})
+	
+	
+	AIO.Spells:MenuElement({id = "Q", name = "[Q] Timb Bomb", type = MENU})
+	AIO.Spells.Q:MenuElement({id ="Targets", name ="Target List", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			AIO.Spells.Q.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
+	AIO.Spells.Q:MenuElement({id = "Accuracy", tooltip = "Lower means it will cast more often, higher means it will be more accurate", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	AIO.Spells.Q:MenuElement({id = "Mana", tooltip ="Minimum mana percent to auto cast Q", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
+	
+	AIO.Spells:MenuElement({id = "W", name = "[W] Rewind", type = MENU})
+	AIO.Spells.W:MenuElement({id = "Cooldown", tooltip ="How long a cooldown on Q+E before using W", name = "Cooldown Remaining", value = 3, min = 1, max = 10, step = .5 })
+	AIO.Spells.W:MenuElement({id = "Mana", tooltip ="How high must our mana be to use W", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 5 })
+	
+	
+	AIO.Spells:MenuElement({id = "E", name = "[E] Time Warp", type = MENU})
+	AIO.Spells.E:MenuElement({id = "Mana", tooltip ="How high must our mana be to use E", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 5 })
+	AIO.Spells.E:MenuElement({id = "Health", tooltip ="How low must an ally health be before we peel", name = "Ally Health", value = 75, min = 1, max = 100, step = 5 })
+	AIO.Spells.E:MenuElement({id = "Radius", tooltip ="How close an enemy must be to an ally to use E", name = "Peel Range", value = 250, min = 50, max = 500, step = 25 })
+	
+	
+	AIO.Spells:MenuElement({id = "R", name = "[R] Chronoshift", type = MENU})
+	AIO.Spells.R:MenuElement({id = "Health", tooltip = "How low must an ally health be before we ult them", name = "Ally Health", value = 20, min = 1, max = 50, step = 5 })	
+	AIO.Spells.R:MenuElement({id = "Damage", tooltip = "How much damage must they have taken in last 1 second before we ult them", name = "Damage Received", value = 15, min = 1, max = 50, step = 1 })
+	AIO.Spells.R:MenuElement({id ="Targets", name ="Target List", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly then
+			if table.contains(_adcHeroes, hero.charName) then
+				AIO.Spells.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 			else
-				AIO.TargetList:MenuElement({id = Hero.charName, name = Hero.charName, value = false, toggle = false})				
+				AIO.Spells.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = false })
 			end
 		end
-	end	
-	
-	
-	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
-	AIO.Skills:MenuElement({id = "QTiming", name = "Q Interrupt Delay", value = 1, min = .1, max = 2, step = .05 })
-	AIO.Skills:MenuElement({id = "QCCTiming", name = "Q Imobile Targets", value = .5, min = .1, max = 2, step = .05 })
-	AIO.Skills:MenuElement({id = "QStunMana", name = "Q Stun Mana", value = 25, min = 1, max = 100, step = 5 })	
-	
-	AIO.Skills:MenuElement({id = "QAccuracy", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
-	AIO.Skills:MenuElement({id = "QMana", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
-		
-	AIO.Skills:MenuElement({id = "WMana", name = "W Mana", value = 30, min = 1, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "WCooldown", name = "W Minimum Cooldown", value = 3.0, min = 1.0, max = 10.0, step = .5 })
-	
-	AIO.Skills:MenuElement({id = "EPeelDistance", name = "E Peel Distance", value = 250, min = 50, max = 500, step = 10 })
-	AIO.Skills:MenuElement({id = "EPeelHealth", name = "E Peel Health", value = 50, min = 1, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "EPeelMana", name = "E Peel Mana", value = 30, min = 1, max = 100, step = 5 })
-	
-	
-	AIO.Skills:MenuElement({id = "RMinHealth", name = "Auto R Health Pct", value = 20, min = 1, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "RHealthLoss", name = "Auto R Damage Pct", value = 5, min = 1, max = 50, step = 1 })
-	AIO.Skills:MenuElement({id = "RHealthFrequency", name = "Auto R Damage Check Frequency", value = 1, min = .1, max = 1, step = .1 })
-	
-	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
-end
-
-function Zilean:Draw()
-	if AIO.autoSkillsActive:Value() then
-		local textPos = myHero.pos:To2D()
-		Draw.Text("ON", 20, textPos.x - 25, textPos.y + 40, Draw.Color(220, 0, 255, 0))
 	end
 	
+end
+
+function Zilean:Draw()	
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)    
 		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
 			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
 		end
+	end
+	
+	if AIO.Spells.General.DrawSpells:Value() then
+		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 200, 0,0))
+		Draw.Circle(myHero.pos, E.Range, Draw.Color(150, 0, 200,0))
 	end
 end
 
@@ -964,7 +1022,7 @@ function Zilean:Tick()
 	if(not _isLoaded) then
 		_isLoaded = Zilean:TryLoad()
 	end
-	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true then return end
 		
 	--Try to revive carry
 	if Ready(_R) then
@@ -972,19 +1030,19 @@ function Zilean:Tick()
 	end
 		
 	--If both Q and E are on cooldown and not about to come back up on their own, cast W to refresh them!
-	if myHero.levelData.lvl > 3 and not Ready(_Q) and not Ready(_E) and Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
-		if myHero:GetSpellData(_Q).currentCd >= AIO.Skills.WCooldown:Value() and myHero:GetSpellData(_E).currentCd >= AIO.Skills.WCooldown:Value() then		
+	if myHero.levelData.lvl > 3 and not Ready(_Q) and not Ready(_E) and Ready(_W) and CurrentPctMana(myHero) >= AIO.Spells.W.Mana:Value() then
+		if myHero:GetSpellData(_Q).currentCd >= AIO.Spells.W.Cooldown:Value() and myHero:GetSpellData(_E).currentCd >= AIO.Spells.W.Cooldown:Value() then		
 			Control.CastSpell(HK_W)
 		end
 	end
 	
 	--Use Q/Double Q on immobile targets
-	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QStunMana:Value() then
+	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Spells.General.ImmobileMana:Value() then
 		self:QInterrupt()
 	end	
 	
 	--Slow enemy if they are too close to our carry
-	if Ready(_E) and CurrentPctMana(myHero) >= AIO.Skills.EPeelMana:Value() then
+	if Ready(_E) and CurrentPctMana(myHero) >= AIO.Spells.E.Mana:Value() then
 		self:EPeel()
 	end
 	
@@ -993,26 +1051,34 @@ function Zilean:Tick()
 		AutoUtil:AutoCrucible()
 	end	
 	
+	--Use Locket
+	if AutoUtil:IsItemReady(3190) then
+		AutoUtil:AutoLocket()
+	end
+	
 	--Use Q just based on hitchance
-	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
+	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Spells.Q.Mana:Value() then
 		self:AimSingleQ()
 	end
+	
+	UpdateAllyHealth()
+	
 end
 
 function Zilean:QInterrupt()
-	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
+	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Spells.General.InteruptDelay:Value())
 	if target ~= nil then		
 		CastMultiQ(target.pos)
 	end
 	
 	--Use Q to target the end of a hourglass stasis
-	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.QTiming:Value())
+	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Spells.General.InteruptDelay:Value())
 	if target ~= nil  and target.isEnemy then
 		CastMultiQ(target.pos)
 	end		
 	
 	--Use Q on stunned enemies
-	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.QCCTiming:Value(), 1 + Q.Delay)
+	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Spells.General.CCDelay:Value(), 1 + Q.Delay)
 	if target ~= nil then
 		CastMultiQ(target.pos)
 	end
@@ -1026,7 +1092,7 @@ function Zilean:AimSingleQ()
 	
 	if target == nil then return end  
 	local castpos,HitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort)
-	if Ready(_Q) and AIO.TargetList[target.charName] and AIO.TargetList[target.charName]:Value() and HitChance >= AIO.Skills.QAccuracy:Value() then
+	if Ready(_Q) and AIO.Spells.Q.Targets[target.charName] and AIO.Spells.Q.Targets[target.charName]:Value() and HitChance >= AIO.Spells.Q.Accuracy:Value() then
 		Control.CastSpell(HK_Q, castpos)
 	end
 end
@@ -1048,9 +1114,9 @@ function Zilean:EPeel()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
 		--Its an ally, they are in range and we've set them as a carry. Lets peel for them!
-		if Hero.isAlly and CurrentPctLife(Hero) <= AIO.Skills.EPeelHealth:Value() and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range + AIO.Skills.EPeelDistance:Value()then
+		if Hero.isAlly and CurrentPctLife(Hero) <= AIO.Spells.E.Health:Value() and AutoUtil:GetDistance(myHero.pos, Hero.pos) <= E.Range + AIO.Spells.E.Radius:Value()then
 			local distance, target = AutoUtil:NearestEnemy(Hero)	
-			if target ~= nil and distance <= AIO.Skills.EPeelDistance:Value() and AutoUtil:GetDistance(myHero.pos, target.pos) < E.Range then
+			if target ~= nil and distance <= AIO.Spells.E.Radius:Value() and AutoUtil:GetDistance(myHero.pos, target.pos) < E.Range then
 				Control.CastSpell(HK_E, target.pos)
 			end
 		end
@@ -1060,27 +1126,22 @@ end
 function Zilean:AutoR()
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
-		if Hero.isAlly and AutoUtil:GetDistance(myHero.pos, Hero.pos) < R.Range and CurrentPctLife(Hero) <= AIO.Skills.RMinHealth:Value() and AIO.HeroList[Hero.charName] and AIO.HeroList[Hero.charName]:Value() and _carryHealthPercent[Hero.charName] then			
+		if Hero.isAlly and AutoUtil:GetDistance(myHero.pos, Hero.pos) < R.Range and CurrentPctLife(Hero) <= AIO.Spells.R.Health:Value() and AIO.Spells.R.Targets[Hero.charName] and AIO.Spells.R.Targets[Hero.charName]:Value() and _carryHealthPercent[Hero.charName] then			
 			local deltaLifeLost = _carryHealthPercent[Hero.charName] - CurrentPctLife(Hero)
-			if deltaLifeLost >= AIO.Skills.RHealthLoss:Value() then
+			if deltaLifeLost >= AIO.Spells.R.Damage:Value() then
 				Control.CastSpell(HK_R, Hero.pos)
 			end
 		end
-	end
-	
-	AutoUtil:UpdateAllyHealth()	
+	end	
 end
 
 class "Soraka"
 
 local _spellsLastCast = {}
-local _carryHealthPercent = 	{}
-local _healthTick
 local _isLoaded = false
 function Soraka:__init()	
 	AutoUtil()
 	Callback.Add("Tick", function() self:Tick() end)
-	_healthTick = Game.Timer()
 end
 
 --Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
@@ -1105,49 +1166,63 @@ end
 function Soraka:CreateMenu()
 	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
 	
-	AutoUtil:SupportMenu(AIO)	
-	AIO:MenuElement({id = "ExhaustList", name = "Exhaust List", type = MENU})
-	AIO.ExhaustList:MenuElement({id = "EnemyDistance", name = "Peel Distance", value = 300, min = 100, max = 1000, step = 25 })	
-	AIO.ExhaustList:MenuElement({id = "AllyHealth", name = "Ally Health", value = 75, min = 1, max = 100, step = 5 })			
-	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isEnemy then
-			AIO.ExhaustList:MenuElement({id = Hero.charName, name = Hero.charName, value = false })				
-		end
-	end		
-	AIO:MenuElement({id = "HealList", name = "Heal List", type = MENU})	
-	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly and Hero ~= myHero then
-			AIO.HealList:MenuElement({id = Hero.charName, name = Hero.charName, value = 50, min = 1, max = 100, step = 5 })				
-		end
-	end		
+	AutoUtil:SupportMenu(AIO)
 	
-	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
-	AIO.Skills:MenuElement({id="InteruptDelay", tooltip = "Maximum time our spell should hit after a dash or hourglass ends", name = "Interrupt Delay", value = .75, min = .1, max = 2, step = .05})
-	AIO.Skills:MenuElement({id="CCDelay", tooltip = "Minimum CC duration to cause our spells to cast automatically", name = "CC Threshold", value = .5, min = .1, max = 2, step = .05})
-	AIO.Skills:MenuElement({id = "ImmobileMana", tooltip ="Minimum mana to cast spells on immobile targets", name = "Immobile Mana", value = 30, min = 1, max = 100, step = 5 })
-			
-			
-	AIO.Skills:MenuElement({id = "QRadius", tooltip = "How far a cast position must be from our mouse to auto cast Q", name = "Mouse Targeting Radius", value = 250, min = 100, max = 1000, step = 25 })
-	AIO.Skills:MenuElement({id = "QAccuracy", tooltip = "Lower means it will cast more often, higher means it will be more accurate", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
-	AIO.Skills:MenuElement({id = "QMana", tooltip ="Minimum mana percent to auto cast Q", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
 	
-	AIO.Skills:MenuElement({id = "WHealth", tooltip ="How high must our health be to heal", name = "W Minimum Health", value = 40, min = 1, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "WMana", tooltip ="How high must our mana be to heal", name = "W Minimum Mana", value = 20, min = 1, max = 100, step = 5 })
-		
-	AIO.Skills:MenuElement({id = "RCount", tooltip = "How many allies must be below 40pct for ultimate to cast", name = "Auto Ult Ally #", value = 2, min = 1, max = 5, step = 1 })
-			
-	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
-	AIO:MenuElement({id = "DrawRange", name = "Draw Skill Range",value = true, toggle = true, key = 0x79 })
+	---[SPELL SETTINGS]---
+	AIO:MenuElement({id = "Spells", name = "Spell Settings", type = MENU})
+	
+	AIO.Spells:MenuElement({id = "General", name = "General", type = MENU})
+	AIO.Spells.General:MenuElement({id="InteruptDelay", tooltip = "Maximum time our spell should hit after a dash or hourglass ends", name = "Interrupt Delay", value = .75, min = .1, max = 2, step = .05})
+	AIO.Spells.General:MenuElement({id="CCDelay", tooltip = "Minimum CC duration to cause our spells to cast automatically", name = "CC Threshold", value = .5, min = .1, max = 2, step = .05})
+	AIO.Spells.General:MenuElement({id = "ImmobileMana", tooltip ="Minimum mana to cast spells on immobile targets", name = "Immobile Mana", value = 30, min = 1, max = 100, step = 5 })	
+	AIO.Spells.General:MenuElement({id = "DrawSpells", tooltip ="Draw W and Q ranges", name = "Draw Spell Range", value = true})
+	
+	AIO.Spells:MenuElement({id = "Exhaust", name = "Exhaust", type = MENU})
+	AIO.Spells.Exhaust:MenuElement({id ="Targets", name ="Target List", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			AIO.Spells.Exhaust.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
+	AIO.Spells.Exhaust:MenuElement({id = "Health", tooltip ="How low health allies must be to use exhaust", name = "Ally Health", value = 40, min = 1, max = 100, step = 5 })	
+	AIO.Spells.Exhaust:MenuElement({id = "Radius", tooltip ="How close targets must be to allies to use exhaust", name = "Peel Distance", value = 200, min = 100, max = 1000, step = 25 })
+	AIO.Spells.Exhaust:MenuElement({id="Enabled", name="Enabled", value = false})
+	
+	
+	AIO.Spells:MenuElement({id = "Q", name = "[Q] Starcall", type = MENU})
+	AIO.Spells.Q:MenuElement({id = "Radius", tooltip = "How far a cast position must be from our mouse to auto cast Q", name = "Mouse Targeting Radius", value = 250, min = 100, max = 1000, step = 25 })
+	AIO.Spells.Q:MenuElement({id = "Accuracy", tooltip = "Lower means it will cast more often, higher means it will be more accurate", name = "Q Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	AIO.Spells.Q:MenuElement({id = "Mana", tooltip ="Minimum mana percent to auto cast Q", name = "Q Mana", value = 30, min = 1, max = 100, step = 5 })
+	
+	AIO.Spells:MenuElement({id = "W", name = "[W] Astral Infusion", type = MENU})
+	AIO.Spells.W:MenuElement({id = "Targets", name = "Target Settings", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly and myHero ~= hero then
+			AIO.Spells.W.Targets:MenuElement({id = hero.charName, name = hero.charName, value = 50, min = 1, max = 100, step = 5 })
+		end
+	end	
+	AIO.Spells.W:MenuElement({id = "Health", tooltip ="How high must our health be to heal", name = "W Minimum Health", value = 40, min = 1, max = 100, step = 5 })
+	AIO.Spells.W:MenuElement({id = "Mana", tooltip ="How high must our mana be to heal", name = "W Minimum Mana", value = 20, min = 1, max = 100, step = 5 })
+	
+	
+	AIO.Spells:MenuElement({id = "E", name = "[E] Equinox", type = MENU})
+	AIO.Spells.E:MenuElement({id="Killsteal", name="Killsteal", value = true})
+	AIO.Spells.E:MenuElement({id="TargetImmobile", name="Target Dashes/Hourglass", value = true})
+	AIO.Spells.E:MenuElement({id="TargetChannels", name="Target Channels", value = true})
+	AIO.Spells.E:MenuElement({id="TargetCC", name="Target CCd Enemies", value = true})
+	
+	
+	AIO.Spells:MenuElement({id = "R", name = "[R] Wish", type = MENU})
+	AIO.Spells.R:MenuElement({id = "EmergencyCount", tooltip = "How many allies must be below 40pct for ultimate to cast", name = "Ally count below 40% HP", value = 2, min = 1, max = 5, step = 1 })
+	
+	AIO.Spells.R:MenuElement({id = "DamageCount", tooltip = "How many allies must have been injured in last second to cast", name = "Ally count Damaged X%", value = 3, min = 1, max = 5, step = 1 })
+	AIO.Spells.R:MenuElement({id = "DamagePercent", tooltip = "How much damage allies received in last second", name = "Ally Damage Threshold", value = 40, min = 1, max = 80, step = 1 })
 end
 
-function Soraka:Draw()
-	if AIO.autoSkillsActive:Value() then
-		local textPos = myHero.pos:To2D()
-		Draw.Text("ON", 20, textPos.x - 25, textPos.y + 40, Draw.Color(220, 0, 255, 0))
-	end
-	
+function Soraka:Draw()	
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)    
 		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
@@ -1155,7 +1230,7 @@ function Soraka:Draw()
 		end
 	end
 	
-	if AIO.DrawRange:Value() then
+	if AIO.Spells.General.DrawSpells:Value() then
 		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 200, 0,0))
 		Draw.Circle(myHero.pos, W.Range, Draw.Color(150, 0, 200,0))
 	end
@@ -1163,23 +1238,23 @@ end
 
 function Soraka:Tick()	
 	if(not _isLoaded) then
-		_isLoaded = Soraka:TryLoad()
+		_isLoaded = self:TryLoad()
 	end
-	self:GetExhaust()
-	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
+	
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true then return end
 	
 	--Cast W on low health carries nearby
-	if Ready(_W) and CurrentPctLife(myHero) >= AIO.Skills.WHealth:Value() and CurrentPctMana(myHero) >= AIO.Skills.WMana:Value() then
+	if Ready(_W) and CurrentPctLife(myHero) >= AIO.Spells.W.Health:Value() and CurrentPctMana(myHero) >= AIO.Spells.W.Mana:Value() then
 		self:AutoW()
 	end
 	
 	--Cast E and or Q on targets that aren't mobile
-	if CurrentPctMana(myHero) >= AIO.Skills.ImmobileMana:Value() then
+	if CurrentPctMana(myHero) >= AIO.Spells.General.ImmobileMana:Value() then
 		self:HitImmobileTargets()
 	end
 	
 	--Cast Q on targets near our mouse (based on accuracy)
-	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
+	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Spells.Q.Mana:Value() then
 		self:HitTargetsNearMouse()
 	end
 	
@@ -1188,49 +1263,98 @@ function Soraka:Tick()
 		AutoUtil:AutoCrucible()
 	end
 	
+	
+	--Use Locket
+	if AutoUtil:IsItemReady(3190) then
+		AutoUtil:AutoLocket()
+	end
+	
+	if Ready(_R) then
+		self:AutoR()
+	end	
+	
+	if AIO.Spells.Exhaust.Enabled:Value() then
+		self:AutoExhaust()
+	end
+	
+	UpdateAllyHealth()
+end
+
+
+function Soraka:AutoR()	
 	--Use R if enough allies are below 40% health
-	if Ready(_R) and self:GetLowHealthAllyCount() >= AIO.Skills.RCount:Value() then
+	if self:GetLowHealthAllyCount() >= AIO.Spells.R.EmergencyCount:Value() then
 		Control.CastSpell(HK_R)
 	end
 	
-	self:AutoExhaust()
+	--Use R if enough allies have taken X% of their max hp as dmg in the last second
+	local injuredCount = self:CountInjuredAllies(AIO.Spells.R.DamagePercent:Value())	
+	if injuredCount >= AIO.Spells.R.DamageCount:Value() then
+		Control.CastSpell(HK_R)
+	end		
+end
+
+function Soraka:CountInjuredAllies(percent, origin, radius)	
+	local count = 0	
+	if not origin then
+		origin = myHero.pos
+	end
+	if not radius then
+		radius = math.huge
+	end
+	
+	for i = 1, Game.HeroCount() do
+		local ally = Game.Hero(i)
+		if ally.isAlly and ally.alive and _carryHealthPercent and _carryHealthPercent[ally.charName] and AutoUtil:GetDistance(origin, ally.pos) <= radius then		
+			
+			local life = _carryHealthPercent[ally.charName]
+			local deltaLifeLost = life - CurrentPctLife(ally)		
+			if deltaLifeLost > percent then
+				count = count + 1
+			end
+		end
+	end
+	
+	return count
 end
 
 function Soraka:AutoW()
-
 	if _spellsLastCast and _spellsLastCast.HK_W and Game.Timer() - _spellsLastCast.HK_W  < .5 then return end	
 	local target = self:GetHealingTarget()
 	if target ~= nil then
 		self.CastW(HK_W, target.pos)
 	end
+	
 end
 
 function Soraka:HitImmobileTargets()
 
-	if Ready(_E) then
-		
-		--Use E to interrupt any enemies in range who are channeling an ability for at least .5 seconds
-		local target = AutoUtil.GetChannelingEnemyInRange(myHero.pos, E.Range, .5)
-		if target ~= nil then
-			Control.CastSpell(HK_E, target.pos)
+	if Ready(_E) then	
+		if AIO.Spells.E.TargetChannels:Value() then
+			local target = AutoUtil.GetChannelingEnemyInRange(myHero.pos, E.Range, .5)
+			if target ~= nil then
+				Control.CastSpell(HK_E, target.pos)
+			end
 		end
 		
-		--Use E to target the end of a gapcloser
-		local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.InteruptDelay:Value())
-		if target ~= nil then
-			Control.CastSpell(HK_E, target:GetPath(1))
+		if AIO.Spells.E.TargetImmobile:Value() then
+			local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Spells.General.InteruptDelay:Value())
+			if target ~= nil then
+				Control.CastSpell(HK_E, target:GetPath(1))
+			end
+			
+			local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Spells.General.InteruptDelay:Value())
+			if target ~= nil  and target.isEnemy then
+				Control.CastSpell(HK_E, target.pos)	
+			end		
 		end
 		
-		--Use E to target the end of a hourglass stasis
-		local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.InteruptDelay:Value())
-		if target ~= nil  and target.isEnemy then
-			Control.CastSpell(HK_E, target.pos)	
-		end		
 		
-		--Use E on Stunned Targets
-		local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.CCDelay:Value(), 1 + E.Delay)
-		if target then
-			Control.CastSpell(HK_E, target.pos)	
+		if AIO.Spells.E.TargetCC:Value() then
+			local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Spells.General.CCDelay:Value(), 1 + E.Delay)
+			if target then
+				Control.CastSpell(HK_E, target.pos)	
+			end
 		end
 	end
 	
@@ -1242,19 +1366,19 @@ function Soraka:HitImmobileTargets()
 		end
 		
 		--Use Q to target the end of a gapcloser
-		local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.InteruptDelay:Value())
+		local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Spells.General.InteruptDelay:Value())
 		if target ~= nil then
 			Control.CastSpell(HK_Q, target:GetPath(1))
 		end
 		
 		--Use Q to target the end of a hourglass stasis
-		local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.InteruptDelay:Value())
+		local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Spells.General.InteruptDelay:Value())
 		if target ~= nil  and target.isEnemy then
 			Control.CastSpell(HK_Q, target.pos)	
 		end		
 		
 		--Use Q on Stunned Targets
-		local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.CCDelay:Value(), 1 + Q.Delay)
+		local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Spells.General.CCDelay:Value(), 1 + Q.Delay)
 		if target then
 			Control.CastSpell(HK_Q, target.pos)	
 		end
@@ -1272,7 +1396,7 @@ function Soraka:HitTargetsNearMouse()
 		local target = Game.Hero(i)
 		if target.isEnemy and isValidTarget(target, Q.Range) and target.alive then
 			local castPos,hitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort,0.0)
-			if hitChance > 0 and AutoUtil:GetDistance(mousePos, target.pos) <= AIO.Skills.QRadius:Value() then
+			if hitChance > 0 and AutoUtil:GetDistance(mousePos, target.pos) <= AIO.Spells.Q.Radius:Value() then
 				local lookupValue ={target.charName, castPos, hitChance}
 				table.insert(targets, lookupValue)
 			end
@@ -1282,7 +1406,7 @@ function Soraka:HitTargetsNearMouse()
 	--Sort the table so that we aim for the highest hitchance target possible
 	table.sort(targets, function( a, b ) return a[3] > b[3] end)	
 	if #targets > 0 then
-		if targets[1][3] >= AIO.Skills.QAccuracy:Value() then
+		if targets[1][3] >= AIO.Spells.Q.Accuracy:Value() then
 			self.CastQ(HK_Q, targets[1][2], 0.5)
 			return
 		end
@@ -1343,18 +1467,17 @@ function Soraka:GetExhaust()
 	end	
 end
 
-function Soraka:AutoExhaust()	
-
+function Soraka:AutoExhaust()
 	local exhaustHotkey = self:GetExhaust()	
 	if not exhaustHotkey then return end
 	
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
 		--It's an enemy who is within exhaust range and is toggled ON in ExhaustList
-		if enemy.isEnemy and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= 650 + enemy.boundingRadius and isValidTarget(enemy, 650) and AIO.ExhaustList[enemy.charName] and AIO.ExhaustList[enemy.charName]:Value() then
+		if enemy.isEnemy and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= 600 + enemy.boundingRadius and isValidTarget(enemy, 650) and AIO.Spells.Exhaust.Targets[enemy.charName] and AIO.Spells.Exhaust.Targets[enemy.charName]:Value() then
 			for allyIndex = 1, Game.HeroCount() do
 				local ally = Game.Hero(allyIndex)
-				if AutoUtil:GetDistance(enemy.pos, ally.pos) <= AIO.ExhaustList.EnemyDistance:Value() and CurrentPctLife(ally) <= AIO.ExhaustList.AllyHealth:Value() then
+				if ally.isAlly and ally.alive and AutoUtil:GetDistance(enemy.pos, ally.pos) <= AIO.Spells.Exhaust.Radius:Value() and CurrentPctLife(ally) <= AIO.Spells.Exhaust.Health:Value() then
 					Control.CastSpell(exhaustHotkey, enemy)
 				end
 			end
@@ -1366,7 +1489,7 @@ function Soraka:GetHealingTarget()
 	local targets = {}
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and hero ~= myHero and hero.alive and AutoUtil:GetDistance(myHero.pos, hero.pos) <= W.Range + hero.boundingRadius and AIO.HealList[hero.charName] and AIO.HealList[hero.charName]:Value() >= CurrentPctLife(hero) then		
+		if hero.isAlly and hero ~= myHero and hero.alive and AutoUtil:GetDistance(myHero.pos, hero.pos) <= W.Range + hero.boundingRadius and AIO.Spells.W.Targets[hero.charName] and AIO.Spells.W.Targets[hero.charName]:Value() >= CurrentPctLife(hero) then		
 			local pctLife = CurrentPctLife(hero)
 			table.insert(targets, {hero, pctLife})
 		end
