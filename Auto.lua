@@ -12,7 +12,15 @@ function()
 	AutoUtil()
 	TPred()
 end)
- 		
+ 	
+function KnowsSpell(spell)
+	local spellInfo = myHero:GetSpellData(spell)
+	if spellInfo and spellInfo.level > 0 then
+		return true
+	end
+	return false
+end
+	
 function CurrentPctLife(entity)
 	local pctLife =  entity.health/entity.maxHealth  * 100
 	return pctLife
@@ -473,12 +481,46 @@ local qMissile
 local qHitPoints
 local qPointsUpdatedAt = Game.Timer()
 
-function Velkoz:__init()	
-	print("Loaded [Auto] "..myHero.charName)
+function Velkoz:__init()
 	self:LoadSpells()
 	self:CreateMenu()
 	Callback.Add("Tick", function() self:Tick() end)
 	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Velkoz:CreateMenu()
+	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
+	Menu:MenuElement({id = "General", name = "General", type = MENU})
+	Menu.General:MenuElement({id = "ReactionTime", name = "Enemy Reaction Time",tooltip = "How quickly (seconds) do you expect enemies to react to your spells. Used for predicting enemy movements", value = .25, min = .1, max = 1, step = .05 })		
+	Menu.General:MenuElement({id = "DashTime", name = "Dash Time",tooltip = "How long must a dash be to auto cast on it", value = .5, min = .1, max = 2, step = .1 })
+	Menu.General:MenuElement({id = "ImmobileTime", name = "Immobile Time",tooltip = "How long must a stun be to auto cast on them", value = .5, min = .1, max = 2, step = .1 })		
+	Menu.General:MenuElement({id = "DrawAA", name = "Draw AA Range", value = false})
+	Menu.General:MenuElement({id = "DrawQ", name = "Draw Q Range", value = false})
+	Menu.General:MenuElement({id = "DrawW", name = "Draw W Range", value = false})	
+	Menu.General:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
+	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = true})
+	
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "Q", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Detonate", name = "Auto Detonate", value = true })
+	Menu.Skills.Q:MenuElement({id = "TargetImmobile", name = "Auto Q Immobile", value = true })
+	Menu.Skills.Q:MenuElement({id = "TargetDashes", name = "Auto Q Dashes", value = true })
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 25, min = 1, max = 100, step = 5 })
+	
+	
+	Menu.Skills:MenuElement({id = "W", name = "W", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Detonate", name = "Auto Detonate Passive", value = true })
+	Menu.Skills.W:MenuElement({id = "TargetImmobile", name = "Auto W Immobile", value = true })
+	Menu.Skills.W:MenuElement({id = "TargetDashes", name = "Auto W Dashes", value = true })
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 25, min = 1, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "E", name = "E", type = MENU})
+	Menu.Skills.E:MenuElement({id = "TargetImmobile", name = "Auto E Immobile", value = true })
+	Menu.Skills.E:MenuElement({id = "TargetDashes", name = "Auto E Dashes", value = true })
+	Menu.Skills.E:MenuElement({id = "TargetSlows", name = "Auto E Slows", value = true })
+	Menu.Skills.E:MenuElement({id = "Radius", name = "Radius", value = 200, min = 100, max = 300, step = 10 })
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })	
 end
 
 function Velkoz:LoadSpells()
@@ -489,76 +531,50 @@ function Velkoz:LoadSpells()
 	R = {Range = 1550,Width = 75, Delay = 0.25, Speed = math.huge, Sort = "line" }
 end
 
-function Velkoz:CreateMenu()
-	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})
-	
-	AIO:MenuElement({id = "Skills", name = "Skills", type = MENU})
-	
-	
-	--%Mana needed for us to launch a Q vs immobile targets
-	AIO.Skills:MenuElement({id = "QMana", name = "Auto Q Mana", value = 25, min = 5, max = 100, step = 1 })
-	
-	--%Mana needed for us to use W to detonate passive or steal a kill
-	AIO.Skills:MenuElement({id = "WDetonateMana", name = "W Detonate Mana", value = 50, min = 5, max = 100, step = 5 })
-	AIO.Skills:MenuElement({id = "WInterruptMana", name = "W Interrupt Mana", value = 50, min = 5, max = 100, step = 5 })
-	
-	AIO.Skills:MenuElement({id = "ETiming", name = "E Interrupt Delay", value = .25, min = .1, max = 1, step = .05 })
-	AIO.Skills:MenuElement({id = "ECCTiming", name = "E Imobile Targets", value = .5, min = .1, max = 2, step = .1 })	
-	
-	--Minimum E mana to use on stunned targets
-	AIO.Skills:MenuElement({id = "EMana", name = "Auto E Mana", value = 25, min = 5, max = 100, step = 1 })	
-	
-	AIO:MenuElement({id = "autoSkillsActive", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
-end
-
 function Velkoz:Draw()
-	if AIO.autoSkillsActive:Value() then
-		local textPos = myHero.pos:To2D()
-		Draw.Text("ON", 20, textPos.x - 25, textPos.y + 40, Draw.Color(220, 0, 255, 0))
+	--Add some drawing of ranges
+	if Menu.General.DrawAA:Value() then
+		Draw.Circle(myHero.pos, 525, Draw.Color(100, 255, 255,255))
 	end
-	
-	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)    
-		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
-			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
-		end
+	if KnowsSpell(_Q) and Menu.General.DrawQ:Value() then
+		Draw.Circle(myHero.pos, Q.Range, Draw.Color(100, 0, 0,0))
+	end
+	if KnowsSpell(_W) and Menu.General.DrawW:Value() then
+		Draw.Circle(myHero.pos, W.Range, Draw.Color(100, 0, 0,255))
+	end
+	if KnowsSpell(_E) and Menu.General.DrawE:Value() then
+		Draw.Circle(myHero.pos, E.Range, Draw.Color(100, 0, 255,0))
+	end
+	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
+		Draw.Circle(myHero.pos, R.Range, Draw.Color(100, 255, 0,0))
 	end	
 end
 
-
-function Velkoz:IsUltActive()
-	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "VelkozR" then
-		return true
-	else
-		return false
-	end
-end
 function Velkoz:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() or self:IsUltActive() then return end
+	if IsRecalling() or self:IsRActive() then return end
 	
-	if Ready(_E) then 
-		self:AutoEInterrupt()
+	
+	if Ready(_Q) then
+		self:UpdateQInfo()		
+		if Menu.Skills.Q.Detonate:Value() and self:IsQActive() then
+			self:DetonateQ()
+		elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+			self:AutoQ()
+		end
+	end		
+	
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+		self:AutoW()
 	end
 	
-	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WDetonateMana:Value() then
-		self:AutoWDetonate()
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		self:AutoE()
 	end
-	
-	if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
-		self:AutoQInterrupt()
-	end
-	
-	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
-		self:AutoQInterrupt()		
-		self:AutoQDetonate()
-	end
-	
 end
 
 
-function Velkoz:AutoQDetonate()	
-	self:UpdateQInfo()
-	--Check if any of our qHitPoints hit an enemy. If so re-activate it
+--Checks if our Q can be detonated to hit a target or if it should be allowed to fly straight
+function Velkoz:DetonateQ()
 	if Game.Timer() - qPointsUpdatedAt < .25 and self:IsQActive() and qHitPoints then
 		for i = 1, #qHitPoints do		
 			if qHitPoints[i] then
@@ -567,40 +583,111 @@ function Velkoz:AutoQDetonate()
 				end
 			end
 		end
+	end	
+end
+
+function Velkoz:AutoQ()
+end
+
+function Velkoz:AutoW()
+end
+
+function Velkoz:AutoE()
+	
+	local hasCast = false		
+	
+	if Menu.Skills.E.TargetImmobile:Value() then
+		hasCast = self:AutoEStasis()
+		
+		if not hasCast then
+			hasCast = self:AutoEImmobile()
+		end		
 	end
+	
+	
+	if not hasCast and Menu.Skills.E.TargetDashes:Value() then
+		hasCast = self:AutoEDash()
+	end
+	
+	if not hasCast and Menu.Skills.E.TargetSlows:Value() then	
+		for i = 1, Game:HeroCount() do
+			local enemy = Game.Hero(i)
+			if enemy.alive and enemy.visible and enemy.isEnemy then
+				if self:CanAttack(enemy) then
+					hasCast = self:AutoERadius(enemy)
+				end
+			end
+		end	
+	end
+	
 end
 
-
-function Velkoz:IsQActive()
-	return qMissile and qMissile.name and qMissile.name == "VelkozQMissile"
+function Velkoz:AutoERadius(enemy)
+	--Auto cast E on target if the potential movement radius is small enough (slow target)
+	local targetOrigin = self:PredictUnitPosition(enemy, E.Delay)
+	local interceptTime = self:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
+	local origin, radius = self:UnitMovementBounds(enemy, interceptTime, interceptTime)			
+	
+	if radius < E.Width and self:GetDistance(myHero.pos, origin) <= E.Range then
+		Control.CastSpell(HK_E, origin)
+		return true
+	end
+	
+	return false
 end
+
+function Velkoz:AutoEImmobile()
+	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, E.Range, Menu.General.ImmobileTime:Value())
+	if enemy then
+		Control.CastSpell(HK_E, enemy.pos)
+		return true
+	end
+	return false	
+end
+
+function Velkoz:AutoEStasis()
+	local enemy = self:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value())
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pos) <= E.Range then
+		Control.CastSpell(HK_E, enemy.pos)
+		return true
+	end
+	return false
+end
+
+function Velkoz:AutoEDash()
+	local enemy = self:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.DashTime:Value())
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, target.pos) <= E.Range then
+		Control.CastSpell(HK_E, target.pathing.endPos)
+		return true
+	end
+	return false
+end
+
 function Velkoz:UpdateQInfo()
-	if self:IsQActive() then
-		local directionVector = Vector(qMissile.missileData.endPos.x - qMissile.missileData.startPos.x,qMissile.missileData.endPos.y - qMissile.missileData.startPos.y,qMissile.missileData.endPos.z - qMissile.missileData.startPos.z):Normalized()
-		
-		local upVector = directionVector:Perpendicular()
-		local downVector = directionVector:Perpendicular2()		
-		
+	if self:IsQActive() then	
+		local directionVector = Vector(qMissile.missileData.endPos.x - qMissile.missileData.startPos.x,qMissile.missileData.endPos.y - qMissile.missileData.startPos.y,qMissile.missileData.endPos.z - qMissile.missileData.startPos.z):Normalized()						
+				
 		--TODO: Change 50 to a variable setting such as "checkInterval"
 		local pointCount = 600 / 50 * 2
 		qHitPoints = {}
 		
+		--Adds the 'up' split points
 		for i = 1, pointCount, 2 do
-			local result =  self:CalculateNode(qMissile, qMissile.pos + upVector * i * 50)			
+			local result =  self:CalculateNode(qMissile,  qMissile.pos + directionVector:Perpendicular() * i * 50)			
 			qHitPoints[i] = result
 			if result.collision then
 				break
 			end
 		end
-		
+				
+		--Adds the 'down' split points
 		for i = 2, pointCount, 2 do		
-			local result =  self:CalculateNode(qMissile, qMissile.pos + downVector * i * 50)			
+			local result =  self:CalculateNode(qMissile,  qMissile.pos + directionVector:Perpendicular2() * i * 50)			
 			qHitPoints[i] = result	
 			if result.collision then
 				break
 			end
-		end
-		
+		end		
 		qPointsUpdatedAt = Game.Timer()
 		
 	end
@@ -610,7 +697,7 @@ function Velkoz:UpdateQInfo()
 	if Game.Timer() - qData.castTime < .1 then
 		for i = 1, Game.MissileCount() do
 			local missile = Game.Missile(i)
-			if missile.name == "VelkozQMissile" and AutoUtil:GetDistance(missile.pos, myHero.pos) < 400 then
+			if missile.name == "VelkozQMissile" and self:GetDistance(missile.pos, myHero.pos) < 400 then
 				qMissile = missile
 			end
 		end
@@ -618,6 +705,7 @@ function Velkoz:UpdateQInfo()
 end
 
 
+--Returns a node for our Q (position, delay, collision and playerHit)
 function Velkoz:CalculateNode(missile, nodePos)
 	local result = {}
 	result["pos"] = nodePos
@@ -634,6 +722,24 @@ function Velkoz:CalculateNode(missile, nodePos)
 	return result
 end
 
+
+--Returns if our Q is currently active (still flying and not split)
+function Velkoz:IsQActive()
+	return qMissile and qMissile.name and qMissile.name == "VelkozQMissile"
+end
+
+
+--Returns if our R is currently channeling. If so do not try to move/cast spells
+function Velkoz:IsRActive()
+	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "VelkozR" then
+		return true
+	else
+		return false
+	end
+end
+
+
+--Returns if a minion will be hit
 function Velkoz:CheckMinionCollision(location, radius, delay, maxDistance)
 	if not maxDistance then
 		maxDistance = 1000
@@ -651,13 +757,14 @@ function Velkoz:CheckMinionCollision(location, radius, delay, maxDistance)
 	return false
 end
 
+--Returns if an enemy will be hit and optionally will return the enemy
 function Velkoz:CheckEnemyCollision(location, radius, delay, maxDistance)
 	if not maxDistance then
 		maxDistance = 1000
 	end
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isEnemy and hero.isTargetable and hero.alive and self:GetDistance(hero.pos, location) < maxDistance then
+		if self:CanAttack(hero) and hero.alive and self:GetDistance(hero.pos, location) < maxDistance then
 			local predictedPosition = self:PredictUnitPosition(hero, delay)
 			if self:GetDistance(location, predictedPosition) <= radius + hero.boundingRadius then
 				return true, hero
@@ -668,32 +775,23 @@ function Velkoz:CheckEnemyCollision(location, radius, delay, maxDistance)
 	return false
 end
 
-function Velkoz:GetDistanceSqr(p1, p2)
-	return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
-end
-
-function Velkoz:GetDistance(p1, p2)
-	return math.sqrt(self:GetDistanceSqr(p1, p2))
-end
-
-
 --Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
-function Velkoz:PredictUnitPosition(unit, delay)	
+function Velkoz:PredictUnitPosition(unit, delay)
 	local predictedPosition = unit.pos
 	local timeRemaining = delay
 	local pathNodes = self:GetPathNodes(unit)
 	for i = 1, #pathNodes -1 do
 		local nodeDistance = self:GetDistance(pathNodes[i], pathNodes[i +1])
 		local nodeTraversalTime = nodeDistance / unit.ms
+			
 		if timeRemaining > nodeTraversalTime then
 			--This node of the path will be completed before the delay has finished. Move on to the next node if one remains
 			timeRemaining =  timeRemaining - nodeTraversalTime
 			predictedPosition = pathNodes[i + 1]
-		else
-			--The delay will be completed before the node of the path. Find the partial position.
-			predictedPosition = pathNodes[i] + (pathNodes[i+1] - pathNodes[i]) * 1 / nodeTraversalTime / timeRemaining			
-			--Break the loop
-			i = #pathNodes
+		else		
+			local directionVector = (pathNodes[i+1] - pathNodes[i]):Normalized()			
+			predictedPosition = pathNodes[i] + directionVector *  unit.ms * timeRemaining
+			break;
 		end
 	end	
 	return predictedPosition
@@ -706,7 +804,7 @@ function Velkoz:UnitMovementBounds(unit, delay, reactionTime)
 	local radius = 0
 	local deltaDelay = delay - self:GetImmobileTime(unit)	
 	if (deltaDelay >0) then
-		radius = target.ms * deltaDelay	
+		radius = unit.ms * deltaDelay	
 	end
 	return startPosition, radius	
 end
@@ -758,68 +856,90 @@ function Velkoz:GetPathLength(nodes)
 	return result
 end
 
+function Velkoz:GetDistanceSqr(p1, p2)
+	return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+end
 
-function Velkoz:AutoEInterrupt()
-	--Use E to target the end of a gapcloser
-	local target = TPred:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil then
-		Control.CastSpell(HK_E, target:GetPath(1))
-		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInterruptMana:Value() then
-			Control.CastSpell(HK_W, target:GetPath(1))
+function Velkoz:GetDistance(p1, p2)
+	return math.sqrt(self:GetDistanceSqr(p1, p2))
+end
+
+
+function Velkoz:GetSpellInterceptTime(startPos, endPos, delay, speed)	
+	local interceptTime = delay + self:GetDistance(startPos, endPos) / speed
+	return interceptTime
+end
+
+
+function Velkoz:TryGetBuff(unit, buffname)	
+	for i = 1, unit.buffCount do 
+		local Buff = unit:GetBuff(i)
+		if Buff.name == buffname and Buff.duration > 0 then
+			return Buff, true
 		end
 	end
-	
-	--Use E to target the end of a hourglass stasis
-	local target = TPred:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil  and target.isEnemy then
-		Control.CastSpell(HK_E, target.pos)	
-		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInterruptMana:Value() then
-			Control.CastSpell(HK_W, target.pos)
-		end
-	end		
-	
-	--Use E on Stunned Targets
-	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, E.Range, AIO.Skills.ECCTiming:Value(), 1 + E.Delay)
-	if target and CurrentPctMana(myHero) >= AIO.Skills.EMana:Value() then
-		Control.CastSpell(HK_E, target.pos)	
-		if Ready(_W) and CurrentPctMana(myHero) >= AIO.Skills.WInterruptMana:Value() then
-			Control.CastSpell(HK_W, target.pos)
+	return nil, false
+end
+
+function Velkoz:GetStasisTarget(source, range, delay, speed, timingAccuracy)
+	local target	
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		local buff, success = self:TryGetBuff(t, "zhonyasringshield")
+		if success and t.isEnemy and buff ~= nil then
+			local deltaInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed) - buff.duration
+			if deltaInterceptTime > -Game.Latency() / 2000 and deltaInterceptTime < timingAccuracy then
+				target = t
+				return target
+			end
 		end
 	end
 end
 
-
---Find an enemy with 2 stacks of passive on them and use W to pop it.
-function Velkoz:AutoWDetonate()
-	local Enemy = AutoUtil:FindEnemyWithBuff("velkozresearchstack", W.Range, 2)
-	if Enemy ~= nil then	
-		local castpos,HitChance, pos = TPred:GetBestCastPosition(Enemy, W.Delay , W.Width, W.Range, W.Speed, myHero.pos, W.Collision, W.Sort)
-		if HitChance >= 2 then
-			Control.CastSpell(HK_W, castpos)
+function Velkoz:GetImmobileTarget(source, range, minimumCCTime)
+	--TODO: Give priority to certain targets in case of tie. Right now I prioritize based on maximum CC effect (not over stunning)	
+	local bestTarget
+	local bestCCTime = 0
+	for heroIndex = 1,Game.HeroCount()  do
+		local enemy = Game.Hero(heroIndex)
+		if enemy and self:CanAttack(enemy) and self:GetDistance(source, enemy.pos) <= range then
+			for buffIndex = 0, enemy.buffCount do
+				local buff = enemy:GetBuff(buffIndex)
+				
+				if (buff.type == 5 or buff.type == 8 or buff.type == 21 or buff.type == 22 or buff.type == 24 or buff.type == 11) then					
+					if(buff.duration > minimumCCTime and buff.duration > bestCCTime) then
+						bestTarget = enemy
+						bestCCTime = buff.duration
+					end
+				end
+			end
 		end
-	end
-end
-
---Find an enemy that we can launch Q directly at. This means immobile, dashing or stasis targets who will not be blocked by minions.
-function Velkoz:AutoQInterrupt()
-	
-	--Use Q to target the end of a gapcloser
-	local target = TPred:GetInteruptTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil then
-		Control.CastSpell(HK_Q, target:GetPath(1))
-	end
-	
-	--Use Q to target the end of a hourglass stasis
-	local target = TPred:GetStasisTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, AIO.Skills.ETiming:Value())
-	if target ~= nil  and target.isEnemy then
-		Control.CastSpell(HK_Q, target.pos)	
 	end	
-	
-	--Use Q on Stunned Targets
-	local target, ccRemaining = AutoUtil:GetCCdEnemyInRange(myHero.pos, Q.Range, AIO.Skills.ECCTiming:Value(), 1 + Q.Delay)
-	if target and not TPred:CheckMinionCollision(target, target.pos, Q.Delay, Q.Width, Q.Range, Q.Speed, myHero.pos) then 
-		Control.CastSpell(HK_Q, target.pos)	
+	return bestTarget, bestCCTime
+end
+
+function Velkoz:GetInteruptTarget(source, range, delay, speed, timingAccuracy)
+	local target	
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
+			local dashEndPosition = t:GetPath(1)
+			if self:GetDistance(source, dashEndPosition) <= range then				
+				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
+				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
+				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
+				local deltaInterceptTime = math.abs(skillInterceptTime - dashTimeRemaining)
+				if deltaInterceptTime < timingAccuracy then
+					target = t
+					return target
+				end
+			end			
+		end
 	end
+end
+
+function Velkoz:CanAttack(target)
+	return target.isEnemy and target.alive and target.visible and target.isTargetable and not target.isImmortal
 end
 
 class "Nami"
