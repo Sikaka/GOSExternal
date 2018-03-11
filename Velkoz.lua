@@ -77,7 +77,8 @@ function Velkoz:Draw()
 	end
 	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
 		Draw.Circle(myHero.pos, R.Range, Draw.Color(100, 255, 0,0))
-	end	
+	end		
+	
 end
 
 function Velkoz:Tick()
@@ -133,6 +134,10 @@ function Velkoz:AutoW()
 	if not hasCast and Menu.Skills.W.TargetDashes:Value() then
 		hasCast = self:AutoWDash()
 	end
+	
+	if not hasCast and Menu.Skills.W.Detonate:Value() then
+		hasCast = self:AutoWDetonate()
+	end
 end
 
 
@@ -147,7 +152,7 @@ end
 
 function Velkoz:AutoWImmobile()
 	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, W.Range, Menu.General.ImmobileTime:Value())
-	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= W.Rangethen
+	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= W.Range then
 		Control.CastSpell(HK_W, enemy.pos)
 		return true
 	end
@@ -157,8 +162,7 @@ end
 function Velkoz:AutoWDash()
 	local enemy = self:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.DashTime:Value())
 	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, target.pathing.endPos) <= W.Range then
-		Control.CastSpell(HK_W, target.pathing.endPos)
-		
+		Control.CastSpell(HK_W, target.pathing.endPos)		
 		return true
 	end
 	return false
@@ -183,7 +187,7 @@ function Velkoz:Find2PassiveTarget()
 	for hi = 1, Game:HeroCount() do
 		local enemy = Game.Hero(hi)
 		if enemy.isEnemy and self:CanAttack(enemy) then
-			for i = 0, unit.buffCount do
+			for i = 0, enemy.buffCount do
 				local buff = enemy:GetBuff(i)
 				if buff.name == "velkozresearchstack" and buff.count == 2 and buff.duration > 0 and self:GetDistance(myHero.pos, enemy.pos) < W.Range then
 					target = enemy
@@ -191,6 +195,8 @@ function Velkoz:Find2PassiveTarget()
 			end
 		end
 	end
+	
+	return target
 end
 function Velkoz:AutoE()
 	
@@ -247,7 +253,7 @@ end
 
 function Velkoz:AutoEImmobile()
 	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, E.Range, Menu.General.ImmobileTime:Value())
-	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= E.Rangethen
+	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= E.Range then
 		Control.CastSpell(HK_E, enemy.pos)
 		return true
 	end
