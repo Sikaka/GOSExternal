@@ -120,12 +120,81 @@ function Velkoz:AutoQ()
 end
 
 function Velkoz:AutoW()
+	local hasCast = false		
+	
+	if Menu.Skills.W.TargetImmobile:Value() then
+		hasCast = self:AutoWStasis()		
+		if not hasCast then
+			hasCast = self:AutoWImmobile()
+		end		
+	end
+	
+	
+	if not hasCast and Menu.Skills.W.TargetDashes:Value() then
+		hasCast = self:AutoWDash()
+	end
 end
 
+
+function Velkoz:AutoWStasis()
+	local enemy = self:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.ReactionTime:Value())
+	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= W.Range then
+		Control.CastSpell(HK_W, enemy.pos)
+		return true
+	end
+	return false
+end
+
+function Velkoz:AutoWImmobile()
+	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, W.Range, Menu.General.ImmobileTime:Value())
+	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= W.Rangethen
+		Control.CastSpell(HK_W, enemy.pos)
+		return true
+	end
+	return false	
+end
+
+function Velkoz:AutoWDash()
+	local enemy = self:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.DashTime:Value())
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, target.pathing.endPos) <= W.Range then
+		Control.CastSpell(HK_W, target.pathing.endPos)
+		
+		return true
+	end
+	return false
+end
+
+function Velkoz:AutoWDetonate()
+	local enemy = self:Find2PassiveTarget()
+	if enemy and self:CanAttack(enemy) then
+		local aimLocation = self:PredictUnitPosition(enemy, self:GetSpellInterceptTime(myHero.pos, enemy.pos, W.Delay, W.Speed))
+		if self:GetDistance(myHero.pos, aimLocation) < W.Range then		
+			Control.CastSpell(HK_W, aimLocation)
+			return true
+		end
+	end
+	
+	return false
+end
+
+function Velkoz:Find2PassiveTarget()
+
+	local target
+	for hi = 1, Game:HeroCount() do
+		local enemy = Game.Hero(hi)
+		if enemy.isEnemy and self:CanAttack(enemy) then
+			for i = 0, unit.buffCount do
+				local buff = enemy:GetBuff(i)
+				if buff.name == "velkozresearchstack" and buff.count == 2 and buff.duration > 0 and self:GetDistance(myHero.pos, enemy.pos) < W.Range then
+					target = enemy
+				end
+			end
+		end
+	end
+end
 function Velkoz:AutoE()
 	
-	local hasCast = false
-		
+	local hasCast = false		
 	
 	if Menu.Skills.E.TargetImmobile:Value() then
 		hasCast = self:AutoEStasis()
@@ -167,27 +236,28 @@ function Velkoz:AutoERadius(enemy)
 	return false
 end
 
-function Velkoz:AutoEImmobile()
-	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, E.Range, Menu.General.ImmobileTime:Value())
-	if enemy then
-		Control.CastSpell(HK_E, enemy.pos)
-		return true
-	end
-	return false	
-end
-
 function Velkoz:AutoEStasis()
 	local enemy = self:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value())
-	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pos) <= E.Range then
+	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= E.Range then
 		Control.CastSpell(HK_E, enemy.pos)
 		return true
 	end
 	return false
 end
 
+function Velkoz:AutoEImmobile()
+	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, E.Range, Menu.General.ImmobileTime:Value())
+	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= E.Rangethen
+		Control.CastSpell(HK_E, enemy.pos)
+		return true
+	end
+	return false	
+end
+
+
 function Velkoz:AutoEDash()
 	local enemy = self:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.DashTime:Value())
-	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, target.pos) <= E.Range then
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, target.pathing.endPos) <= E.Range then
 		Control.CastSpell(HK_E, target.pathing.endPos)
 		return true
 	end
