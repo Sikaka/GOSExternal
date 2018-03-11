@@ -36,6 +36,7 @@ function Velkoz:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "Detonate", name = "Auto Detonate", value = true })
 	Menu.Skills.Q:MenuElement({id = "TargetImmobile", name = "Auto Q Immobile", value = true })
 	Menu.Skills.Q:MenuElement({id = "TargetDashes", name = "Auto Q Dashes", value = true })
+	Menu.Skills.Q:MenuElement({id = "Range", name = "Peel Range", value = 400, min = 100, max = 1000, step = 25 })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 25, min = 1, max = 100, step = 5 })
 	
 	
@@ -67,7 +68,7 @@ function Velkoz:Draw()
 		Draw.Circle(myHero.pos, 525, Draw.Color(100, 255, 255,255))
 	end
 	if KnowsSpell(_Q) and Menu.General.DrawQ:Value() then
-		Draw.Circle(myHero.pos, Q.Range, Draw.Color(100, 0, 0,0))
+		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 50, 50,50))
 	end
 	if KnowsSpell(_W) and Menu.General.DrawW:Value() then
 		Draw.Circle(myHero.pos, W.Range, Draw.Color(100, 0, 0,255))
@@ -118,6 +119,16 @@ function Velkoz:DetonateQ()
 end
 
 function Velkoz:AutoQ()
+	for i = 1, Game:HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.isEnemy and self:CanAttack(enemy) then
+			local predictedPosition = self:PredictUnitPosition(enemy,Q.Delay)
+			if self:GetDistance(myHero.pos, predictedPosition) <= Menu.Skills.Q.Range:Value() then						
+				Control.CastSpell(HK_Q, predictedPosition)
+				return
+			end
+		end
+	end
 end
 
 function Velkoz:AutoW()
