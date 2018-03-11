@@ -18,7 +18,7 @@ function Velkoz:__init()
 end
 
 function Velkoz:CreateMenu()
-	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Velkoz]"})
+	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Deconstructed Velkoz]"})
 	
 	Menu:MenuElement({id = "General", name = "General", type = MENU})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Enemy Reaction Time",tooltip = "How quickly (seconds) do you expect enemies to react to your spells. Used for predicting enemy movements", value = .25, min = .1, max = 1, step = .05 })		
@@ -28,7 +28,8 @@ function Velkoz:CreateMenu()
 	Menu.General:MenuElement({id = "DrawQ", name = "Draw Q Range", value = false})
 	Menu.General:MenuElement({id = "DrawW", name = "Draw W Range", value = false})	
 	Menu.General:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
-	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = true})
+	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = true})	
+	Menu.General:MenuElement({id = "Active", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
 	
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	
@@ -62,8 +63,12 @@ function Velkoz:LoadSpells()
 	R = {Range = 1550,Width = 75, Delay = 0.25, Speed = math.huge, Sort = "line" }
 end
 
-function Velkoz:Draw()
-	--Add some drawing of ranges
+function Velkoz:Draw()	
+	if not Menu.General.Active:Value() then
+		local textPos = myHero.pos:To2D()
+		Draw.Text("Disabled", 20, textPos.x - 25, textPos.y + 40, Draw.Color(175, 255, 0, 0))
+	end
+	
 	if Menu.General.DrawAA:Value() then
 		Draw.Circle(myHero.pos, 525, Draw.Color(100, 255, 255,255))
 	end
@@ -78,12 +83,11 @@ function Velkoz:Draw()
 	end
 	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
 		Draw.Circle(myHero.pos, R.Range, Draw.Color(100, 255, 0,0))
-	end		
-	
+	end
 end
 
 function Velkoz:Tick()
-	if IsRecalling() or self:IsRActive() then return end
+	if IsRecalling() or self:IsRActive() or not Menu.General.Active:Value() then return end
 	
 	
 	if Ready(_Q) then
@@ -172,8 +176,8 @@ end
 
 function Velkoz:AutoWDash()
 	local enemy = self:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.DashTime:Value())
-	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, target.pathing.endPos) <= W.Range then
-		Control.CastSpell(HK_W, target.pathing.endPos)		
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= W.Range then
+		Control.CastSpell(HK_W, enemy.pathing.endPos)		
 		return true
 	end
 	return false
@@ -274,8 +278,8 @@ end
 
 function Velkoz:AutoEDash()
 	local enemy = self:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.DashTime:Value())
-	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, target.pathing.endPos) <= E.Range then
-		Control.CastSpell(HK_E, target.pathing.endPos)
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= E.Range then
+		Control.CastSpell(HK_E, enemy.pathing.endPos)
 		return true
 	end
 	return false
