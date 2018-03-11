@@ -300,7 +300,7 @@ function AutoUtil:AutoCrucible()
 		if Hero.isAlly and Hero.alive and Hero ~= myHero then
 			if AIO.Items.Crucible.Targets[Hero.charName] and AIO.Items.Crucible.Targets[Hero.charName]:Value() then
 				for ccName, ccType in pairs(_ccNames) do
-					if AIO.Items.Crucible.CC[ccName] and AIO.Items.Crucible.CC[ccName]:Value() and self:HasBuffType(Hero, ccType, Items.Crucible.CC.CleanseTime:Value()) then
+					if AIO.Items.Crucible.CC[ccName] and AIO.Items.Crucible.CC[ccName]:Value() and self:HasBuffType(Hero, ccType, AIO.Items.Crucible.CC.CleanseTime:Value()) then
 						AutoUtil:CastItem(Hero, 3222, 650)
 					end
 				end
@@ -469,6 +469,10 @@ end
 
 class "Velkoz"
 
+local qMissile
+local qHitPoints
+local qPointsUpdatedAt = Game.Timer()
+
 function Velkoz:__init()	
 	print("Loaded [Auto] "..myHero.charName)
 	self:LoadSpells()
@@ -518,11 +522,19 @@ function Velkoz:Draw()
 		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
 			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
 		end
-	end
+	end	
 end
 
+
+function Velkoz:IsUltActive()
+	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "VelkozR" then
+		return true
+	else
+		return false
+	end
+end
 function Velkoz:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() then return end
+	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or not AIO.autoSkillsActive:Value() or self:IsUltActive() then return end
 	
 	if Ready(_E) then 
 		self:AutoEInterrupt()
@@ -537,10 +549,214 @@ function Velkoz:Tick()
 	end
 	
 	if Ready(_Q) and CurrentPctMana(myHero) >= AIO.Skills.QMana:Value() then
-		self:AutoQInterrupt()
+		self:AutoQInterrupt()		
+		self:AutoQDetonate()
+	end
+	
+end
+
+
+function Velkoz:AutoQDetonate()	
+	self:UpdateQInfo()
+	--Check if any of our qHitPoints hit an enemy. If so re-activate it
+	if Game.Timer() - qPointsUpdatedAt < .25 and self:IsQActive() and qHitPoints then
+		for i = 1, #qHitPoints do		
+			if qHitPoints[i] then
+				if qHitPoints[i].playerHit then					
+					Control.CastSpell(HK_Q)
+				end
+			end
+		end
 	end
 end
 
+
+function Velkoz:IsQActive()
+	return qMissile and qMissile.name and qMissile.name == "VelkozQMissile"
+end
+function Velkoz:UpdateQInfo()
+	if self:IsQActive() then
+		local directionVector = Vector(qMissile.missileData.endPos.x - qMissile.missileData.startPos.x,qMissile.missileData.endPos.y - qMissile.missileData.startPos.y,qMissile.missileData.endPos.z - qMissile.missileData.startPos.z):Normalized()
+		
+		local upVector = directionVector:Perpendicular()
+		local downVector = directionVector:Perpendicular2()		
+		
+		--TODO: Change 50 to a variable setting such as "checkInterval"
+		local pointCount = 600 / 50 * 2
+		qHitPoints = {}
+		
+		for i = 1, pointCount, 2 do
+			local result =  self:CalculateNode(qMissile, qMissile.pos + upVector * i * 50)			
+			qHitPoints[i] = result
+			if result.collision then
+				break
+			end
+		end
+		
+		for i = 2, pointCount, 2 do		
+			local result =  self:CalculateNode(qMissile, qMissile.pos + downVector * i * 50)			
+			qHitPoints[i] = result	
+			if result.collision then
+				break
+			end
+		end
+		
+		qPointsUpdatedAt = Game.Timer()
+		
+	end
+	
+	--Record our Q data	
+	local qData = myHero:GetSpellData(_Q)
+	if Game.Timer() - qData.castTime < .1 then
+		for i = 1, Game.MissileCount() do
+			local missile = Game.Missile(i)
+			if missile.name == "VelkozQMissile" and AutoUtil:GetDistance(missile.pos, myHero.pos) < 400 then
+				qMissile = missile
+			end
+		end
+	end
+end
+
+
+function Velkoz:CalculateNode(missile, nodePos)
+	local result = {}
+	result["pos"] = nodePos
+	result["delay"] = 0.251 + self:GetDistance(missile.pos, nodePos) / Q.Speed
+	
+	local isCollision = self:CheckMinionCollision(nodePos, 50, result["delay"])
+	local hitEnemy 
+	if not isCollision then
+		isCollision, hitEnemy = self:CheckEnemyCollision(nodePos, 50, result["delay"])
+	end
+	
+	result["playerHit"] = hitEnemy	
+	result["collision"] = isCollision
+	return result
+end
+
+function Velkoz:CheckMinionCollision(location, radius, delay, maxDistance)
+	if not maxDistance then
+		maxDistance = 1000
+	end
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i)
+		if minion.isEnemy and minion.isTargetable and minion.alive and self:GetDistance(minion.pos, location) < maxDistance then
+			local predictedPosition = self:PredictUnitPosition(minion, delay)
+			if self:GetDistance(location, predictedPosition) <= radius + minion.boundingRadius then
+				return true
+			end
+		end
+	end
+	
+	return false
+end
+
+function Velkoz:CheckEnemyCollision(location, radius, delay, maxDistance)
+	if not maxDistance then
+		maxDistance = 1000
+	end
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy and hero.isTargetable and hero.alive and self:GetDistance(hero.pos, location) < maxDistance then
+			local predictedPosition = self:PredictUnitPosition(hero, delay)
+			if self:GetDistance(location, predictedPosition) <= radius + hero.boundingRadius then
+				return true, hero
+			end
+		end
+	end
+	
+	return false
+end
+
+function Velkoz:GetDistanceSqr(p1, p2)
+	return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+end
+
+function Velkoz:GetDistance(p1, p2)
+	return math.sqrt(self:GetDistanceSqr(p1, p2))
+end
+
+
+--Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
+function Velkoz:PredictUnitPosition(unit, delay)	
+	local predictedPosition = unit.pos
+	local timeRemaining = delay
+	local pathNodes = self:GetPathNodes(unit)
+	for i = 1, #pathNodes -1 do
+		local nodeDistance = self:GetDistance(pathNodes[i], pathNodes[i +1])
+		local nodeTraversalTime = nodeDistance / unit.ms
+		if timeRemaining > nodeTraversalTime then
+			--This node of the path will be completed before the delay has finished. Move on to the next node if one remains
+			timeRemaining =  timeRemaining - nodeTraversalTime
+			predictedPosition = pathNodes[i + 1]
+		else
+			--The delay will be completed before the node of the path. Find the partial position.
+			predictedPosition = pathNodes[i] + (pathNodes[i+1] - pathNodes[i]) * 1 / nodeTraversalTime / timeRemaining			
+			--Break the loop
+			i = #pathNodes
+		end
+	end	
+	return predictedPosition
+end
+
+--Returns a position and radius in which the target could potentially move before the delay ends. ReactionTime defines how quick we expect the target to be able to change their current path
+function Velkoz:UnitMovementBounds(unit, delay, reactionTime)
+	local startPosition = self:PredictUnitPosition(unit, reactionTime)
+	
+	local radius = 0
+	local deltaDelay = delay - self:GetImmobileTime(unit)	
+	if (deltaDelay >0) then
+		radius = target.ms * deltaDelay	
+	end
+	return startPosition, radius	
+end
+
+--Returns how long (in seconds) the target will be unable to move from their current location
+function Velkoz:GetImmobileTime(unit)
+	local duration = 0
+	for i = 0, unit.buffCount do
+		local buff = unit:GetBuff(i);
+		if buff.count > 0 and buff.duration> duration and (buff.type == 5 or buff.type == 8 or buff.type == 21 or buff.type == 22 or buff.type == 24 or buff.type == 11) then
+			duration = buff.duration
+		end
+	end
+	return duration		
+end
+
+--Returns how long (in seconds) the target will be slowed for
+function Velkoz:GetSlowedTime(unit)
+	local duration = 0
+	for i = 0, unit.buffCount do
+		local buff = unit:GetBuff(i);
+		if buff.count > 0 and buff.duration > duration and buff.type == 10 then
+			duration = buff.duration			
+			return duration
+		end
+	end
+	return duration		
+end
+
+--Returns all existing path nodes
+function Velkoz:GetPathNodes(unit)
+	local nodes = {}
+	table.insert(nodes, unit.pos)
+	if unit.pathing.hasMovePath then
+		for i = unit.pathing.pathIndex, unit.pathing.pathCount do
+			path = unit:GetPath(i)
+			table.insert(nodes, path)
+		end
+	end		
+	return nodes
+end
+
+--Returns the total distance of our current path so we can calculate how long it will take to complete
+function Velkoz:GetPathLength(nodes)
+	local result = 0
+	for i = 1, #nodes -1 do
+		result = result + self:GetDistance(nodes[i], nodes[i + 1])
+	end
+	return result
+end
 
 
 function Velkoz:AutoEInterrupt()
@@ -1492,7 +1708,7 @@ end
 function Soraka:KillstealE()
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
-		if enemy.isEnemy and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= E.Range then		
+		if enemy.isEnemy and enemy.alive and enemy.isTargetable and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= E.Range then		
 			--This is SO SO SO OVERKILL but it will be accurate to ensure you get the last hit. It does not account for incoming damage is all.
 			local spellLevel = myHero:GetSpellData(_E).level
 			local eDamage = 70 + (spellLevel -1) * 30 + myHero.ap * 0.4			
