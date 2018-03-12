@@ -1,6 +1,7 @@
 
 class "Velkoz"
 
+local forcedTarget
 local qMissile
 local qHitPoints
 local qPointsUpdatedAt = Game.Timer()
@@ -15,6 +16,7 @@ function Velkoz:__init()
 	self:CreateMenu()
 	Callback.Add("Tick", function() self:Tick() end)
 	Callback.Add("Draw", function() self:Draw() end)
+	Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
 end
 
 function Velkoz:CreateMenu()
@@ -28,6 +30,7 @@ function Velkoz:CreateMenu()
 	Menu.General:MenuElement({id = "DrawQ", name = "Draw Q Range", value = false})
 	Menu.General:MenuElement({id = "DrawW", name = "Draw W Range", value = false})	
 	Menu.General:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
+	Menu.General:MenuElement({id = "DrawEAim", name = "Draw E Aim", value = true})	
 	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = true})	
 	Menu.General:MenuElement({id = "Active", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
 	
@@ -80,21 +83,33 @@ function Velkoz:Draw()
 	end
 	if KnowsSpell(_E) and Menu.General.DrawE:Value() then
 		Draw.Circle(myHero.pos, E.Range, Draw.Color(100, 0, 255,0))
+		if self.forcedTarget ~= nil and self:CanAttack(self.forcedTarget) and Menu.General.DrawEAim:Value() then
+			local targetOrigin = self:PredictUnitPosition(self.forcedTarget, E.Delay)
+			local interceptTime = self:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
+			local origin, radius = self:UnitMovementBounds(self.forcedTarget, interceptTime, interceptTime)			
+			if radius < 25 then
+				radius = 25
+			end
+			Draw.Circle(origin, 25,10)		
+			Draw.Circle(origin, radius,1, Draw.Color(50, 255, 255,255))			
+			
+			
+		end
 	end
 	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
 		Draw.Circle(myHero.pos, R.Range, Draw.Color(100, 255, 0,0))
 	end
+	
 end
 
 function Velkoz:Tick()
 	if IsRecalling() or self:IsRActive() or not Menu.General.Active:Value() then return end
-	
-	
+		
 	if Ready(_Q) then
 		self:UpdateQInfo()		
 		if Menu.Skills.Q.Detonate:Value() and self:IsQActive() then
 			self:DetonateQ()
-		elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and not self:IsEvading() then
 			self:AutoQ()
 		end
 	end		
@@ -103,7 +118,7 @@ function Velkoz:Tick()
 		self:AutoW()
 	end
 	
-	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() and not self:IsEvading() then
 		self:AutoE()
 	end
 end
@@ -327,6 +342,26 @@ function Velkoz:UpdateQInfo()
 end
 
 
+function Velkoz:WndMsg(msg,key)
+	if msg == 513 then
+		local starget = nil
+		for i  = 1,Game.HeroCount(i) do
+			local enemy = Game.Hero(i)
+			if enemy.alive and enemy.isEnemy and self:GetDistance(mousePos, enemy.pos) < 250 then
+				starget = enemy
+				break
+			end
+		end
+		if starget then
+			self.forcedTarget = starget
+			print("New target selected: "..starget.charName)
+		else
+			self.forcedTarget = nil
+		end
+	end	
+end
+
+
 --Returns a node for our Q (position, delay, collision and playerHit)
 function Velkoz:CalculateNode(missile, nodePos)
 	local result = {}
@@ -358,6 +393,11 @@ function Velkoz:IsRActive()
 	else
 		return false
 	end
+end
+
+function Velkoz:IsEvading()	
+    if ExtLibEvade and ExtLibEvade.Evading then return true end
+	return false
 end
 
 
