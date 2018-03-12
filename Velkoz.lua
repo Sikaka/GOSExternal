@@ -5,6 +5,7 @@ local forcedTarget
 local qMissile
 local qHitPoints
 local qPointsUpdatedAt = Game.Timer()
+enemyPaths = {}
 
 Callback.Add("Load",
 function() 	
@@ -54,7 +55,7 @@ function Velkoz:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "TargetImmobile", name = "Auto E Immobile", value = true })
 	Menu.Skills.E:MenuElement({id = "TargetDashes", name = "Auto E Dashes", value = true })
 	Menu.Skills.E:MenuElement({id = "TargetSlows", name = "Auto E Slows", value = true })
-	Menu.Skills.E:MenuElement({id = "Radius", name = "Radius", value = 200, min = 100, max = 300, step = 10 })
+	Menu.Skills.E:MenuElement({id = "Radius", name = "Radius", value = 150, min = 50, max = 200, step = 10 })
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })	
 end
 
@@ -86,14 +87,15 @@ function Velkoz:Draw()
 		if self.forcedTarget ~= nil and self:CanAttack(self.forcedTarget) and Menu.General.DrawEAim:Value() then
 			local targetOrigin = self:PredictUnitPosition(self.forcedTarget, E.Delay)
 			local interceptTime = self:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
-			local origin, radius = self:UnitMovementBounds(self.forcedTarget, interceptTime, interceptTime)			
+			local origin, radius = self:UnitMovementBounds(self.forcedTarget, interceptTime, Menu.General.ReactionTime:Value())			
 			if radius < 25 then
 				radius = 25
 			end
 			Draw.Circle(origin, 25,10)		
-			Draw.Circle(origin, radius,1, Draw.Color(50, 255, 255,255))			
+			Draw.Circle(origin, radius,1, Draw.Color(50, 255, 255,255))		
 			
-			
+			local textPos = origin:To2D()
+			Draw.Text("Radius: " ..  radius .. " MS: " .. self.forcedTarget.ms, 20, textPos.x - 25, textPos.y + 40, Draw.Color(175, 255, 0, 0))	
 		end
 	end
 	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
@@ -105,6 +107,9 @@ end
 function Velkoz:Tick()
 	if IsRecalling() or self:IsRActive() or not Menu.General.Active:Value() then return end
 		
+		
+	self:UpdateTargetPaths()
+	
 	if Ready(_Q) then
 		self:UpdateQInfo()		
 		if Menu.Skills.Q.Detonate:Value() and self:IsQActive() then
@@ -122,7 +127,6 @@ function Velkoz:Tick()
 		self:AutoE()
 	end
 end
-
 
 --Checks if our Q can be detonated to hit a target or if it should be allowed to fly straight
 function Velkoz:DetonateQ()
@@ -158,8 +162,7 @@ function Velkoz:AutoW()
 		if not hasCast then
 			hasCast = self:AutoWImmobile()
 		end		
-	end
-	
+	end	
 	
 	if not hasCast and Menu.Skills.W.TargetDashes:Value() then
 		hasCast = self:AutoWDash()
@@ -260,11 +263,18 @@ end
 
 function Velkoz:AutoERadius(enemy)
 	--Auto cast E on target if the potential movement radius is small enough (slow target)
+	
+	
+	--If the target JUST changed their movement direction dont auto E. This is to stop it wasting on targets who spam click in a circle trying to dodge. Better to wait 
+	local deltaTime, endPos = self:PreviousPathDetails(enemy.charName)
+	if deltaTime and Game.Timer() - deltaTime < Menu.General.ReactionTime:Value() then
+		return false
+	end
 	local targetOrigin = self:PredictUnitPosition(enemy, E.Delay)
 	local interceptTime = self:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
-	local origin, radius = self:UnitMovementBounds(enemy, interceptTime, interceptTime)			
+	local origin, radius = self:UnitMovementBounds(enemy, interceptTime, Menu.General.ReactionTime:Value())			
 	
-	if radius < E.Width and self:GetDistance(myHero.pos, origin) <= E.Range then
+	if radius < Menu.Skills.E.Radius:Value() and self:GetDistance(myHero.pos, origin) <= E.Range then
 		Control.CastSpell(HK_E, origin)
 		return true
 	end
@@ -354,7 +364,6 @@ function Velkoz:WndMsg(msg,key)
 		end
 		if starget then
 			self.forcedTarget = starget
-			print("New target selected: "..starget.charName)
 		else
 			self.forcedTarget = nil
 		end
@@ -450,21 +459,21 @@ function Velkoz:PredictUnitPosition(unit, delay)
 			--This node of the path will be completed before the delay has finished. Move on to the next node if one remains
 			timeRemaining =  timeRemaining - nodeTraversalTime
 			predictedPosition = pathNodes[i + 1]
-		else		
-			local directionVector = (pathNodes[i+1] - pathNodes[i]):Normalized()			
+		else
+			local directionVector = (pathNodes[i+1] - pathNodes[i]):Normalized()
 			predictedPosition = pathNodes[i] + directionVector *  unit.ms * timeRemaining
 			break;
 		end
-	end	
+	end
 	return predictedPosition
 end
 
 --Returns a position and radius in which the target could potentially move before the delay ends. ReactionTime defines how quick we expect the target to be able to change their current path
 function Velkoz:UnitMovementBounds(unit, delay, reactionTime)
-	local startPosition = self:PredictUnitPosition(unit, reactionTime)
+	local startPosition = self:PredictUnitPosition(unit, delay)
 	
 	local radius = 0
-	local deltaDelay = delay - self:GetImmobileTime(unit)	
+	local deltaDelay = delay -reactionTime- self:GetImmobileTime(unit)	
 	if (deltaDelay >0) then
 		radius = unit.ms * deltaDelay	
 	end
@@ -604,6 +613,33 @@ function Velkoz:CanAttack(target)
 	return target.isEnemy and target.alive and target.visible and target.isTargetable and not target.isImmortal
 end
 
+
+function Velkoz:UpdateTargetPaths()
+	for i = 1, Game:HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.isEnemy then
+			if not enemyPaths[enemy.charName] then
+				enemyPaths[enemy.charName] = {}
+			end
+			
+			if enemy.pathing and enemy.pathing.hasMovePath and enemyPaths[enemy.charName].endPos ~= enemy.pathing.endPos then
+				enemyPaths[enemy.charName]["time"] = Game.Timer()
+				enemyPaths[enemy.charName]["endPos"] = enemy.pathing.endPos					
+			end
+		end
+	end
+end
+
+function Velkoz:PreviousPathDetails(charName)
+	local deltaTime = 0
+	local pathEnd
+	
+	if enemyPaths and enemyPaths[charName] and enemyPaths[charName]["time"] then
+		deltaTime = enemyPaths[charName]["time"]
+		pathEnd = enemyPaths[charName]["endPos"]
+	end
+	return deltaTime, pathEnd
+end
 
 function Ready(spellSlot)
 	return IsReady(spellSlot)
