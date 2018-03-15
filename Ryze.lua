@@ -73,18 +73,6 @@ function Ryze:Draw()
 	if KnowsSpell(_E) and Menu.General.DrawE:Value() then
 			Draw.Circle(myHero.pos, E.Range, Draw.Color(100, 0, 255,0))		
 	end
-	
-	
-	if forcedTarget then	
-		Draw.Circle(forcedTarget.pos, 100)
-	end
-	--if self.forcedTarget ~= nil then
-	--	for K, Buff in pairs(GetBuffs(self.forcedTarget)) do
-	--		if Buff.duration > 0 then
-	--			print(Buff.name)
-	--		end
-	--	end
-	--end
 end
 
 
@@ -114,7 +102,7 @@ function Ryze:Tick()
 	end
 end
 
-function Ryze:Peel()	
+function Ryze:Peel()
 	local target = self:GetInteruptTarget(myHero.pos, W.Range, Q.Delay, Q.Speed, .0)	
 	if target == nil then
 		target = self:GetImmobileTarget(myHero.pos, W.Range, Q.Delay)
@@ -145,21 +133,15 @@ end
 
 
 function Ryze:Harass()	
-	--Last hit minions with E if they are near death
-	if Menu.Skills.E.Harass:Value() and Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.HarassMana:Value() then	
-		for i, minion in ipairs(_G.SDK.ObjectManager:GetEnemyMinions(range)) do
-			if self:GetDistance(myHero.pos, minion.pos) < E.Range then
-				if self:GetEDamage(minion) > minion.health then
-					local distance, enemy = self:NearestEnemy(minion)
-					if distance < 300 then
-						self:CastSpell(HK_E, minion.pos)	
-					end
-				end
-			end
-		end
-	end		
+	--E minions near death if player is adjacent
+	self:EBounceMinions()
+	
+	--Q enemy if they have RyzeE buff on them
+	--Q minion if it has RyzeE buff on it and is standing next to a player with RyzeE buff on them (detonate all)	
 end
-function Ryze:Combo()	
+function Ryze:Combo()
+
+
 	--Pick the highest hitchance target within Q range to cast on.	
 	if Ready(_Q) then
 		local target
@@ -169,10 +151,16 @@ function Ryze:Combo()
 			local enemy = Game.Hero(i)
 			if enemy.alive and enemy.isEnemy and self:GetDistance(myHero.pos, enemy.pos) < Q.Range then
 				local tHitChance, tAimPosition = self:GetTargetHitChance(enemy, Q.Delay, Q.Speed, Q.Width, Q.Range, true, "Line")
-				if tHitChance > hitChance and self:GetDistance(myHero.pos, tAimPosition) < Q.Range then
+				if tHitChance > hitChance and self:GetDistance(myHero.pos, tAimPosition) < Q.Range then				
 					hitChance = tHitChance
 					aimPosition = tAimPosition
 					target = enemy
+					
+					--If we've forced a target and they are in range: don't choose anyone else! 
+					--This will stop us wasting Qs on random higher hitrate targets if we've clicked a specific enemy
+					if self.forcedTarget and enemy ==  self.forcedTarget then
+						break
+					end
 				end				
 			end
 		end
@@ -193,7 +181,22 @@ function Ryze:Combo()
 		end
 	end
 	
-	self:Harass() 
+	self:EBounceMinions() 
+end
+
+function Ryze:EBounceMinions()
+	if Menu.Skills.E.Harass:Value() and Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.HarassMana:Value() then	
+		for i, minion in ipairs(_G.SDK.ObjectManager:GetEnemyMinions(range)) do
+			if self:GetDistance(myHero.pos, minion.pos) < E.Range then
+				if self:GetEDamage(minion) > minion.health then
+					local distance, enemy = self:NearestEnemy(minion)
+					if distance < 300 then
+						self:CastSpell(HK_E, minion.pos)	
+					end
+				end
+			end
+		end
+	end
 end
 
 function Ryze:GetEDamage(target)
