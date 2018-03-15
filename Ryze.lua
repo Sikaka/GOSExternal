@@ -19,7 +19,7 @@ function Ryze:__init()
 end
 
 function Ryze:CreateMenu()
-	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Runeforged Ryze]"})
+	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Rune-Forged Ryze]"})
 	
 	Menu:MenuElement({id = "General", name = "General", type = MENU})
 	Menu.General:MenuElement({id = "DrawAA", name = "Draw AA Range", value = false})
@@ -33,7 +33,7 @@ function Ryze:CreateMenu()
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Overload", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "LastHit", name = "Use for Last Hit", value = true })
-	Menu.Skills.Q:MenuElement({id = "LastHitMana", name = "Last Hit Mana Limit", value = 30, min = 1, max = 100, step = 5 })	
+	Menu.Skills.Q:MenuElement({id = "HarassMana", name = "Harass Mana Limit", value = 30, min = 1, max = 100, step = 5 })	
 	Menu.Skills.Q:MenuElement({id = "HitChance", name = "Combo Hit Chance", value = 3, min = 1, max = 5, step =1 })
 	Menu.Skills.Q:MenuElement({id = "MinimumCooldown", name = "Minimum Reset Cooldown", value = 1, min = .25, max = 5, step =.25 })
 	
@@ -74,13 +74,23 @@ function Ryze:Draw()
 			Draw.Circle(myHero.pos, E.Range, Draw.Color(100, 0, 255,0))		
 	end
 	
+	
+	if forcedTarget then	
+		Draw.Circle(forcedTarget.pos, 100)
+	end
+	--if self.forcedTarget ~= nil then
+	--	for K, Buff in pairs(GetBuffs(self.forcedTarget)) do
+	--		if Buff.duration > 0 then
+	--			print(Buff.name)
+	--		end
+	--	end
+	--end
 end
 
 
 
 function Ryze:Tick()
 	if IsRecalling() then return end
-
 	
 	--Should work to turn off the orbwalker and auto skills while evade is dodging
 	if self:IsEvading() then
@@ -94,6 +104,10 @@ function Ryze:Tick()
 	if self:IsComboActive() then 
 		self:Combo()		
 	end	
+	
+	if self:IsHarassActive() then 
+		self:Harass()		
+	end
 	
 	if Menu.Skills.W.AutoPeel:Value() then
 		self:Peel()
@@ -117,7 +131,7 @@ function Ryze:Peel()
 		end
 	end
 	
-	if Ready(_W) and target ~= nil and self:GetDistance(myHero.pos, target.pos) <=  Menu.Skills.W.PeelRadius:Value() then
+	if Ready(_W)  and target ~= nil and self:CanAttack(target) and self:GetDistance(myHero.pos, target.pos) <=  Menu.Skills.W.PeelRadius:Value() then
 		--Hit target with E W combo
 		if Ready(_E) then	
 			self:CastSpell(HK_E, target.pos)
@@ -129,10 +143,24 @@ function Ryze:Peel()
 	end	
 end
 
-function Ryze:Combo()
-	
-	--Pick the highest hitchance target within Q range to cast on.
-	
+
+function Ryze:Harass()	
+	--Last hit minions with E if they are near death
+	if Menu.Skills.E.Harass:Value() and Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.HarassMana:Value() then	
+		for i, minion in ipairs(_G.SDK.ObjectManager:GetEnemyMinions(range)) do
+			if self:GetDistance(myHero.pos, minion.pos) < E.Range then
+				if self:GetEDamage(minion) > minion.health then
+					local distance, enemy = self:NearestEnemy(minion)
+					if distance < 300 then
+						self:CastSpell(HK_E, minion.pos)	
+					end
+				end
+			end
+		end
+	end		
+end
+function Ryze:Combo()	
+	--Pick the highest hitchance target within Q range to cast on.	
 	if Ready(_Q) then
 		local target
 		local hitChance = 0 
@@ -148,7 +176,6 @@ function Ryze:Combo()
 				end				
 			end
 		end
-		
 		if target ~= nil and hitChance >= Menu.Skills.Q.HitChance:Value() then
 			self:CastSpell(HK_Q, aimPosition)		
 		end
@@ -158,24 +185,72 @@ function Ryze:Combo()
 	if myHero:GetSpellData(_Q).currentCd > Menu.Skills.Q.MinimumCooldown:Value() then
 		local target = self:GetTarget(W.Range)
 		if target ~= nil then
-			if Ready(_E) and self:GetDistance(myHero.pos, target.pos) < E.Range then		
+			if Ready(_E) and self:CanAttack(target) and self:GetDistance(myHero.pos, target.pos) < E.Range then		
 				self:CastSpell(HK_E, target.pos)	
-			elseif Ready(_W) and self:GetDistance(myHero.pos, target.pos) < W.Range then		
+			elseif Ready(_W) and self:CanAttack(target) and self:GetDistance(myHero.pos, target.pos) < W.Range then		
 				self:CastSpell(HK_W, target.pos)
 			end
 		end
 	end
+	
+	self:Harass() 
+end
+
+function Ryze:GetEDamage(target)
+	--E.Level * 20 + 70 + .3AP + 1% Bonus Mana
+	local damage = 70 + myHero:GetSpellData(_E).level * 20 + myHero.ap * .3
+	return damage
+end
+function Ryze:IsHarassActive()
+	if _G.SDK and _G.SDK.Orbwalker then		
+		if _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_HARASS] then 
+			if myHero.activeSpell and 
+				myHero.activeSpell.valid and 
+				myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer() > 0 
+			then
+				return false
+			else
+				return true
+			end
+		end
+	end	
+	if _G.GOS and _G.GOS.GetMode() == "Harass" and not _G.GOS:IsAttacking() then
+		return true
+	end	
 end
 
 function Ryze:IsComboActive()
 	if _G.SDK and _G.SDK.Orbwalker then		
 		if _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then 
-			return true
+			if myHero.activeSpell and 
+				myHero.activeSpell.valid and 
+				myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer() > 0 
+			then
+				return false
+			else
+				return true
+			end
 		end
 	end	
-	if _G.GOS then
-		return _G.GOS.GetMode() == "Combo"
+	if _G.GOS and _G.GOS.GetMode() == "Combo" and not _G.GOS:IsAttacking() then
+		return true
 	end	
+end
+
+function Ryze:NearestEnemy(entity)
+	local distance = 999999
+	local enemy = nil
+	for i = 1,Game.HeroCount()  do
+		local hero = Game.Hero(i)	
+		if self:CanAttack(hero) then
+			local d = self:GetDistance(entity.pos, hero.pos)
+			if d < distance then
+				distance = d
+				enemy = hero
+			end
+		end
+	end
+	return distance, enemy
 end
 
 function Ryze:CastSpell(spell,pos)
@@ -227,8 +302,8 @@ end
 
 
 function Ryze:GetTarget(range)
-	if forcedTarget and self:GetDistance(myHero.pos, forcedTarget.pos) <= range then
-		return forcedTarget		
+	if self.forcedTarget and self:GetDistance(myHero.pos, self.forcedTarget.pos) <= range then
+		return self.forcedTarget		
 	end
 	if _G.SDK then
 		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
@@ -310,6 +385,16 @@ function Ryze:GetImmobileTime(unit)
 	return duration		
 end
 
+function Ryze:HasBuff(unit, buffName)
+	local duration = 0
+	for i = 0, unit.buffCount do
+		local buff = unit:GetBuff(i);
+		if buff.duration> 0 and buff.name == buffName then
+			return true
+		end
+	end	
+end
+
 --Returns how long (in seconds) the target will be slowed for
 function Ryze:GetSlowedTime(unit)
 	local duration = 0
@@ -369,6 +454,7 @@ function Ryze:TryGetBuff(unit, buffname)
 	end
 	return nil, false
 end
+
 
 function Ryze:GetStasisTarget(source, range, delay, speed, timingAccuracy)
 	local target	
@@ -514,8 +600,8 @@ function Ryze:CheckCol(unit, minion, Position, delay, radius, range, speed, from
 		
 		if #waypoints > 1 then
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(from, Position, Vector(MPos))
-			if proj1 and isOnSegment and (self:GetDistanceSqr(MPos, proj1) <= (minion.boundingRadius + radius + buffer) ^ 2) then
-				return true
+			if proj1 and isOnSegment and (self:GetDistanceSqr(MPos, proj1) <= (minion.boundingRadius + radius + buffer) ^ 2) then				
+				return true		
 			end
 		end
 		
