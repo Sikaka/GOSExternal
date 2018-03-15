@@ -82,8 +82,11 @@ function Velkoz:Draw()
 	if KnowsSpell(_W) and Menu.General.DrawW:Value() then
 		Draw.Circle(myHero.pos, W.Range, Draw.Color(100, 0, 0,255))
 	end
-	if KnowsSpell(_E) and Menu.General.DrawE:Value() then
-		Draw.Circle(myHero.pos, E.Range, Draw.Color(100, 0, 255,0))
+	if KnowsSpell(_E) then
+
+		if Menu.General.DrawE:Value() then
+			Draw.Circle(myHero.pos, E.Range, Draw.Color(100, 0, 255,0))
+		end
 		if self.forcedTarget ~= nil and self:CanAttack(self.forcedTarget) and Menu.General.DrawEAim:Value() then
 			local targetOrigin = self:PredictUnitPosition(self.forcedTarget, E.Delay)
 			local interceptTime = self:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
@@ -94,8 +97,8 @@ function Velkoz:Draw()
 			Draw.Circle(origin, 25,10)		
 			Draw.Circle(origin, radius,1, Draw.Color(50, 255, 255,255))		
 			
-			local textPos = origin:To2D()
-			Draw.Text("Radius: " ..  radius .. " MS: " .. self.forcedTarget.ms, 20, textPos.x - 25, textPos.y + 40, Draw.Color(175, 255, 0, 0))	
+			--local textPos = origin:To2D()
+			--Draw.Text("Radius: " ..  radius .. " MS: " .. self.forcedTarget.ms, 20, textPos.x - 25, textPos.y + 40, Draw.Color(175, 255, 0, 0))	
 		end
 	end
 	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
