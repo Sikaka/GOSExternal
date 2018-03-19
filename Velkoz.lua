@@ -43,6 +43,7 @@ function Velkoz:CreateMenu()
 	Menu.General:MenuElement({id = "ReactionTime", name = "Enemy Reaction Time",tooltip = "How quickly (seconds) do you expect enemies to react to your spells. Used for predicting enemy movements", value = .25, min = .1, max = 1, step = .05 })		
 	Menu.General:MenuElement({id = "DashTime", name = "Dash Time",tooltip = "How long must a dash be to auto cast on it", value = .5, min = .1, max = 2, step = .1 })
 	Menu.General:MenuElement({id = "ImmobileTime", name = "Immobile Time",tooltip = "How long must a stun be to auto cast on them", value = .5, min = .1, max = 2, step = .1 })		
+	Menu.General:MenuElement({id = "CastFrequency", name = "Cast Frequency Time",tooltip = "How quickly may spells be cast", value = .25, min = .1, max = 1, step = .1 })		
 	Menu.General:MenuElement({id = "CheckInterval", name = "Collision Check Interval", value = 50, min = 10, max = 150, step = 10 })
 	Menu.General:MenuElement({id = "Active", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })	
 	Menu.General:MenuElement({id = "Combo", name = "Combo",value = false,  key = string.byte(" ") })	
@@ -91,10 +92,10 @@ end
 
 function Velkoz:LoadSpells()
 
-	Q = {Range = 1050, Width = 55,Delay = 0.251, Speed = 1235,  Sort = "line"}
-	W = {Range = 1050, Width = 80,Delay = 0.25, Speed = 1500,  Sort = "line"}
-	E = {Range = 850, Width = 235,Delay = 0.75, Speed = math.huge,  Sort = "circular"}
-	R = {Range = 1550,Width = 75, Delay = 0.25, Speed = math.huge, Sort = "line" }
+	Q = {Range = 1050, Width = 55,Delay = 0.251, Speed = 1235}
+	W = {Range = 1050, Width = 80,Delay = 0.25, Speed = 1500}
+	E = {Range = 850, Width = 235,Delay = 0.75, Speed = math.huge}
+	R = {Range = 1550,Width = 75, Delay = 0.25, Speed = math.huge}
 end
 
 function Velkoz:Draw()	
@@ -140,8 +141,8 @@ end
 
 function Velkoz:Tick()
 	if IsRecalling() or self:IsRActive() or not Menu.General.Active:Value() then return end
-		
-		
+	
+	if Game.Timer() -lastSpellCast < Menu.General.CastFrequency:Value() then return end
 	self:UpdateTargetPaths()
 	
 	if Ready(_Q) then
@@ -204,10 +205,12 @@ function Velkoz:AutoQ()
 		if enemy.isEnemy and self:CanAttack(enemy) then
 			local predictedPosition = self:PredictUnitPosition(enemy,Q.Delay)
 				
-			if self:GetDistance(myHero.pos, predictedPosition) <= Menu.Skills.Q.Range:Value() then
-				--Check minion collision first!!
-				Control.CastSpell(HK_Q, predictedPosition)
-				return
+			if self:GetDistance(myHero.pos, predictedPosition) <= Menu.Skills.Q.Range:Value() then			
+				--if not self:CheckMinionCollision(myHero, predictedPos, Q.Delay, Q.Width, Q.Speed, Q.Range, myHero.pos) then				
+					Control.CastSpell(HK_Q, predictedPosition)
+					lastSpellCast = Game.Timer()
+					return
+				--end
 			end
 		end
 	end
@@ -237,6 +240,7 @@ function Velkoz:AutoWStasis()
 	local enemy = self:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.ReactionTime:Value())
 	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= W.Range then
 		Control.CastSpell(HK_W, enemy.pos)
+		lastSpellCast = Game.Timer()
 		return true
 	end
 	return false
@@ -246,6 +250,7 @@ function Velkoz:AutoWImmobile()
 	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, W.Range, Menu.General.ImmobileTime:Value())
 	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= W.Range then
 		Control.CastSpell(HK_W, enemy.pos)
+		lastSpellCast = Game.Timer()
 		return true
 	end
 	return false	
@@ -254,7 +259,8 @@ end
 function Velkoz:AutoWDash()
 	local enemy = self:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.DashTime:Value())
 	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= W.Range then
-		Control.CastSpell(HK_W, enemy.pathing.endPos)		
+		Control.CastSpell(HK_W, enemy.pathing.endPos)
+		lastSpellCast = Game.Timer()		
 		return true
 	end
 	return false
@@ -264,8 +270,9 @@ function Velkoz:AutoWDetonate()
 	local enemy = self:Find2PassiveTarget()
 	if enemy and self:CanAttack(enemy) then
 		local aimLocation = self:PredictUnitPosition(enemy, self:GetSpellInterceptTime(myHero.pos, enemy.pos, W.Delay, W.Speed))
-		if self:GetDistance(myHero.pos, aimLocation) < W.Range * 2 / 3 then		
+		if self:GetDistance(myHero.pos, aimLocation) < W.Range * 3 / 4 then
 			Control.CastSpell(HK_W, aimLocation)
+			lastSpellCast = Game.Timer()
 			return true
 		end
 	end
@@ -274,7 +281,6 @@ function Velkoz:AutoWDetonate()
 end
 
 function Velkoz:Find2PassiveTarget()
-
 	local target
 	for hi = 1, Game:HeroCount() do
 		local enemy = Game.Hero(hi)
@@ -290,6 +296,7 @@ function Velkoz:Find2PassiveTarget()
 	
 	return target
 end
+
 function Velkoz:AutoE()
 	
 	local hasCast = false	
@@ -312,8 +319,7 @@ function Velkoz:AutoE()
 				hasCast = self:AutoERadius(enemy)
 			end
 		end	
-	end
-	
+	end	
 end
 
 function Velkoz:AutoERadius(enemy)
@@ -330,6 +336,7 @@ function Velkoz:AutoERadius(enemy)
 	--TODO: Lerp the aim position based on time since last movement update/angle of movement change
 	if radius < Menu.Skills.E.Radius:Value() and self:GetDistance(myHero.pos, origin) <= E.Range then
 		Control.CastSpell(HK_E, origin)
+		lastSpellCast = Game.Timer()
 		return true
 	end
 	
@@ -340,6 +347,7 @@ function Velkoz:AutoEStasis()
 	local enemy = self:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value())
 	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= E.Range then
 		Control.CastSpell(HK_E, enemy.pos)
+		lastSpellCast = Game.Timer()
 		return true
 	end
 	return false
@@ -349,6 +357,7 @@ function Velkoz:AutoEImmobile()
 	local enemy, ccTime = self:GetImmobileTarget(myHero.pos, E.Range, Menu.General.ImmobileTime:Value())
 	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= E.Range then
 		Control.CastSpell(HK_E, enemy.pos)
+		lastSpellCast = Game.Timer()
 		return true
 	end
 	return false	
@@ -359,16 +368,17 @@ function Velkoz:AutoEDash()
 	local enemy = self:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.DashTime:Value())
 	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= E.Range and Menu.Skills.E.Targets[enemy.charName] and Menu.Skills.E.Targets[enemy.charName]:Value() then
 		Control.CastSpell(HK_E, enemy.pathing.endPos)
+		lastSpellCast = Game.Timer()
 		return true
 	end
 	return false
 end
 
 function Velkoz:UpdateQInfo()
+
+	--Check to see if our Q can be detonated to hit any enemys
 	if self:IsQActive() then	
-		local directionVector = Vector(qMissile.missileData.endPos.x - qMissile.missileData.startPos.x,qMissile.missileData.endPos.y - qMissile.missileData.startPos.y,qMissile.missileData.endPos.z - qMissile.missileData.startPos.z):Normalized()						
-				
-		--TODO: Change 50 to a variable setting such as "checkInterval"
+		local directionVector = Vector(qMissile.missileData.endPos.x - qMissile.missileData.startPos.x,qMissile.missileData.endPos.y - qMissile.missileData.startPos.y,qMissile.missileData.endPos.z - qMissile.missileData.startPos.z):Normalized()										
 		local checkInterval = Menu.General.CheckInterval:Value()
 		local pointCount = 600 / checkInterval * 2
 		qHitPoints = {}
@@ -432,7 +442,7 @@ function Velkoz:CalculateNode(missile, nodePos)
 	result["pos"] = nodePos
 	result["delay"] = 0.251 + self:GetDistance(missile.pos, nodePos) / Q.Speed
 	
-	local isCollision = self:CheckMinionCollision(nodePos, 55, result["delay"])
+	local isCollision = self:CheckMinionIntercection(nodePos, 55, result["delay"])
 	local hitEnemy 
 	if not isCollision then
 		isCollision, hitEnemy = self:CheckEnemyCollision(nodePos, 55, result["delay"])
@@ -466,7 +476,7 @@ end
 
 
 --Returns if a minion will be hit
-function Velkoz:CheckMinionCollision(location, radius, delay, maxDistance)
+function Velkoz:CheckMinionIntercection(location, radius, delay, maxDistance)
 	if not maxDistance then
 		maxDistance = 1200
 	end
@@ -477,6 +487,100 @@ function Velkoz:CheckMinionCollision(location, radius, delay, maxDistance)
 			if self:GetDistance(location, predictedPosition) <= radius + minion.boundingRadius then
 				return true
 			end
+		end
+	end
+	
+	return false
+end
+
+function Velkoz:VectorPointProjectionOnLineSegment(v1, v2, v)
+	assert(v1 and v2 and v, "VectorPointProjectionOnLineSegment: wrong argument types (3 <Vector> expected)")
+	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
+	local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
+	local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
+	local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
+	local isOnSegment = rS == rL
+	local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
+	return pointSegment, pointLine, isOnSegment
+end
+
+function Velkoz:CheckCol(source, startPos, minion, endPos, delay, speed, range, radius)
+	if source.networkID == minion.networkID then 
+		return false
+	end
+	
+	if _G.SDK and startPos and minion and minion.pos and minion.type ~= myHero.type and _G.SDK.HealthPrediction:GetPrediction(minion, delay + self:GetDistance(startPos, minion.pos) / speed - Game.Latency()/1000) < 0 then
+		return false
+	end
+	
+	local waypoints = self:GetPathNodes(minion)
+	local MPos, CastPosition = #waypoints == 1 and Vector(minion.pos) or self:PredictUnitPosition(minion, delay)
+	
+	if startPos and MPos and self:GetDistanceSqr(startPos, MPos) <= (range)^2 and self:GetDistanceSqr(startPos, minion.pos) <= (range + 100)^2 then
+		local buffer = (#waypoints > 1) and 8 or 0 
+		
+		if minion.type == myHero.type then
+			buffer = buffer + minion.boundingRadius
+		end
+		
+		if #waypoints > 1 then
+			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(startPos, endPos, Vector(MPos))
+			if proj1 and isOnSegment and (self:GetDistanceSqr(MPos, proj1) <= (minion.boundingRadius + radius + buffer) ^ 2) then				
+				return true		
+			end
+		end
+		
+		local proj2, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(startPos, endPos, Vector(minion.pos))
+		if proj2 and isOnSegment and (self:GetDistanceSqr(minion.pos, proj2) <= (minion.boundingRadius + radius + buffer) ^ 2) then
+			return true
+		end
+	end
+end
+
+function Velkoz:CheckMinionCollision(source, endPos, delay, radius, speed, range, start)
+	if (_G.SDK) then
+		return self:CheckMinionCollisionIC(source, endPos, delay, radius, speed, range, start)
+	else
+		return self:CheckMinionCollisionNoOrb(source, endPos, delay, radius, speed, range, start)
+	end
+end
+
+function Velkoz:CheckMinionCollisionNoOrb(source, endPos, delay, radius, speed, range, start)
+	local startPos = myHero.pos
+	if start then
+		startPos = start
+	end
+	
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i)
+		if minion.alive and minion.isEnemy and self:GetDistance(startPos, minion.pos) < range then
+			if self:CheckCol(source, startPos, minion, endPos, delay, speed, range, radius) then
+				return true
+			end
+		end
+	end
+end
+
+
+function Velkoz:CheckMinionCollisionIC(source, endPos, delay, radius, speed, range, start)
+	local startPos = myHero.pos
+	if start then
+		startPos = start
+	end
+		
+	for i, minion in ipairs(_G.SDK.ObjectManager:GetEnemyMinions(range)) do
+		if self:CheckCol(source, startPos, minion, endPos, delay, speed ,range,  radius) then
+			return true
+		end
+	end
+	for i, minion in ipairs(_G.SDK.ObjectManager:GetMonsters(range)) do
+		if self:CheckCol(source, startPos, minion, endPos, delay, speed ,range,  radius) then
+			return true
+		end
+	end
+	for i, minion in ipairs(_G.SDK.ObjectManager:GetOtherEnemyMinions(range)) do
+		if minion.team ~= myHero.team and self:CheckCol(source, startPos, minion, endPos, delay, speed ,range,  radius) then
+			return true
 		end
 	end
 	

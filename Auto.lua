@@ -1,6 +1,6 @@
 local _carryHealthPercent = {}
 local _healthTick = 1
-local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean", "Soraka"}
+local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean", "Soraka", "Kayle"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -8,9 +8,14 @@ local Scriptname,Version,Author,LVersion = "[Auto]","v1.0","Sikaka","0.01"
 
 Callback.Add("Load",
 function() 
+	if FileExist(COMMON_PATH .. "TPred.lua") then
+		require 'TPred'
+	else
+		TPred()
+	end
+	
 	_G[myHero.charName]() 
 	AutoUtil()
-	TPred()
 end)
  	
 function KnowsSpell(spell)
@@ -42,7 +47,7 @@ end
 
 function isValidTarget(obj,range)
 	range = range or math.huge
-	return obj ~= nil and obj.valid and obj.visible and not obj.dead and obj.isTargetable and obj.distance <= range
+	return obj ~= nil and obj.valid and obj.visible and obj.alive and obj.isTargetable and obj.distance <= range
 end
 
 
@@ -426,8 +431,8 @@ function Brand:Tick()
 	if target == nil then return end
   
 	local castpos,HitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range, Q.Speed, myHero.pos, Q.Collision, Q.Sort, AIO.reactionTime:Value())
-	if Ready(_Q) and HitChance >= AIO.Skills.QAcc:Value() then
-		--Check if target has burn status
+	if Ready(_Q) and HitChance >= AIO.Skills.QAcc:Value() then		
+		--We need to check the collision between us and the target position AND the current target position to be sure.... Right now if a melee champ tries to walk through minions it will just Q the minions right in the face
 		if TPred:HasBuff(target, "BrandAblaze") then				
 			Control.CastSpell(HK_Q, castpos)
 		end
@@ -1247,6 +1252,102 @@ function Heimerdinger:CastW(target, pos)
 end
 
 
+class "Kayle"
+local _isLoaded = false
+function Kayle:__init()	
+	AutoUtil()
+	Callback.Add("Tick", function() self:Tick() end)
+end
+
+--Keep trying to load the game until heroes are finished populating. This means we wont have to re-load the script once in game for it to pull the hero list.
+function Kayle:TryLoad()
+	if Game.Timer() < 10 then
+		return false
+	end
+	
+	print("Loaded [Auto] "..myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Draw", function() self:Draw() end)	
+	return true
+end
+
+function Kayle:LoadSpells()
+	Q = {Range = 900, Width = 180,Delay = 0.25, Speed = 2050,  Sort = "circular"}
+	E = {Range = 550}
+	R = {Range = 900}
+end
+
+function Kayle:CreateMenu()
+	AIO = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] " .. myHero.charName})	
+	
+	AutoUtil:SupportMenu(AIO)	
+	
+	---[SPELL SETTINGS]---
+	AIO:MenuElement({id = "Spells", name = "Spell Settings", type = MENU})
+	
+	AIO.Spells:MenuElement({id = "General", name = "General", type = MENU})
+	AIO.Spells.General:MenuElement({id="InteruptDelay", tooltip = "Maximum time our spell should hit after a dash or hourglass ends", name = "Interrupt Delay", value = .75, min = .1, max = 2, step = .05})
+	AIO.Spells.General:MenuElement({id="CCDelay", tooltip = "Minimum CC duration to cause our spells to cast automatically", name = "CC Threshold", value = .5, min = .1, max = 2, step = .05})
+	AIO.Spells.General:MenuElement({id = "ImmobileMana", tooltip ="Minimum mana to cast spells on immobile targets", name = "Immobile Mana", value = 30, min = 1, max = 100, step = 5 })	
+	AIO.Spells.General:MenuElement({id = "DrawSpells", tooltip ="Draw W and Q ranges", name = "Draw Spell Range", value = true})
+	
+	
+	AIO.Spells:MenuElement({id = "R", name = "[R] Chronoshift", type = MENU})
+	AIO.Spells.R:MenuElement({id = "Health", tooltip = "How low must an ally health be before we ult them", name = "Ally Health", value = 20, min = 1, max = 50, step = 5 })	
+	AIO.Spells.R:MenuElement({id = "Damage", tooltip = "How much damage must they have taken in last 1 second before we ult them", name = "Damage Received", value = 15, min = 1, max = 50, step = 1 })
+	AIO.Spells.R:MenuElement({id ="Targets", name ="Target List", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly then
+			if table.contains(_adcHeroes, hero.charName) then
+				AIO.Spells.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+			else
+				AIO.Spells.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = false })
+			end
+		end
+	end
+	
+end
+function Kayle:Draw()	
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)    
+		if Hero.isEnemy and Hero.pathing.hasMovePath and Hero.pathing.isDashing and Hero.pathing.dashSpeed>500 then
+			Draw.Circle(Hero:GetPath(1), 40, 20, Draw.Color(255, 255, 255, 255))
+		end
+	end
+	
+	if AIO.Spells.General.DrawSpells:Value() then
+		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 200, 0,0))
+		Draw.Circle(myHero.pos, E.Range, Draw.Color(150, 0, 200,0))
+	end
+end
+
+function Kayle:Tick()	
+	if(not _isLoaded) then
+		_isLoaded = Kayle:TryLoad()
+	end
+	if not _isLoaded or myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true then return end
+		
+	--Try to revive carry
+	if Ready(_R) then
+		self:AutoR()
+	end
+			
+	UpdateAllyHealth()
+	
+end
+function Kayle:AutoR()
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly and AutoUtil:GetDistance(myHero.pos, Hero.pos) < R.Range and CurrentPctLife(Hero) <= AIO.Spells.R.Health:Value() and AIO.Spells.R.Targets[Hero.charName] and AIO.Spells.R.Targets[Hero.charName]:Value() and _carryHealthPercent[Hero.charName] then			
+			local deltaLifeLost = _carryHealthPercent[Hero.charName] - CurrentPctLife(Hero)
+			if deltaLifeLost >= AIO.Spells.R.Damage:Value() then
+				Control.CastSpell(HK_R, Hero.pos)
+			end
+		end
+	end	
+end
 
 class "Zilean"
 local _isLoaded = false
