@@ -70,7 +70,7 @@ function Velkoz:CreateMenu()
 	Menu.Skills:MenuElement({id = "W", name = "W", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Detonate", name = "Auto Detonate Passive", value = true })
 	Menu.Skills.W:MenuElement({id = "TargetImmobile", name = "Auto W Immobile", value = true })
-	Menu.Skills.W:MenuElement({id = "TargetDashes", name = "Auto W Dashes", value = true })
+	Menu.Skills.W:MenuElement({id = "TargetDashes", name = "Auto W Dashes", value = false })
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 25, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "E", type = MENU})
@@ -85,7 +85,7 @@ function Velkoz:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "TargetImmobile", name = "Auto E Immobile", value = true })
 	Menu.Skills.E:MenuElement({id = "TargetDashes", name = "Auto E Dashes", value = true })
 	Menu.Skills.E:MenuElement({id = "TargetSlows", name = "Auto E Slows", value = true })
-	Menu.Skills.E:MenuElement({id = "Radius", name = "Radius", value = 150, min = 50, max = 200, step = 10 })
+	Menu.Skills.E:MenuElement({id = "Radius", name = "Radius", value = 140, min = 50, max = 200, step = 10 })
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })	
 end
 
