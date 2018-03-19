@@ -32,19 +32,18 @@ end
 
 function Velkoz:CreateMenu()	
 	Menu:MenuElement({id = "General", name = "General", type = MENU})
+	Menu.General:MenuElement({id = "Drawing", name = "Drawing", type = MENU})
+	Menu.General.Drawing:MenuElement({id = "DrawAA", name = "Draw AA Range", value = false})
+	Menu.General.Drawing:MenuElement({id = "DrawQ", name = "Draw Q Range", value = false})
+	Menu.General.Drawing:MenuElement({id = "DrawW", name = "Draw W Range", value = false})	
+	Menu.General.Drawing:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
+	Menu.General.Drawing:MenuElement({id = "DrawEAim", name = "Draw E Aim", value = true})	
+	Menu.General.Drawing:MenuElement({id = "DrawR", name = "Draw R Range", value = true})	
+	
 	Menu.General:MenuElement({id = "ReactionTime", name = "Enemy Reaction Time",tooltip = "How quickly (seconds) do you expect enemies to react to your spells. Used for predicting enemy movements", value = .25, min = .1, max = 1, step = .05 })		
 	Menu.General:MenuElement({id = "DashTime", name = "Dash Time",tooltip = "How long must a dash be to auto cast on it", value = .5, min = .1, max = 2, step = .1 })
 	Menu.General:MenuElement({id = "ImmobileTime", name = "Immobile Time",tooltip = "How long must a stun be to auto cast on them", value = .5, min = .1, max = 2, step = .1 })		
-	Menu.General:MenuElement({id = "DrawAA", name = "Draw AA Range", value = false})
-	Menu.General:MenuElement({id = "DrawQ", name = "Draw Q Range", value = false})
-	Menu.General:MenuElement({id = "DrawW", name = "Draw W Range", value = false})	
-	Menu.General:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
-	Menu.General:MenuElement({id = "DrawEAim", name = "Draw E Aim", value = true})	
-	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = true})	
-	Menu.General:MenuElement({id = "Active", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
-	Menu.General:MenuElement({id = "Combo",name = "Combo", key = 32})
-	
-	Menu.General:MenuElement({id = "CastFrequency", name = "Cast Frequency",tooltip = "How often should we attempt to cast spells", value = .5, min = .1, max = 1, step = .1 })		
+	Menu.General:MenuElement({id = "Active", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })	
 	Menu.General:MenuElement({id = "CheckInterval", name = "Collision Check Interval", value = 50, min = 10, max = 150, step = 10 })
 	
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
@@ -108,21 +107,20 @@ function Velkoz:Draw()
 		Draw.Text("Disabled", 20, textPos.x - 25, textPos.y + 40, Draw.Color(175, 255, 0, 0))
 	end
 	
-	if Menu.General.DrawAA:Value() then
+	if Menu.General.Drawing.DrawAA:Value() then
 		Draw.Circle(myHero.pos, 525, Draw.Color(100, 255, 255,255))
 	end
-	if KnowsSpell(_Q) and Menu.General.DrawQ:Value() then
+	if KnowsSpell(_Q) and Menu.General.Drawing.DrawQ:Value() then
 		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 50, 50,50))
 	end
-	if KnowsSpell(_W) and Menu.General.DrawW:Value() then
+	if KnowsSpell(_W) and Menu.General.Drawing.DrawW:Value() then
 		Draw.Circle(myHero.pos, W.Range, Draw.Color(100, 0, 0,255))
 	end
 	if KnowsSpell(_E) then
-
-		if Menu.General.DrawE:Value() then
+		if Menu.General.Drawing.DrawE:Value() then
 			Draw.Circle(myHero.pos, E.Range, Draw.Color(100, 0, 255,0))
 		end
-		if self.forcedTarget ~= nil and self:CanAttack(self.forcedTarget) and Menu.General.DrawEAim:Value() then
+		if self.forcedTarget ~= nil and self:CanAttack(self.forcedTarget) and Menu.General.Drawing.DrawEAim:Value() then
 			local targetOrigin = self:PredictUnitPosition(self.forcedTarget, E.Delay)
 			local interceptTime = self:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
 			local origin, radius = self:UnitMovementBounds(self.forcedTarget, interceptTime, Menu.General.ReactionTime:Value())			
@@ -130,13 +128,10 @@ function Velkoz:Draw()
 				radius = 25
 			end
 			Draw.Circle(origin, 25,10)		
-			Draw.Circle(origin, radius,1, Draw.Color(50, 255, 255,255))		
-			
-			--local textPos = origin:To2D()
-			--Draw.Text("Radius: " ..  radius .. " MS: " .. self.forcedTarget.ms, 20, textPos.x - 25, textPos.y + 40, Draw.Color(175, 255, 0, 0))	
+			Draw.Circle(origin, radius,1, Draw.Color(50, 255, 255,255))						
 		end
 	end
-	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
+	if KnowsSpell(_R) and Menu.General.Drawing.DrawR:Value() then
 		Draw.Circle(myHero.pos, R.Range, Draw.Color(100, 255, 0,0))
 	end
 	
