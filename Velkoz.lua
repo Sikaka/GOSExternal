@@ -1,28 +1,36 @@
 
 class "Velkoz"
 
+local loaded = false
 local forcedTarget
 local qMissile
 local qHitPoints
+local lastSpellCast = Game.Timer()
 local qPointsUpdatedAt = Game.Timer()
 enemyPaths = {}
 
+
+if myHero.charName ~= "Velkoz" then print("This Script is only compatible with Velkoz") return end
 Callback.Add("Load",
 function() 	
 	Velkoz()
 end)
 
 function Velkoz:__init()
+	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Deconstructed Velkoz]"})
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Velkoz:TryLoad()
+	if Game.Timer() < 30 then return end
+	self.loaded = true	
 	self:LoadSpells()
 	self:CreateMenu()
 	Callback.Add("Tick", function() self:Tick() end)
-	Callback.Add("Draw", function() self:Draw() end)
 	Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
 end
 
-function Velkoz:CreateMenu()
-	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Deconstructed Velkoz]"})
-	
+function Velkoz:CreateMenu()	
 	Menu:MenuElement({id = "General", name = "General", type = MENU})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Enemy Reaction Time",tooltip = "How quickly (seconds) do you expect enemies to react to your spells. Used for predicting enemy movements", value = .25, min = .1, max = 1, step = .05 })		
 	Menu.General:MenuElement({id = "DashTime", name = "Dash Time",tooltip = "How long must a dash be to auto cast on it", value = .5, min = .1, max = 2, step = .1 })
@@ -34,10 +42,24 @@ function Velkoz:CreateMenu()
 	Menu.General:MenuElement({id = "DrawEAim", name = "Draw E Aim", value = true})	
 	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = true})	
 	Menu.General:MenuElement({id = "Active", name = "Auto Skills Enabled",value = true, toggle = true, key = 0x7A })
+	Menu.General:MenuElement({id = "Combo",name = "Combo", key = 32})
+	
+	Menu.General:MenuElement({id = "CastFrequency", name = "Cast Frequency",tooltip = "How often should we attempt to cast spells", value = .5, min = .1, max = 1, step = .1 })		
+	Menu.General:MenuElement({id = "CheckInterval", name = "Collision Check Interval", value = 50, min = 10, max = 150, step = 10 })
 	
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	
 	Menu.Skills:MenuElement({id = "Q", name = "Q", type = MENU})
+	
+	--By Default target everyone
+	Menu.Skills.Q:MenuElement({id = "Targets", name = "Targets", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			Menu.Skills.Q.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
+	
 	Menu.Skills.Q:MenuElement({id = "Detonate", name = "Auto Detonate", value = true })
 	Menu.Skills.Q:MenuElement({id = "TargetImmobile", name = "Auto Q Immobile", value = true })
 	Menu.Skills.Q:MenuElement({id = "TargetDashes", name = "Auto Q Dashes", value = true })
@@ -52,6 +74,14 @@ function Velkoz:CreateMenu()
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 25, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "E", type = MENU})
+	--By Default target everyone
+	Menu.Skills.E:MenuElement({id = "Targets", name = "Targets", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
 	Menu.Skills.E:MenuElement({id = "TargetImmobile", name = "Auto E Immobile", value = true })
 	Menu.Skills.E:MenuElement({id = "TargetDashes", name = "Auto E Dashes", value = true })
 	Menu.Skills.E:MenuElement({id = "TargetSlows", name = "Auto E Slows", value = true })
@@ -68,6 +98,11 @@ function Velkoz:LoadSpells()
 end
 
 function Velkoz:Draw()	
+	if not self.loaded then
+		self:TryLoad()
+		return
+	end
+	
 	if not Menu.General.Active:Value() then
 		local textPos = myHero.pos:To2D()
 		Draw.Text("Disabled", 20, textPos.x - 25, textPos.y + 40, Draw.Color(175, 255, 0, 0))
@@ -136,7 +171,7 @@ function Velkoz:DetonateQ()
 	if Game.Timer() - qPointsUpdatedAt < .25 and self:IsQActive() and qHitPoints then
 		for i = 1, #qHitPoints do		
 			if qHitPoints[i] then
-				if qHitPoints[i].playerHit then					
+				if qHitPoints[i].playerHit and Menu.Skills.Q.Targets[qHitPoints[i].playerHit.charName] and Menu.Skills.Q.Targets[qHitPoints[i].playerHit.charName]:Value()then					
 					Control.CastSpell(HK_Q)
 				end
 			end
@@ -144,12 +179,37 @@ function Velkoz:DetonateQ()
 	end	
 end
 
+local qAngles = {0, -15, 15, -30, 30, -45, 45, -60, 60}
+local qLastChecked = 1
+local qResults = {}
+
+function Velkoz:GetTarget(range)
+	if _G.SDK then
+		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
+	elseif _G.EOW then
+		return _G.EOW:GetTarget(range)
+	else
+		return _G.GOS:GetTarget(range,"AD")
+	end
+end
+
 function Velkoz:AutoQ()
+
+	if Menu.General.Combo:Value() and Game.Timer() - qLastChecked > .25 then
+		qLastChecked = Game.Timer()
+		local target = self:GetTarget(2000)
+		if target ~= nil and self:CanAttack(target) then		
+			--TODO Check angles towards target for best one and fire Q if possible to hit.
+		end
+	end
+	
 	for i = 1, Game:HeroCount() do
 		local enemy = Game.Hero(i)
 		if enemy.isEnemy and self:CanAttack(enemy) then
 			local predictedPosition = self:PredictUnitPosition(enemy,Q.Delay)
-			if self:GetDistance(myHero.pos, predictedPosition) <= Menu.Skills.Q.Range:Value() then						
+				
+			if self:GetDistance(myHero.pos, predictedPosition) <= Menu.Skills.Q.Range:Value() then
+				--Check minion collision first!!
 				Control.CastSpell(HK_Q, predictedPosition)
 				return
 			end
@@ -208,7 +268,7 @@ function Velkoz:AutoWDetonate()
 	local enemy = self:Find2PassiveTarget()
 	if enemy and self:CanAttack(enemy) then
 		local aimLocation = self:PredictUnitPosition(enemy, self:GetSpellInterceptTime(myHero.pos, enemy.pos, W.Delay, W.Speed))
-		if self:GetDistance(myHero.pos, aimLocation) < W.Range then		
+		if self:GetDistance(myHero.pos, aimLocation) < W.Range * 2 / 3 then		
 			Control.CastSpell(HK_W, aimLocation)
 			return true
 		end
@@ -236,11 +296,9 @@ function Velkoz:Find2PassiveTarget()
 end
 function Velkoz:AutoE()
 	
-	local hasCast = false		
-	
+	local hasCast = false	
 	if Menu.Skills.E.TargetImmobile:Value() then
-		hasCast = self:AutoEStasis()
-		
+		hasCast = self:AutoEStasis()		
 		if not hasCast then
 			hasCast = self:AutoEImmobile()
 		end		
@@ -254,10 +312,8 @@ function Velkoz:AutoE()
 	if not hasCast and Menu.Skills.E.TargetSlows:Value() then	
 		for i = 1, Game:HeroCount() do
 			local enemy = Game.Hero(i)
-			if enemy.alive and enemy.visible and enemy.isEnemy then
-				if self:CanAttack(enemy) then
-					hasCast = self:AutoERadius(enemy)
-				end
+			if  self:CanAttack(enemy)  and Menu.Skills.E.Targets[enemy.charName] and Menu.Skills.E.Targets[enemy.charName]:Value() then				
+				hasCast = self:AutoERadius(enemy)
 			end
 		end	
 	end
@@ -266,8 +322,6 @@ end
 
 function Velkoz:AutoERadius(enemy)
 	--Auto cast E on target if the potential movement radius is small enough (slow target)
-	
-	
 	--If the target JUST changed their movement direction dont auto E. This is to stop it wasting on targets who spam click in a circle trying to dodge. Better to wait 
 	local deltaTime, endPos = self:PreviousPathDetails(enemy.charName)
 	if deltaTime and Game.Timer() - deltaTime < Menu.General.ReactionTime:Value() then
@@ -277,6 +331,7 @@ function Velkoz:AutoERadius(enemy)
 	local interceptTime = self:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
 	local origin, radius = self:UnitMovementBounds(enemy, interceptTime, Menu.General.ReactionTime:Value())			
 	
+	--TODO: Lerp the aim position based on time since last movement update/angle of movement change
 	if radius < Menu.Skills.E.Radius:Value() and self:GetDistance(myHero.pos, origin) <= E.Range then
 		Control.CastSpell(HK_E, origin)
 		return true
@@ -306,7 +361,7 @@ end
 
 function Velkoz:AutoEDash()
 	local enemy = self:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.DashTime:Value())
-	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= E.Range then
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= E.Range and Menu.Skills.E.Targets[enemy.charName] and Menu.Skills.E.Targets[enemy.charName]:Value() then
 		Control.CastSpell(HK_E, enemy.pathing.endPos)
 		return true
 	end
@@ -318,12 +373,13 @@ function Velkoz:UpdateQInfo()
 		local directionVector = Vector(qMissile.missileData.endPos.x - qMissile.missileData.startPos.x,qMissile.missileData.endPos.y - qMissile.missileData.startPos.y,qMissile.missileData.endPos.z - qMissile.missileData.startPos.z):Normalized()						
 				
 		--TODO: Change 50 to a variable setting such as "checkInterval"
-		local pointCount = 600 / 50 * 2
+		local checkInterval = Menu.General.CheckInterval:Value()
+		local pointCount = 600 / checkInterval * 2
 		qHitPoints = {}
 		
 		--Adds the 'up' split points
 		for i = 1, pointCount, 2 do
-			local result =  self:CalculateNode(qMissile,  qMissile.pos + directionVector:Perpendicular() * i * 50)			
+			local result =  self:CalculateNode(qMissile,  qMissile.pos + directionVector:Perpendicular() * i * checkInterval)			
 			qHitPoints[i] = result
 			if result.collision then
 				break
@@ -332,7 +388,7 @@ function Velkoz:UpdateQInfo()
 				
 		--Adds the 'down' split points
 		for i = 2, pointCount, 2 do		
-			local result =  self:CalculateNode(qMissile,  qMissile.pos + directionVector:Perpendicular2() * i * 50)			
+			local result =  self:CalculateNode(qMissile,  qMissile.pos + directionVector:Perpendicular2() * i * checkInterval)			
 			qHitPoints[i] = result	
 			if result.collision then
 				break
@@ -380,13 +436,13 @@ function Velkoz:CalculateNode(missile, nodePos)
 	result["pos"] = nodePos
 	result["delay"] = 0.251 + self:GetDistance(missile.pos, nodePos) / Q.Speed
 	
-	local isCollision = self:CheckMinionCollision(nodePos, 50, result["delay"])
+	local isCollision = self:CheckMinionCollision(nodePos, 55, result["delay"])
 	local hitEnemy 
 	if not isCollision then
-		isCollision, hitEnemy = self:CheckEnemyCollision(nodePos, 50, result["delay"])
+		isCollision, hitEnemy = self:CheckEnemyCollision(nodePos, 55, result["delay"])
 	end
 	
-	result["playerHit"] = hitEnemy	
+	result["playerHit"] = hitEnemy
 	result["collision"] = isCollision
 	return result
 end
@@ -416,7 +472,7 @@ end
 --Returns if a minion will be hit
 function Velkoz:CheckMinionCollision(location, radius, delay, maxDistance)
 	if not maxDistance then
-		maxDistance = 1000
+		maxDistance = 1200
 	end
 	for i = 1, Game.MinionCount() do
 		local minion = Game.Minion(i)
@@ -434,19 +490,24 @@ end
 --Returns if an enemy will be hit and optionally will return the enemy
 function Velkoz:CheckEnemyCollision(location, radius, delay, maxDistance)
 	if not maxDistance then
-		maxDistance = 1000
+		maxDistance = 1200
 	end
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if self:CanAttack(hero) and hero.alive and self:GetDistance(hero.pos, location) < maxDistance then
+		if self:CanAttack(hero) and hero.visible and hero.alive and self:GetDistance(hero.pos, location) < maxDistance then
 			local predictedPosition = self:PredictUnitPosition(hero, delay)
-			if self:GetDistance(location, predictedPosition) <= radius + hero.boundingRadius then
+			if self:GetDistance(location, predictedPosition) < radius + hero.boundingRadius then
 				return true, hero
 			end
 		end
 	end
 	
 	return false
+end
+
+function Velkoz:GetTargetMS(target)
+	local ms = target.pathing.isDashing and target.pathing.dashSpeed or target.ms
+	return ms
 end
 
 --Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
@@ -456,7 +517,7 @@ function Velkoz:PredictUnitPosition(unit, delay)
 	local pathNodes = self:GetPathNodes(unit)
 	for i = 1, #pathNodes -1 do
 		local nodeDistance = self:GetDistance(pathNodes[i], pathNodes[i +1])
-		local nodeTraversalTime = nodeDistance / unit.ms
+		local nodeTraversalTime = nodeDistance / self:GetTargetMS(unit)
 			
 		if timeRemaining > nodeTraversalTime then
 			--This node of the path will be completed before the delay has finished. Move on to the next node if one remains
@@ -464,7 +525,7 @@ function Velkoz:PredictUnitPosition(unit, delay)
 			predictedPosition = pathNodes[i + 1]
 		else
 			local directionVector = (pathNodes[i+1] - pathNodes[i]):Normalized()
-			predictedPosition = pathNodes[i] + directionVector *  unit.ms * timeRemaining
+			predictedPosition = pathNodes[i] + directionVector *  self:GetTargetMS(unit) * timeRemaining
 			break;
 		end
 	end
@@ -478,7 +539,7 @@ function Velkoz:UnitMovementBounds(unit, delay, reactionTime)
 	local radius = 0
 	local deltaDelay = delay -reactionTime- self:GetImmobileTime(unit)	
 	if (deltaDelay >0) then
-		radius = unit.ms * deltaDelay	
+		radius = self:GetTargetMS(unit) * deltaDelay	
 	end
 	return startPosition, radius	
 end
@@ -625,7 +686,8 @@ function Velkoz:UpdateTargetPaths()
 				enemyPaths[enemy.charName] = {}
 			end
 			
-			if enemy.pathing and enemy.pathing.hasMovePath and enemyPaths[enemy.charName].endPos ~= enemy.pathing.endPos then
+			if enemy.pathing and enemy.pathing.hasMovePath and enemyPaths[enemy.charName] and self:GetDistance(enemy.pathing.endPos, Vector(enemyPaths[enemy.charName].endPos)) > 56 then
+				
 				enemyPaths[enemy.charName]["time"] = Game.Timer()
 				enemyPaths[enemy.charName]["endPos"] = enemy.pathing.endPos					
 			end
@@ -643,6 +705,7 @@ function Velkoz:PreviousPathDetails(charName)
 	end
 	return deltaTime, pathEnd
 end
+
 
 function Ready(spellSlot)
 	return IsReady(spellSlot)
