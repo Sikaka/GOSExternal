@@ -149,7 +149,7 @@ function Velkoz:Tick()
 		self:UpdateQInfo()		
 		if Menu.Skills.Q.Detonate:Value() and self:IsQActive() then
 			self:DetonateQ()
-		elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and not self:IsEvading() then
+		elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and not self:IsEvading() and not self:IsQActive() then
 			self:AutoQ()
 		end
 	end		
@@ -206,11 +206,11 @@ function Velkoz:AutoQ()
 			local predictedPosition = self:PredictUnitPosition(enemy,Q.Delay)
 				
 			if self:GetDistance(myHero.pos, predictedPosition) <= Menu.Skills.Q.Range:Value() then			
-				--if not self:CheckMinionCollision(myHero, predictedPos, Q.Delay, Q.Width, Q.Speed, Q.Range, myHero.pos) then				
+				if not self:CheckMinionCollision(myHero, predictedPosition, Q.Delay, Q.Width, Q.Speed, Q.Range, myHero.pos) then				
 					Control.CastSpell(HK_Q, predictedPosition)
 					lastSpellCast = Game.Timer()
 					return
-				--end
+				end
 			end
 		end
 	end
@@ -237,9 +237,9 @@ end
 
 
 function Velkoz:AutoWStasis()
-	local enemy = self:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.ReactionTime:Value())
-	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= W.Range then
-		Control.CastSpell(HK_W, enemy.pos)
+	local enemy, aimPos = self:GetStasisTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.ReactionTime:Value())
+	if enemy and self:GetDistance(myHero.pos, aimPos) <= W.Range then
+		Control.CastSpell(HK_W, aimPos)
 		lastSpellCast = Game.Timer()
 		return true
 	end
@@ -257,9 +257,9 @@ function Velkoz:AutoWImmobile()
 end
 
 function Velkoz:AutoWDash()
-	local enemy = self:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.DashTime:Value())
-	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= W.Range then
-		Control.CastSpell(HK_W, enemy.pathing.endPos)
+	local enemy, aimPos = self:GetInteruptTarget(myHero.pos, W.Range, W.Delay, W.Speed, Menu.General.DashTime:Value())
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, aimPos) <= W.Range then
+		Control.CastSpell(HK_W, aimPos)
 		lastSpellCast = Game.Timer()		
 		return true
 	end
@@ -344,9 +344,9 @@ function Velkoz:AutoERadius(enemy)
 end
 
 function Velkoz:AutoEStasis()
-	local enemy = self:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value())
-	if enemy and self:GetDistance(myHero.pos, enemy.pos) <= E.Range then
-		Control.CastSpell(HK_E, enemy.pos)
+	local enemy,aimPos = self:GetStasisTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value())
+	if enemy and self:GetDistance(myHero.pos, aimPos) <= E.Range then
+		Control.CastSpell(HK_E, aimPos)
 		lastSpellCast = Game.Timer()
 		return true
 	end
@@ -365,9 +365,9 @@ end
 
 
 function Velkoz:AutoEDash()
-	local enemy = self:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.DashTime:Value())
-	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos, enemy.pathing.endPos) <= E.Range and Menu.Skills.E.Targets[enemy.charName] and Menu.Skills.E.Targets[enemy.charName]:Value() then
-		Control.CastSpell(HK_E, enemy.pathing.endPos)
+	local enemy,aimPos = self:GetInteruptTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.DashTime:Value())
+	if enemy and self:CanAttack(enemy) and self:GetDistance(myHero.pos,aimPos) <= E.Range and Menu.Skills.E.Targets[enemy.charName] and Menu.Skills.E.Targets[enemy.charName]:Value() then
+		Control.CastSpell(HK_E, aimPos)
 		lastSpellCast = Game.Timer()
 		return true
 	end
@@ -725,7 +725,42 @@ function Velkoz:GetStasisTarget(source, range, delay, speed, timingAccuracy)
 			local deltaInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed) - buff.duration
 			if deltaInterceptTime > -Game.Latency() / 2000 and deltaInterceptTime < timingAccuracy then
 				target = t
-				return target
+				return target, target.pos
+			end
+		end
+	end
+	--Get teleporting enemies to wards
+	for i = 1, Game.WardCount() do
+		local ward = Game.Ward(i);
+		if ward.isEnemy and self:GetDistance(source, ward.pos) <= range then
+			for i = 1, ward.buffCount do 
+				local Buff = ward:GetBuff(i)
+				if Buff.duration > 0 and Buff.name == "teleport_target" then
+					local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, ward.pos, delay, speed)
+					if Buff.duration < skillInterceptTime and skillInterceptTime - Buff.duration < timingAccuracy then
+						--Return a dummy target to hit. We wont be checking their distance, only that they are a valid person to attack. Means less re-writes elsewhere
+						print("TELEPORT WARD")
+						return ward, ward.pos
+					end
+				end
+			end
+		end
+	end
+	
+	--Get teleporting enemies to minions
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i);
+		if minion.isEnemy and self:GetDistance(source, minion.pos) <= range then
+			for i = 1, minion.buffCount do 
+				local Buff = minion:GetBuff(i)
+				if Buff.duration > 0 and Buff.name == "teleport_target" then
+					local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, minion.pos, delay, speed)
+					if Buff.duration < skillInterceptTime and skillInterceptTime - Buff.duration < timingAccuracy then
+						--Return a dummy target to hit. We wont be checking their distance, only that they are a valid person to attack. Means less re-writes elsewhere
+						print("TELEPORT MINION")
+						return minion, minion.pos
+					end
+				end
 			end
 		end
 	end
@@ -754,7 +789,8 @@ function Velkoz:GetImmobileTarget(source, range, minimumCCTime)
 end
 
 function Velkoz:GetInteruptTarget(source, range, delay, speed, timingAccuracy)
-	local target	
+	local target
+	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
 		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
@@ -766,11 +802,14 @@ function Velkoz:GetInteruptTarget(source, range, delay, speed, timingAccuracy)
 				local deltaInterceptTime = math.abs(skillInterceptTime - dashTimeRemaining)
 				if deltaInterceptTime < timingAccuracy then
 					target = t
-					return target
+					aimPosition = enemy.pathing.endPos
+					return target, aimPosition
 				end
 			end			
 		end
 	end
+	
+	
 end
 
 function Velkoz:CanAttack(target)
