@@ -2,6 +2,55 @@
 
 class "HPred"
 
+Callback.Add("Tick", function() HPred:Tick() end)
+local _reviveQueryFrequency = .2
+local _lastReviveQuery = Game.Timer()
+local _reviveLookupTable = 
+	{ 
+		["LifeAura.troy"] = 4, 
+		["ZileanBase_R_Buf.troy"] = 3,
+		["Aatrox_Base_Passive_Death_Activate"] = 3
+	}
+	
+local _instantDashLookupTable = 
+	{ 
+		["EzrealArcaneShift"] = 475,
+		["RiftWalk"] = 500,
+	}
+local _cachedRevives = {}
+function HPred:Tick()
+	--Check for revives and record them	
+	if Game.Timer() - _lastReviveQuery < _reviveQueryFrequency then return end
+	_lastReviveQuery=Game.Timer()
+	
+	--Remove old cached revives
+	for _, revive in pairs(_cachedRevives) do
+		if Game.Timer() > revive.expireTime + .5 then
+			_cachedRevives[_] = nil
+		end
+	end
+	
+	--Cache new revives
+	for i = 1, Game.ParticleCount() do 
+		local particle = Game.Particle(i)
+		if not _cachedRevives[particle.networkID] and  _reviveLookupTable[particle.name] then
+			_cachedRevives[particle.networkID] = {}
+			_cachedRevives[particle.networkID]["expireTime"] = Game.Timer() + _reviveLookupTable[particle.name]			
+			local nearestDistance = 500
+			for i = 1, Game.HeroCount() do
+				local t = Game.Hero(i)
+				local tDistance = self:GetDistance(particle.pos, t.pos)
+				if tDistance < nearestDistance then
+					nearestDistance = nearestDistance
+					_cachedRevives[particle.networkID]["owner"] = t.charName
+					_cachedRevives[particle.networkID]["pos"] = t.pos
+					_cachedRevives[particle.networkID]["isEnemy"] = t.isEnemy					
+				end
+			end
+		end
+	end
+end
+
 function HPred:GetEnemyNexusPosition()
 	--This is slightly wrong. It represents fountain not the nexus. Fix later.
 	if myHero.team == 100 then return Vector(14340, 171.977722167969, 14390); else return Vector(396,182.132507324219,462); end
@@ -26,6 +75,12 @@ function HPred:GetTarget(source, range, delay, speed, timingAccuracy, checkColli
 		return target, aimPosition
 	end
 	
+	--Get reviving target
+	target, aimPosition =self:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end
+	
 	--Get channeling enemies
 	target, aimPosition =self:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 		if target and aimPosition then
@@ -33,10 +88,16 @@ function HPred:GetTarget(source, range, delay, speed, timingAccuracy, checkColli
 	end
 	
 	--Get teleporting enemies
-	target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
 	if target and aimPosition then
 		return target, aimPosition
 	end
+	
+	--Get instant dash enemies
+	target, aimPosition =self:GetInstantDashTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end	
 	
 	--Get dashing enemies
 	target, aimPosition =self:GetDashingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius, midDash)
@@ -71,7 +132,7 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 				if midDash then
 					deltaInterceptTime = math.abs(deltaInterceptTime)
 					--Find mid dash pos to aim at
-				end
+				end				
 				if deltaInterceptTime < dashThreshold and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = t
 					aimPosition = interceptPosition
@@ -89,15 +150,55 @@ function HPred:GetHourglassTarget(source, range, delay, speed, timingAccuracy, c
 		local t = Game.Hero(i)
 		local success, timeRemaining = self:HasBuff(t, "zhonyasringshield")
 		if success and t.isEnemy then
-			local deltaInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed) - timeRemaining
-			if deltaInterceptTime > -Game.Latency() / 2000 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+			local spellInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
+			local deltaInterceptTime = spellInterceptTime - timeRemaining
+			if spellInterceptTime > timeRemaining and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 				target = t
 				aimPosition = t.pos
-				return target, aimPos
+				return target, aimPosition
 			end
 		end
 	end
 end
+
+function HPred:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target
+	local aimPosition
+	for _, revive in pairs(_cachedRevives) do	
+		if revive.isEnemy then
+			local interceptTime = self:GetSpellInterceptTime(source, revive.pos, delay, speed)
+			if interceptTime > revive.expireTime - Game.Timer() and interceptTime - revive.expireTime - Game.Timer() < timingAccuracy then
+				target = self:GetEnemyByName(revive.owner)
+				aimPosition = revive.pos
+				return target, aimPosition
+			end
+		end
+	end	
+end
+
+function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target
+	local aimPosition
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if  t.isEnemy and t.activeSpell and t.activeSpell.valid and _instantDashLookupTable[t.activeSpell.name] then			
+			local windupRemaining = myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer()
+			if windupRemaining > 0 then
+				local endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)
+				local magnitude = self:GetDistance(t.activeSpell.startPos,endPos)
+				endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * math.min(magnitude, _instantDashLookupTable[t.activeSpell.name])
+				local interceptTime = self:GetSpellInterceptTime(myHero.pos, endPos, delay,speed)
+				local deltaInterceptTime = interceptTime - windupRemaining
+				if deltaInterceptTime > 0 and interceptTime - windupRemaining < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+					target = t
+					aimPosition = endPos
+					return target,aimPosition					
+				end
+			end
+		end
+	end
+end
+
 
 function HPred:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	local target
@@ -121,12 +222,10 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 		local t = Game.Hero(i)
 		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range then
 			local immobileTime = self:GetImmobileTime(t)
+			
 			local interceptTime = self:GetSpellInterceptTime(source, t.pos, delay, speed)
 			if immobileTime - interceptTime > timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
-				
-			print("START")
-			
-			target = t
+				target = t
 				aimPosition = t.pos
 				return target, aimPosition
 			end
@@ -137,17 +236,15 @@ end
 function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	local target
 	local aimPosition
-	
 	--Get enemies who are teleporting to towers
 	for i = 1, Game.TurretCount() do
 		local turret = Game.Turret(i);
 		if turret.isEnemy and self:GetDistance(source, turret.pos) <= range then
 			local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
 			if hasBuff then
-				--TODO: Check distance from towers. Its much further than minions. 400 is a guess
-				local interceptPosition = self:GetTeleportOffset(turret.pos,400)
-				local skillInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed)				
-				if expiresAt < skillInterceptTime and skillInterceptTime - expiresAt < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				local interceptPosition = self:GetTeleportOffset(turret.pos,150)
+				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
+				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = turret
 					aimPosition =interceptPosition
 					return target, aimPosition
@@ -157,20 +254,21 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 	end	
 	
 	--Get enemies who are teleporting to wards
+	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		if ward.isEnemy and self:GetDistance(source, ward.pos) <= range then
+		--if ward.isEnemy and self:GetDistance(source, ward.pos) <= range then
 			local hasBuff, expiresAt = self:HasBuff(ward, "teleport_target")
 			if hasBuff then
 				local interceptPosition = self:GetTeleportOffset(ward.pos,150)
-				local skillInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed)				
-				if expiresAt < skillInterceptTime and skillInterceptTime - expiresAt < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
+				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = ward
 					aimPosition = interceptPosition
 					return target, aimPosition
 				end
 			end
-		end
+		--end
 	end
 	
 	--Get enemies who are teleporting to minions
@@ -179,10 +277,9 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 		if minion.isEnemy and self:GetDistance(source, minion.pos) <= range then
 			local hasBuff, expiresAt = self:HasBuff(minion, "teleport_target")
 			if hasBuff then	
-				--TODO: Check how far we teleport from minions. Guessing it involves minion.boundingRadius but this will work for now.
 				local interceptPosition = self:GetTeleportOffset(minion.pos,150)
-				local skillInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed)	
-				if expiresAt < skillInterceptTime and skillInterceptTime - expiresAt < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
+				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = minion				
 					aimPosition = interceptPosition
 					return target, aimPosition
@@ -247,7 +344,7 @@ function HPred:GetTeleportOffset(origin, magnitude)
 end
 
 function HPred:GetSpellInterceptTime(startPos, endPos, delay, speed)	
-	local interceptTime = delay + self:GetDistance(startPos, endPos) / speed
+	local interceptTime = Game.Latency()/2000 + delay + self:GetDistance(startPos, endPos) / speed
 	return interceptTime
 end
 
@@ -320,6 +417,7 @@ end
 
 --I know this isn't efficient but it works accurately... Leaving it for now.
 function HPred:CheckMinionCollision(origin, endPos, delay, speed, radius, frequency)
+		
 	if not frequency then
 		frequency = radius / 2
 	end
@@ -335,6 +433,7 @@ function HPred:CheckMinionCollision(origin, endPos, delay, speed, radius, freque
 	return true
 end
 
+
 function HPred:IsMinionIntersection(location, radius, delay, maxDistance)
 	if not maxDistance then
 		maxDistance = 500
@@ -349,6 +448,17 @@ function HPred:IsMinionIntersection(location, radius, delay, maxDistance)
 		end
 	end
 	return false
+end
+
+function HPred:GetEnemyByName(name)
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.isEnemy and enemy.charName == name then
+			target = enemy
+			return target
+		end
+	end
 end
 
 function HPred:GetDistanceSqr(p1, p2)	
