@@ -17,6 +17,12 @@ local _instantDashLookupTable =
 		["EzrealArcaneShift"] = 475,
 		["RiftWalk"] = 500,
 	}
+
+local _blinkLookupTable = 
+	{ 
+		["global_ss_flash_02.troy"] = "flashEndPos",
+	}
+
 local _cachedRevives = {}
 function HPred:Tick()
 	--Check for revives and record them	
@@ -103,7 +109,13 @@ function HPred:GetTarget(source, range, delay, speed, timingAccuracy, checkColli
 	target, aimPosition =self:GetDashingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius, midDash)
 	if target and aimPosition then
 		return target, aimPosition
-	end	
+	end
+
+	--Get blink targets
+	target, aimPosition =self:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end
 	
 	--TODO: Radius based targeting: Slows, range, hitbox radius VS their movespeed to avoid it. Requires movement smoothing 
 end
@@ -182,7 +194,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
 		if  t.isEnemy and t.activeSpell and t.activeSpell.valid and _instantDashLookupTable[t.activeSpell.name] then			
-			local windupRemaining = myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer()
+			local windupRemaining = t.activeSpell.startTime + t.activeSpell.windup - Game.Timer()
 			if windupRemaining > 0 then
 				local endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)
 				local magnitude = self:GetDistance(t.activeSpell.startPos,endPos)
@@ -199,6 +211,26 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 	end
 end
 
+function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
+	local target
+	local aimPosition
+	for i = 1, Game.ParticleCount() do 
+		local particle = Game.Particle(i)
+		if particle and _blinkLookupTable[particle.name] then
+			local pPos = particle.pos
+			for k,v in pairs(self:GetEnemyHeroes()) do
+				local t = v
+				if t and t.isEnemy and self:GetDistance(t.pos, pPos) < t.boundingRadius then
+					if (not checkCollision or self:CheckMinionCollision(source, pPos, delay, speed, radius)) then
+						target = t
+						aimPosition = pPos
+						return target,aimPosition
+					end
+				end
+			end
+		end
+	end
+end
 
 function HPred:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	local target
@@ -242,7 +274,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 		if turret.isEnemy and self:GetDistance(source, turret.pos) <= range then
 			local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
 			if hasBuff then
-				local interceptPosition = self:GetTeleportOffset(turret.pos,150)
+				local interceptPosition = self:GetTeleportOffset(turret.pos,223.31)
 				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
 				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = turret
@@ -257,10 +289,10 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		--if ward.isEnemy and self:GetDistance(source, ward.pos) <= range then
+		if ward.isEnemy and self:GetDistance(source, ward.pos) <= range then
 			local hasBuff, expiresAt = self:HasBuff(ward, "teleport_target")
 			if hasBuff then
-				local interceptPosition = self:GetTeleportOffset(ward.pos,150)
+				local interceptPosition = self:GetTeleportOffset(ward.pos,100.01)
 				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
 				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = ward
@@ -268,7 +300,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 					return target, aimPosition
 				end
 			end
-		--end
+		end
 	end
 	
 	--Get enemies who are teleporting to minions
@@ -277,7 +309,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 		if minion.isEnemy and self:GetDistance(source, minion.pos) <= range then
 			local hasBuff, expiresAt = self:HasBuff(minion, "teleport_target")
 			if hasBuff then	
-				local interceptPosition = self:GetTeleportOffset(minion.pos,150)
+				local interceptPosition = self:GetTeleportOffset(minion.pos,143.25)
 				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
 				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = minion				
@@ -459,6 +491,17 @@ function HPred:GetEnemyByName(name)
 			return target
 		end
 	end
+end
+
+function HPred:GetEnemyHeroes()
+	local _EnemyHeroes = {}
+  	for i = 1, Game.HeroCount() do
+    	local enemy = Game.Hero(i)
+    	if enemy and enemy.isEnemy then
+	  		table.insert(_EnemyHeroes, enemy)
+  		end
+  	end
+  	return _EnemyHeroes
 end
 
 function HPred:GetDistanceSqr(p1, p2)	
