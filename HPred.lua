@@ -217,23 +217,42 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if  t.isEnemy and t.activeSpell and t.activeSpell.valid and _blinkSpellLookupTable[t.activeSpell.name] then
+		if t.isEnemy and t.activeSpell and t.activeSpell.valid and _blinkSpellLookupTable[t.activeSpell.name] then
 			local windupRemaining = t.activeSpell.startTime + t.activeSpell.windup - Game.Timer()
 			if windupRemaining > 0 then			
 				local endPos
 				local range = _blinkSpellLookupTable[t.activeSpell.name]
 				if type(range) == "table" then
+					--Find the nearest matching particle to our mouse
 					local target, distance = self:GetNearestParticleByNames(t.pos, range)
-					if target and distance < range then
-						endPos = target.pos
-					end				
+					if target and distance < 250 then					
+						endPos = target.pos		
+					end
 				elseif range > 0 then
 					endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)					
 					endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * math.min(self:GetDistance(t.activeSpell.startPos,endPos), range)
 				else
 					local blinkTarget = self:GetObjectByHandle(t.activeSpell.target)
-					if blinkTarget then
-						endPos = blinkTarget.pos
+					if blinkTarget then				
+						local offsetDirection						
+						
+						--We will land in front of our target relative to our starting position
+						if range == 0 then
+							offsetDirection = (blinkTarget.pos - myHero.pos):Normalized()
+						--We will land behind our target relative to our starting position
+						elseif range == -1 then						
+							offsetDirection = (myHero.pos-blinkTarget.pos):Normalized()
+						--They can choose which side of target to come out on , there is no way currently to read this data so we will only use this calculation if the spell radius is large
+						elseif range == -255 then
+							if radius > 250 then
+									endPos = blinkTarget.pos
+							end							
+						end
+						
+						if offsetDirection then
+							endPos = blinkTarget.pos - offsetDirection * 150
+						end
+						
 					end
 				end	
 				
