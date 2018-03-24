@@ -3,6 +3,7 @@
 class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
+
 local _reviveQueryFrequency = .2
 local _lastReviveQuery = Game.Timer()
 local _reviveLookupTable = 
@@ -11,16 +12,39 @@ local _reviveLookupTable =
 		["ZileanBase_R_Buf.troy"] = 3,
 		["Aatrox_Base_Passive_Death_Activate"] = 3
 	}
+
+--Stores a collection of spells that will cause a character to blink
+	--Ground targeted spells go towards mouse castPos with a maximum range
+	--Hero/Minion targeted spells have a direction type to determine where we will land relative to our target (in front of, behind, etc)
 	
-local _instantDashLookupTable = 
+--Key = Spell name
+--Value = range a spell can travel, OR a targeted end position type, OR a list of particles the spell can teleport to	
+local _blinkSpellLookupTable = 
 	{ 
-		["EzrealArcaneShift"] = 475,
+		["EzrealArcaneShift"] = 475, 
 		["RiftWalk"] = 500,
+		
+		--Ekko and other similar blinks end up between their start pos and target pos (in front of their target relatively speaking)
+		["EkkoEAttack"] = 0,
+		["AlphaStrike"] = 0,
+		
+		--Katarina E ends on the side of her target closest to where her mouse was... 
+		["KatarinaE"] = -255,
+		
+		--Katarina can target a dagger to teleport directly to it: Each skin has a different particle name. This should cover all of them.
+		["KatarinaEDagger"] = { "Katarina_Base_Dagger_Ground_Indicator","Katarina_Skin01_Dagger_Ground_Indicator","Katarina_Skin02_Dagger_Ground_Indicator","Katarina_Skin03_Dagger_Ground_Indicator","Katarina_Skin04_Dagger_Ground_Indicator","Katarina_Skin05_Dagger_Ground_Indicator","Katarina_Skin06_Dagger_Ground_Indicator","Katarina_Skin07_Dagger_Ground_Indicator" ,"Katarina_Skin08_Dagger_Ground_Indicator","Katarina_Skin09_Dagger_Ground_Indicator"  }, 
 	}
 
 local _blinkLookupTable = 
 	{ 
-		["global_ss_flash_02.troy"] = "flashEndPos",
+		"global_ss_flash_02.troy",
+		"Lissandra_Base_E_Arrival.troy",
+		"LeBlanc_Base_W_return_activation.troy"
+		--TODO: Check if liss/leblanc have diff skill versions. MOST likely dont but worth checking for completion sake
+		
+		--Zed uses 'switch shadows'... It will require some special checks to choose the shadow he's going TO not from...
+		--Shaco deceive no longer has any particles where you jump to so it cant be tracked (no spell data or particles showing path)
+		
 	}
 
 local _cachedRevives = {}
@@ -193,12 +217,26 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if  t.isEnemy and t.activeSpell and t.activeSpell.valid and _instantDashLookupTable[t.activeSpell.name] then			
+		if  t.isEnemy and t.activeSpell and t.activeSpell.valid and _blinkSpellLookupTable[t.activeSpell.name] then
 			local windupRemaining = t.activeSpell.startTime + t.activeSpell.windup - Game.Timer()
-			if windupRemaining > 0 then
-				local endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)
-				local magnitude = self:GetDistance(t.activeSpell.startPos,endPos)
-				endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * math.min(magnitude, _instantDashLookupTable[t.activeSpell.name])
+			if windupRemaining > 0 then			
+				local endPos
+				local range = _blinkSpellLookupTable[t.activeSpell.name]
+				if type(range) == "table" then
+					local target, distance = self:GetNearestParticleByNames(t.pos, range)
+					if target and distance < range then
+						endPos = target.pos
+					end				
+				elseif range > 0 then
+					endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)					
+					endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * math.min(self:GetDistance(t.activeSpell.startPos,endPos), range)
+				else
+					local blinkTarget = self:GetObjectByHandle(t.activeSpell.target)
+					if blinkTarget then
+						endPos = blinkTarget.pos
+					end
+				end	
+				
 				local interceptTime = self:GetSpellInterceptTime(myHero.pos, endPos, delay,speed)
 				local deltaInterceptTime = interceptTime - windupRemaining
 				if deltaInterceptTime > 0 and interceptTime - windupRemaining < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
@@ -435,6 +473,57 @@ function HPred:GetPathNodes(unit)
 		end
 	end		
 	return nodes
+end
+
+--Finds any game object with the correct handle to match (hero, minion, wards on either team)
+function HPred:GetObjectByHandle(handle)
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.handle == handle then
+			target = enemy
+			return target
+		end
+	end
+	
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i)
+		if minion.handle == handle then
+			target = minion
+			return target
+		end
+	end
+	
+	for i = 1, Game.WardCount() do
+		local ward = Game.Ward(i);
+		if minion.ward == handle then
+			target = ward
+			return target
+		end
+	end
+	
+	for i = 1, Game.ParticleCount() do 
+		local particle = Game.Particle(i)
+		if particle.ward == handle then
+			target = ward
+			return target
+		end
+	end
+end
+
+--Finds the closest particle to the origin that is contained in the names array
+function HPred:GetNearestParticleByNames(origin, names)
+	local target
+	local distance = math.max
+	for i = 1, Game.ParticleCount() do 
+		local particle = Game.Particle(i)
+		local d = self:GetDistance(origin, particle.pos)
+		if d < distance then
+			distance = d
+			target = particle
+		end
+	end
+	return target, distance
 end
 
 --Returns the total distance of our current path so we can calculate how long it will take to complete
