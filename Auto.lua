@@ -344,7 +344,7 @@ function AutoUtil:GetExhaust()
 end
 
 function AutoUtil:AutoExhaust()
-	local exhaustHotkey = self:GetExhaust()	
+	local exhaustHotkey = AutoUtil:GetExhaust()	
 	if not exhaustHotkey or not Menu.Skills.Exhaust then return end
 	
 	for i = 1, Game.HeroCount() do
