@@ -48,6 +48,9 @@ local _blinkLookupTable =
 	}
 
 local _cachedRevives = {}
+
+local _movementHistory = {}
+
 function HPred:Tick()
 	--Check for revives and record them	
 	if Game.Timer() - _lastReviveQuery < _reviveQueryFrequency then return end
@@ -87,7 +90,7 @@ function HPred:GetEnemyNexusPosition()
 end
 
 
-function HPred:GetTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius, midDash)
+function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision, midDash)
 
 	--TODO: Target whitelist. This will target anyone which is definitely not what we want
 	--For now we can handle in the champ script. That will cause issues with multiple people in range who are goood targets though.
@@ -139,39 +142,124 @@ function HPred:GetTarget(source, range, delay, speed, timingAccuracy, checkColli
 	target, aimPosition =self:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
 	if target and aimPosition then
 		return target, aimPosition
-	end
-	
-	--TODO: Radius based targeting: Slows, range, hitbox radius VS their movespeed to avoid it. Requires movement smoothing 
+	end	
 end
 
---Finds a target who is dashing and can be hit by our spell before the dash ends
---GetDashingTarget(source, range, delay, speed, dashThreshold, midDash)
-	--source : Location from which the spell is cast
-	--range : Maximum distance the spell can travel
-	--delay : Time it will take before spell leaves the source
-	--speed : Speed at which the spell will travel
-	--dashThreshold : How long after a dash may our spell land
-	--midDash : Can our spell hit before the dash ends?
+--Will return the valid target who has the highest hit chance and meets all conditions (minHitChance, whitelist check, etc)
+function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist)
+
+	local _validTargets = {}
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
+			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
+			if hitChance >= minimumHitChance then
+				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
+			end
+		end
+	end
+	
+	local rHitChance = 0
+	local rAimPosition
+	for targetName, targetData in pairs(_validTargets) do
+		if targetData.hitChance > rHitChance then
+			rHitChance = targetData.hitChance
+			rAimPosition = targetData.aimPosition
+		end		
+	end
+	
+	if rHitChance >= minimumHitChance then
+		return rHitChance, rAimPosition
+	end	
+end
+
+function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision)
+	self:UpdateMovementHistory(target)
+	
+	local hitChance = 1	
+	
+	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed)	
+	local interceptTime = self:GetSpellInterceptTime(source, aimPosition, delay, speed)
+	local reactionTime = self:PredictReactionTime(target, .1)
+	local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
+	
+	--If they just now changed their path then assume they will keep it for at least a short while... slightly higher chance
+	if _movementHistory and _movementHistory[target.charName] and Game.Timer() - _movementHistory[target.charName]["ChangedAt"] < .25 then
+		hitChance = 2
+	end
+
+	--If they are standing still give a higher accuracy because they have to take actions to react to it
+	if not target.pathing or not target.pathing.hasMovePath then
+		hitChance = 2
+	end	
+	
+	
+	--Our spell is so wide or the target so slow or their reaction time is such that the spell will be nearly impossible to avoid
+	if movementRadius - target.boundingRadius <= radius /2 then
+		hitChance = 3
+	end	
+	
+	--If they are casting a spell then the accuracy will be fairly high. if the windup is longer than our delay then it's quite likely to hit. 
+	--Ideally we would predict where they will go AFTER the spell finishes but that's beyond the scope of this prediction
+	if target.activeSpell and target.activeSpell.valid then
+		if target.activeSpell.startTime + target.activeSpell.windup - Game.Timer() >= delay then
+			hitChance = 4
+		else			
+			hitChance = 3
+		end
+	end
+	
+	--Check for out of range
+	if self:GetDistance(myHero.pos, aimPosition) >= range then
+		hitChance = -1
+	end
+	
+	--Check minion block
+	if hitChance > 0 and checkCollision then	
+		if self:CheckMinionCollision(source, aimPosition, delay, speed, radius) then
+			hitChance = -1
+		end
+	end
+	
+	return hitChance, aimPosition
+end
+
+function HPred:PredictReactionTime(unit, minimumReactionTime)
+	local reactionTime = minimumReactionTime
+	
+	--If the target is auto attacking increase their reaction time by .15s - If using a skill use the remaining windup time
+	if unit.activeSpell and unit.activeSpell.valid then
+		local windupRemaining = unit.activeSpell.startTime + unit.activeSpell.windup - Game.Timer()
+		if windupRemaining > 0 then
+			reactionTime = windupRemaining
+		end
+	end
+	
+	--If the target is recalling and has been for over .25s then increase their reaction time by .25s
+	local isRecalling, recallDuration = self:GetRecallingData(unit)	
+	if isRecalling and recallDuration > .25 then
+		reactionTime = .25
+	end
+	
+	return reactionTime
+end
+
 function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, checkCollision, radius, midDash)
+
 	local target
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
 		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
-			local dashEndPosition = t.pathing.endPos
+			local dashEndPosition = t:GetPath(1)
 			if self:GetDistance(source, dashEndPosition) <= range then				
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
 				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
 				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
-				local deltaInterceptTime = skillInterceptTime - dashTimeRemaining
-				local interceptPosition = t.pathing.endPos
-				if midDash then
-					deltaInterceptTime = math.abs(deltaInterceptTime)
-					--Find mid dash pos to aim at
-				end				
-				if deltaInterceptTime < dashThreshold and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				local deltaInterceptTime = math.abs(skillInterceptTime - dashTimeRemaining)
+				if deltaInterceptTime < dashThreshold and (not checkCollision or not self:CheckMinionCollision(source, dashEndPosition, delay, speed, radius)) then
 					target = t
-					aimPosition = interceptPosition
+					aimPosition = dashEndPosition
 					return target, aimPosition
 				end
 			end			
@@ -188,7 +276,7 @@ function HPred:GetHourglassTarget(source, range, delay, speed, timingAccuracy, c
 		if success and t.isEnemy then
 			local spellInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
 			local deltaInterceptTime = spellInterceptTime - timeRemaining
-			if spellInterceptTime > timeRemaining and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+			if spellInterceptTime > timeRemaining and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 				target = t
 				aimPosition = t.pos
 				return target, aimPosition
@@ -219,7 +307,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 		local t = Game.Hero(i)
 		if t.isEnemy and t.activeSpell and t.activeSpell.valid and _blinkSpellLookupTable[t.activeSpell.name] then
 			local windupRemaining = t.activeSpell.startTime + t.activeSpell.windup - Game.Timer()
-			if windupRemaining > 0 then			
+			if windupRemaining > 0 then
 				local endPos
 				local range = _blinkSpellLookupTable[t.activeSpell.name]
 				if type(range) == "table" then
@@ -237,11 +325,11 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 						local offsetDirection						
 						
 						--We will land in front of our target relative to our starting position
-						if range == 0 then
-							offsetDirection = (blinkTarget.pos - myHero.pos):Normalized()
+						if range == 0 then						
+							offsetDirection = (blinkTarget.pos - t.pos):Normalized()
 						--We will land behind our target relative to our starting position
 						elseif range == -1 then						
-							offsetDirection = (myHero.pos-blinkTarget.pos):Normalized()
+							offsetDirection = (t.pos-blinkTarget.pos):Normalized()
 						--They can choose which side of target to come out on , there is no way currently to read this data so we will only use this calculation if the spell radius is large
 						elseif range == -255 then
 							if radius > 250 then
@@ -258,7 +346,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 				
 				local interceptTime = self:GetSpellInterceptTime(myHero.pos, endPos, delay,speed)
 				local deltaInterceptTime = interceptTime - windupRemaining
-				if deltaInterceptTime > 0 and interceptTime - windupRemaining < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				if  deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, endPos, delay, speed, radius)) then
 					target = t
 					aimPosition = endPos
 					return target,aimPosition					
@@ -278,7 +366,7 @@ function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radiu
 			for k,v in pairs(self:GetEnemyHeroes()) do
 				local t = v
 				if t and t.isEnemy and self:GetDistance(t.pos, pPos) < t.boundingRadius then
-					if (not checkCollision or self:CheckMinionCollision(source, pPos, delay, speed, radius)) then
+					if (not checkCollision or not self:CheckMinionCollision(source, pPos, delay, speed, radius)) then
 						target = t
 						aimPosition = pPos
 						return target,aimPosition
@@ -295,10 +383,9 @@ function HPred:GetChannelingTarget(source, range, delay, speed, timingAccuracy, 
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
 		local interceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
-		local interceptPosition = HPred:PredictUnitPosition(t, interceptTime)	
-		if t.isEnemy and self:IsChannelling(t, interceptTime) and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
 			target = t
-			aimPosition = interceptPosition	
+			aimPosition = t.pos	
 			return target, aimPosition
 		end
 	end
@@ -313,7 +400,7 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 			local immobileTime = self:GetImmobileTime(t)
 			
 			local interceptTime = self:GetSpellInterceptTime(source, t.pos, delay, speed)
-			if immobileTime - interceptTime > timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
+			if immobileTime - interceptTime > timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
 				target = t
 				aimPosition = t.pos
 				return target, aimPosition
@@ -333,7 +420,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 			if hasBuff then
 				local interceptPosition = self:GetTeleportOffset(turret.pos,223.31)
 				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
-				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = turret
 					aimPosition =interceptPosition
 					return target, aimPosition
@@ -351,7 +438,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 			if hasBuff then
 				local interceptPosition = self:GetTeleportOffset(ward.pos,100.01)
 				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
-				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = ward
 					aimPosition = interceptPosition
 					return target, aimPosition
@@ -368,7 +455,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 			if hasBuff then	
 				local interceptPosition = self:GetTeleportOffset(minion.pos,143.25)
 				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
-				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
 					target = minion				
 					aimPosition = interceptPosition
 					return target, aimPosition
@@ -383,8 +470,33 @@ function HPred:GetTargetMS(target)
 	return ms
 end
 
+function HPred:Angle(A, B)
+	local deltaPos = A - B
+	local angle = math.atan2(deltaPos.x, deltaPos.z) *  180 / math.pi	
+	if angle < 0 then angle = angle + 360 end
+	return angle
+end
+
+function HPred:UpdateMovementHistory(unit)
+	if not _movementHistory[unit.charName] then
+		_movementHistory[unit.charName] = {}
+		_movementHistory[unit.charName]["EndPos"] = unit.pathing.endPos
+		_movementHistory[unit.charName]["StartPos"] = unit.pathing.endPos
+		_movementHistory[unit.charName]["PreviousAngle"] = 0
+		_movementHistory[unit.charName]["ChangedAt"] = Game.Timer()
+	end
+	
+	if _movementHistory[unit.charName]["EndPos"].x ~=unit.pathing.endPos.x or _movementHistory[unit.charName]["EndPos"].y ~=unit.pathing.endPos.y or _movementHistory[unit.charName]["EndPos"].z ~=unit.pathing.endPos.z then				
+		_movementHistory[unit.charName]["PreviousAngle"] = self:Angle(Vector(_movementHistory[unit.charName]["StartPos"].x, _movementHistory[unit.charName]["StartPos"].y, _movementHistory[unit.charName]["StartPos"].z), Vector(_movementHistory[unit.charName]["EndPos"].x, _movementHistory[unit.charName]["EndPos"].y, _movementHistory[unit.charName]["EndPos"].z))
+		_movementHistory[unit.charName]["EndPos"] = unit.pathing.endPos
+		_movementHistory[unit.charName]["StartPos"] = unit.pos
+		_movementHistory[unit.charName]["ChangedAt"] = Game.Timer()
+	end
+	
+end
+
 --Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
-function HPred:PredictUnitPosition(unit, delay)
+function HPred:PredictUnitPosition(unit, delay, path)
 	local predictedPosition = unit.pos
 	local timeRemaining = delay
 	local pathNodes = self:GetPathNodes(unit)
@@ -567,10 +679,10 @@ function HPred:CheckMinionCollision(origin, endPos, delay, speed, radius, freque
 		local checkPosition = origin + directionVector * i * frequency
 		local checkDelay = delay + self:GetDistance(origin, checkPosition) / speed
 		if self:IsMinionIntersection(checkPosition, radius, checkDelay) then
-			return false
+			return true
 		end
 	end
-	return true
+	return false
 end
 
 
@@ -580,11 +692,20 @@ function HPred:IsMinionIntersection(location, radius, delay, maxDistance)
 	end
 	for i = 1, Game.MinionCount() do
 		local minion = Game.Minion(i)
-		if minion.isEnemy and minion.isTargetable and minion.alive and self:GetDistance(minion.pos, location) < maxDistance then
+		if self:CanTarget(minion) and self:GetDistance(minion.pos, location) < maxDistance then
 			local predictedPosition = self:PredictUnitPosition(minion, delay)
 			if self:GetDistance(location, predictedPosition) <= radius + minion.boundingRadius then
 				return true
 			end
+		end
+	end
+	return false
+end
+
+function HPred:GetRecallingData(unit)
+	for K, Buff in pairs(GetBuffs(unit)) do
+		if Buff.name == "recall" and Buff.duration > 0 then
+			return true, Game.Timer() - Buff.startTime
 		end
 	end
 	return false
