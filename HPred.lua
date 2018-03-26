@@ -90,7 +90,7 @@ function HPred:GetEnemyNexusPosition()
 end
 
 
-function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision, midDash)
+function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision, midDash, hitTime)
 
 	--TODO: Target whitelist. This will target anyone which is definitely not what we want
 	--For now we can handle in the champ script. That will cause issues with multiple people in range who are goood targets though.
