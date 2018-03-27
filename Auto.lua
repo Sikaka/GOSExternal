@@ -94,8 +94,10 @@ end
 function SpecialCast(key, pos)
 	if NextSpellCast > Game.Timer() then return end
 	
-	SetMovement(false)	
-	if not Menu.General.CustomCast:Value() then
+	SetMovement(false)
+	if not pos then
+		Control.CastSpell(key)		
+	elseif not Menu.General.CustomCast:Value() then
 		Control.CastSpell(key, pos)
 	else
 		local _mousePos = mousePos
@@ -243,7 +245,15 @@ function AutoUtil:SupportMenu(Menu)
 	
 	---[REDEMPTION SETTINGS]---
 	Menu.Items:MenuElement({id = "Redemption", name = "Redemption", type = MENU})
-	Menu.Items.Redemption:MenuElement({id = "XXX", name = "---NOT YET DONE---", type = MENU})
+	Menu.Items.Redemption:MenuElement({id = "Targets", name = "Targets", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly then		
+			Menu.Items.Redemption.Targets:MenuElement({id = hero.charName, name = hero.charName,  tooltip = "How low must this target's HP be to cast redemption", value = 60, min = 10, max = 90, step = 10 })
+		end
+	end
+	Menu.Items.Redemption:MenuElement({id="Duration", name="Prediction Duration", tooltip = "allies must be immobile for at least this long for redemption to cast", value = .5, min = .25, max = 2, step = .25})
+	Menu.Items.Redemption:MenuElement({id="Count", name = "Target Count", tooltip = "The total number of allies+enemies that may be hit with redemption in order to cast it.", value = 3, min = 1, max = 10, step = 1})
 end
 
 function AutoUtil:GetDistanceSqr(p1, p2)
@@ -318,12 +328,20 @@ function AutoUtil:CastItem(unit, id, range)
 		local key = self.itemKey[keyIndex]
 
 		if key then
+			print(key)
 			if unit ~= myHero then
-				SpecialCast(key, unit.pos or unit)
+				Control.CastSpell(key, unit.pos or unit)
 			else
-				SpecialCast(key, myHero)
+				Control.CastSpell(key)
 			end
 		end
+	end
+end
+function AutoUtil:CastItemMiniMap(pos, id)
+	local keyIndex = self:GetItemSlot(id) - 5
+	local key = self.itemKey[keyIndex]
+	if key then
+		Control.CastSpell(key, pos:ToMM())
 	end
 end
 
@@ -349,6 +367,11 @@ function AutoUtil:UseSupportItems()
 	if AutoUtil:IsItemReady(3190) then
 		AutoUtil:AutoLocket()
 	end
+	
+	--Use Redemption
+	if AutoUtil:IsItemReady(3107) then
+		AutoUtil:AutoRedemption()
+	end
 end
 
 
@@ -370,16 +393,44 @@ end
 function AutoUtil:AutoLocket()
 	local injuredCount = 0
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if _allyHealthPercentage and _allyHealthPercentage[Hero.charName] and Hero.isAlly and Hero.alive and self:GetDistance(myHero.pos, Hero.pos) <= 700 then
-			local deltaLifeLost = _allyHealthPercentage[Hero.charName] - CurrentPctLife(Hero)			
+		local hero = Game.Hero(i)
+		if _allyHealthPercentage and _allyHealthPercentage[hero.charName] and hero.isAlly and hero.alive and self:GetDistance(myHero.pos, hero.pos) <= 700 then			
+			local deltaLifeLost = _allyHealthPercentage[hero.charName] - CurrentPctLife(hero)
 			if deltaLifeLost >= Menu.Items.Locket.Threshold:Value() then
 				injuredCount = injuredCount + 1
 			end
 		end
 	end	
-	if injuredCount >= Menu.Items.Locket.Count:Value() then	
+	if injuredCount >= Menu.Items.Locket.Count:Value() then
 		AutoUtil:CastItem(myHero, 3190, math.huge)
+	end
+end
+
+function AutoUtil:AutoRedemption()
+	local targetCount = 0
+	local aimPos
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly and HPred:CanTargetALL(hero) and self:GetDistance(myHero.pos, hero.pos) <= 5500 and Menu.Items.Redemption.Targets[hero.charName] and Menu.Items.Redemption.Targets[hero.charName]:Value() >= CurrentPctLife(hero) then		
+			--Check if they are immobile for at least the duration we specified
+			if HPred:GetImmobileTime(hero) >= Menu.Items.Redemption.Duration:Value() then
+				targetCount = 0
+				aimPos = hero.pos
+				--we can start adding targets within range!!
+				for z = 1, Game.HeroCount() do
+					local target = Game.Hero(z)
+					if HPred:CanTargetALL(target) and HPred:GetDistance(hero.pos, HPred:PredictUnitPosition(target, 2)) < 525 then
+						targetCount = targetCount + 1						
+					end
+				end
+				if targetCount >= Menu.Items.Redemption.Count:Value() then
+					break
+				end
+			end
+		end
+	end	
+	if aimPos and targetCount >= Menu.Items.Redemption.Count:Value() then		
+		AutoUtil:CastItemMiniMap(aimPos, 3107)
 	end
 end
 
@@ -784,6 +835,7 @@ function Soraka:GetInjuredRCount()
 			end
 		end
 	end
+	return count, isValid
 end
 
 function Soraka:GetEmergencyRCount()
@@ -798,7 +850,7 @@ function Soraka:GetEmergencyRCount()
 			end
 		end
 	end	
-	return count
+	return count, isValid
 end
 
 
@@ -1383,7 +1435,6 @@ function Blitzcrank:CanRKillsteal()
 end
 
 
-
 class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
@@ -1938,6 +1989,11 @@ end
 	--target : gameObject we are trying to hit
 function HPred:CanTarget(target)
 	return target.isEnemy and target.alive and target.visible and target.isTargetable
+end
+
+--Derp: dont want to fuck with the isEnemy checks elsewhere. This will just let us know if the target can actually be hit by something even if its an ally
+function HPred:CanTargetALL(target)
+	return target.alive and target.visible and target.isTargetable
 end
 
 --Returns a position and radius in which the target could potentially move before the delay ends. ReactionTime defines how quick we expect the target to be able to change their current path
