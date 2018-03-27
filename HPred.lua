@@ -642,6 +642,17 @@ function HPred:GetObjectByHandle(handle)
 	end
 end
 
+function HPred:GetEnemyHeroByHandle(handle)	
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.handle == handle then
+			target = enemy
+			return target
+		end
+	end
+end
+
 --Finds the closest particle to the origin that is contained in the names array
 function HPred:GetNearestParticleByNames(origin, names)
 	local target

@@ -51,6 +51,9 @@ function Bitchcrank:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "Range", name = "Minimum Auto Hook Range", value = 300, min = 900, max = 100, step = 50})
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+	Menu.Skills:MenuElement({id = "E", name = "[E] Power Fist", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Static Field", type = MENU})
 	Menu.Skills.R:MenuElement({id = "KS", name = "Secure Kills", value = true})
@@ -119,14 +122,24 @@ function Bitchcrank:Tick()
 					_whiteList[enemy.charName] = true
 				end
 			end
-			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, false, Menu.Skills.Q.Accuracy:Value(),_whiteList)	
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),_whiteList)	
 			if hitRate then
 				self:CastSpell(HK_Q, aimPosition)
 			end
 		end
 	end	
 	
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		self:AutoE()
+	end
 	if Ready(_R) and CurrentPctMana(myHero) >= Menu.Skills.R.Mana:Value() then
+	
+		
+		local target, aimPosition =self:GetChannelingTarget(myHero.pos, R.Range, R.Delay, R.Speed, Menu.General.ReactionTime:Value(), R.Collision, R.Width)
+			if target and aimPosition then
+			Control.CastSpell(HK_R)
+		end
+		
 		local targetCount = self:REnemyCount()
 		if targetCount >= Menu.Skills.R.Count:Value() or (Menu.Skills.R.KS:Value() and self:CanRKillsteal())then
 			Control.CastSpell(HK_R)
@@ -135,6 +148,18 @@ function Bitchcrank:Tick()
 	end
 end
 
+function Bitchcrank:AutoE()
+	--check if we are middle of an auto attack
+	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then
+		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)
+		if target and target.isEnemy then		
+			local windupRemaining = myHero.attackData.endTime - Game.Timer() - myHero.attackData.windDownTime
+			if windupRemaining < .05 then
+				Control.CastSpell(HK_E)
+			end
+		end
+	end
+end
 function Bitchcrank:CastSpell(key, pos)
 	if NextSpellCast > Game.Timer() then return end
 	Control.SetCursorPos(pos)
@@ -331,7 +356,7 @@ function HPred:GetEnemyNexusPosition()
 end
 
 
-function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision, midDash)
+function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision, midDash, hitTime)
 
 	--TODO: Target whitelist. This will target anyone which is definitely not what we want
 	--For now we can handle in the champ script. That will cause issues with multiple people in range who are goood targets though.
@@ -878,6 +903,17 @@ function HPred:GetObjectByHandle(handle)
 		local particle = Game.Particle(i)
 		if particle.ward == handle then
 			target = ward
+			return target
+		end
+	end
+end
+
+function HPred:GetEnemyHeroByHandle(handle)	
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.handle == handle then
+			target = enemy
 			return target
 		end
 	end
