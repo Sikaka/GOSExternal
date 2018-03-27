@@ -48,16 +48,16 @@ function CoreDraw()
 		TryLoad()
 		return
 	end
-	if KnowsSpell(_Q) and Menu.General.DrawQ:Value() then
+	if Q and Q.Range and KnowsSpell(_Q) and Menu.General.DrawQ:Value() then
 		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 255, 0,0))
 	end	
-	if KnowsSpell(_W) and Menu.General.DrawW:Value() then
+	if W and W.Range and KnowsSpell(_W) and Menu.General.DrawW:Value() then
 		Draw.Circle(myHero.pos, W.Range, Draw.Color(150, 0, 255,0))
 	end	
-	if KnowsSpell(_E) and Menu.General.DrawE:Value() then
+	if E and E.Range and  KnowsSpell(_E) and Menu.General.DrawE:Value() then
 		Draw.Circle(myHero.pos, E.Range, Draw.Color(150, 0, 0,255))
 	end		
-	if KnowsSpell(_R) and Menu.General.DrawR:Value() then
+	if R and R.Range and KnowsSpell(_R) and Menu.General.DrawR:Value() then
 		Draw.Circle(myHero.pos, R.Range, Draw.Color(150, 0, 255,255))
 	end
 	for i = 1, Game.HeroCount() do
