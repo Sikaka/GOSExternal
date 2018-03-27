@@ -1,14 +1,22 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Velkoz", "Heimerdinger", "Zilean", "Soraka", "Kayle"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
 local Scriptname,Version,Author,LVersion = "[Auto]","v2.0","Sikaka","0.01"
 
 Callback.Add("Load",
-function()
+function()	
+
+	--Load from common folder OR let us use it if its already activated as its own script
+	if FileExist(COMMON_PATH .. "HPred.lua") then
+		require 'HPred'
+	else
+		HPred()
+	end	
+	
 	--Set up the initial menu for drawing and reaction time
 	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] "..myHero.charName})	
 	Menu:MenuElement({id = "General", name = "General", type = MENU})
@@ -18,6 +26,9 @@ function()
 	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = false})
 	Menu.General:MenuElement({id = "SkillFrequency", name = "Skill Frequency", value = .3, min = .1, max = 1, step = .1})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})	
+	
+	
+	Menu.General:MenuElement({id = "CustomCast", name = "Custom Spellcast", tooltip = "Turn this on if your skillshots fire wrong direction sometimes",  value = false})
 	
 	Callback.Add("Draw", function() CoreDraw() end)
 end)
@@ -57,9 +68,42 @@ function CoreDraw()
 	end
 end
 
+function SetMovement(bool)
+	if _G.EOWLoaded then
+		EOW:SetMovements(bool)
+		EOW:SetAttacks(bool)
+	elseif _G.SDK then
+		_G.SDK.Orbwalker:SetMovement(bool)
+		_G.SDK.Orbwalker:SetAttack(bool)
+	else
+		GOS.BlockMovement = not bool
+		GOS.BlockAttack = not bool
+	end
+end
+
+function IsEvading()
+    if ExtLibEvade and ExtLibEvade.Evading then return true end
+	return false
+end
+
+function IsAttacking()
+	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then return true end
+	return false
+end
+
 function SpecialCast(key, pos)
 	if NextSpellCast > Game.Timer() then return end
-	Control.CastSpell(key, pos)
+	
+	SetMovement(false)	
+	if not Menu.General.CustomCast:Value() then
+		Control.CastSpell(key, pos)
+	else
+		local _mousePos = mousePos
+		Control.SetCursorPos(pos)
+		DelayAction(function()Control.CastSpell(key, pos) end,.05)
+		DelayAction(function()Control.SetCursorPos(_mousePos) end,.1)
+	end	
+	DelayAction(function()SetMovement(true) end,.1)
 	NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
 end
  	
@@ -210,6 +254,17 @@ end
 
 function AutoUtil:GetDistance(p1, p2)
 	return math.sqrt(self:GetDistanceSqr(p1, p2))
+end
+
+function AutoUtil:CalculateMagicDamage(target, damage)			
+	local targetMR = target.magicResist * myHero.magicPenPercent - myHero.magicPen
+	local damageReduction = 100 / ( 100 + targetMR)
+	if targetMR < 0 then
+		damageReduction = 2 - (100 / (100 - targetMR))
+	end		
+	damage = damage * damageReduction
+	
+	return damage
 end
 
 function AutoUtil:NearestEnemy(entity)
@@ -443,7 +498,7 @@ function Brand:UpdateWWhiteList()
 end
 
 function Brand:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true then return end
+	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or IsEvading() == true then return end
 
 	--Reliable spells cast even if combo key is NOT pressed and are the most likely to hit.
 	if Ready(_W) then
@@ -619,7 +674,7 @@ function Soraka:Draw()
 end
 
 function Soraka:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true then return end
+	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
 	
 	--Heal allies with R
 	if Ready(_R) then
@@ -832,7 +887,7 @@ function Zilean:Draw()
 end
 
 function Zilean:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true then return end	
+	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true  or IsEvading() == true then return end	
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Use Ult on Allies	
@@ -1009,7 +1064,7 @@ function Nami:Draw()
 end
 
 function Nami:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true then return end	
+	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true  or IsEvading() == true then return end	
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Auto Bubble Immobile targets and unreliable targets if combo button held down
@@ -1098,25 +1153,234 @@ function Nami:AutoE()
 end
 
 
+class "Lux"
+
+function Lux:__init()	
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+function Lux:LoadSpells()
+	Q = {Range = 1175, Width = 60,Delay = 0.25, Speed = 1200, Collision = true}
+	W = {Range = 1075, Width = 120,Delay = 0.25, Speed = 1400}
+	E = {Range = 1000, Width = 120,Delay = 0.25, Speed = 1300}
+	R = {Range = 3340,Width = 115, Delay = 1, Speed = math.huge}
+end
+
+function Lux:CreateMenu()
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})	
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Light Binding", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })	
+		
+	--Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
+	--Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	--Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
+		
+	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})
+	--Menu.Skills.R:MenuElement({id = "Targets", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast when spacebar held down", value = 2, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Life", name = "Enemy Health", tooltip = "How low enemies must be to auto cast on them when they are immobile", value = 400, min = 100, max = 2000, step = 100 })	
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
+		
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+end
+
+function Lux:Draw()
+end
+
+function Lux:Tick()
+	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true  or IsEvading() == true then return end	
+	if NextSpellCast > Game.Timer() then return end
+	
+	if Ready(_Q) then
+		self:AutoQ()		
+	end
+			
+	if Ready(_E) then
+		self:AutoE()
+	end
+			
+	if Ready(_R) then
+		self:AutoR()
+	end
+end
+
+function Lux:AutoQ()
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range and Menu.Skills.Q.Auto:Value() then
+		SpecialCast(HK_Q, aimPosition)		
+	elseif Menu.Skills.Combo:Value() then
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value())	
+		if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
+			SpecialCast(HK_Q, aimPosition)
+		end	
+	end
+end
+
+function Lux:AutoE()
+end
+
+function Lux:AutoR()
+
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
+	if target and HPred:GetDistance(myHero.pos, aimPosition) <= R.Range and Menu.Skills.R.Auto:Value() and target.health <= Menu.Skills.R.Life:Value() then
+		--Set the aim position to be closer to our character/mouse so that we could try to aim from offscreen
+		SpecialCast(HK_R, aimPosition)
+	end
+end
+
+class "Blitzcrank" 
+function Blitzcrank:__init()
+
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Blitzcrank:CreateMenu()
+
+	Menu.General:MenuElement({id = "DrawQAim", name = "Draw Q Aim", value = true})
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Rocket Grab", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Targets", name = "Targets", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			Menu.Skills.Q.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
+	Menu.Skills.Q:MenuElement({id = "Immobile", name = "Auto Hook Immobile", value = true})
+	Menu.Skills.Q:MenuElement({id = "Range", name = "Minimum Auto Hook Range", value = 300, min = 900, max = 100, step = 50})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+	Menu.Skills:MenuElement({id = "E", name = "[E] Power Fist", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] Static Field", type = MENU})
+	Menu.Skills.R:MenuElement({id = "KS", name = "Secure Kills", value = true})
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.R:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })	
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+end
+
+function Blitzcrank:LoadSpells()
+	Q = {Range = 925, Width = 120,Delay = 0.25, Speed = 1750,  Collision = true}
+	R = {Range = 600 ,Delay = 0.25, Speed = math.huge}
+end
+
+function Blitzcrank:Draw()	
+	
+	if Ready(_Q) and Menu.General.DrawQAim:Value() and self.forcedTarget and self.forcedTarget.alive and self.forcedTarget.visible then	
+		local targetOrigin = HPred:PredictUnitPosition(self.forcedTarget, Q.Delay)
+		local interceptTime = HPred:GetSpellInterceptTime(myHero.pos, targetOrigin, Q.Delay, Q.Speed)			
+		local origin, radius = HPred:UnitMovementBounds(self.forcedTarget, interceptTime, Menu.General.ReactionTime:Value())		
+						
+		if radius < 25 then
+			radius = 25
+		end
+		
+		if self:GetDistance(myHero.pos, origin) > Q.Range then
+			Draw.Circle(origin, 25,10, Draw.Color(150, 255, 0,0))
+		else
+			Draw.Circle(origin, 25,10, Draw.Color(150, 0, 255,0))
+			Draw.Circle(origin, radius,1, Draw.Color(150, 255, 255,255))	
+		end
+	end	
+end
+
+function Blitzcrank:Tick()
+	if IsRecalling() then return end	
+	if NextSpellCast > Game.Timer() then return end
+	
+	--TODO: Only update whitelist every second
+	
+	if Ready(_Q) then
+		if Menu.Skills.Q.Immobile:Value() then
+			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+			if target and AutoUtil:GetDistance(myHero.pos, aimPosition) >= Menu.Skills.Q.Range:Value() then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		end
+		
+		if Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+			local _whiteList = {}
+			for i  = 1,Game.HeroCount(i) do
+				local enemy = Game.Hero(i)
+				if Menu.Skills.Q.Targets[enemy.charName] and Menu.Skills.Q.Targets[enemy.charName]:Value() then
+					_whiteList[enemy.charName] = true
+				end
+			end
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),_whiteList)	
+			if hitRate then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		end
+	end	
+	
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		self:AutoE()
+	end
+	if Ready(_R) and CurrentPctMana(myHero) >= Menu.Skills.R.Mana:Value() then
+	
+		
+		local target, aimPosition =HPred:GetChannelingTarget(myHero.pos, R.Range, R.Delay, R.Speed, Menu.General.ReactionTime:Value(), R.Collision, R.Width)
+			if target and aimPosition then
+			Control.CastSpell(HK_R)
+		end
+		
+		local targetCount = self:REnemyCount()
+		if targetCount >= Menu.Skills.R.Count:Value() or (Menu.Skills.R.KS:Value() and self:CanRKillsteal())then
+			Control.CastSpell(HK_R)
+		NextSpellCast = .35 + Game.Timer()
+		end
+	end
+end
+
+function Blitzcrank:AutoE()
+	--check if we are middle of an auto attack
+	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then
+		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)
+		if target and target.isEnemy then		
+			local windupRemaining = myHero.attackData.endTime - Game.Timer() - myHero.attackData.windDownTime
+			if windupRemaining < .15 then
+				DelayAction(function()Control.CastSpell(HK_E) end,.10)
+			end
+		end
+	end
+end
+
+function Blitzcrank:REnemyCount()
+	local count = 0
+	for i  = 1,Game.HeroCount(i) do
+		local enemy = Game.Hero(i)
+		if HPred:CanTarget(enemy) and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= R.Range then
+			count = count + 1
+		end			
+	end
+	return count
+end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+function Blitzcrank:CanRKillsteal()
+	local rDamage= 250 + (myHero:GetSpellData(_R).level -1) * 125 + myHero.ap 
+	for i  = 1,Game.HeroCount(i) do
+		local enemy = Game.Hero(i)
+		if enemy.alive and enemy.isEnemy and enemy.visible and enemy.isTargetable and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= R.Range then
+			local damage = AutoUtil:CalculateMagicDamage(enemy, rDamage)
+			if damage >= enemy.health then
+				return true
+			end
+		end
+	end
+end
 
 
 
@@ -1757,6 +2021,17 @@ function HPred:GetObjectByHandle(handle)
 		local particle = Game.Particle(i)
 		if particle.ward == handle then
 			target = ward
+			return target
+		end
+	end
+end
+
+function HPred:GetEnemyHeroByHandle(handle)	
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.handle == handle then
+			target = enemy
 			return target
 		end
 	end
