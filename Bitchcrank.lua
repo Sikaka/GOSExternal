@@ -135,7 +135,7 @@ function Bitchcrank:Tick()
 	if Ready(_R) and CurrentPctMana(myHero) >= Menu.Skills.R.Mana:Value() then
 	
 		
-		local target, aimPosition =self:GetChannelingTarget(myHero.pos, R.Range, R.Delay, R.Speed, Menu.General.ReactionTime:Value(), R.Collision, R.Width)
+		local target, aimPosition =HPred:GetChannelingTarget(myHero.pos, R.Range, R.Delay, R.Speed, Menu.General.ReactionTime:Value(), R.Collision, R.Width)
 			if target and aimPosition then
 			Control.CastSpell(HK_R)
 		end
