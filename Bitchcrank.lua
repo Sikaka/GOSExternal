@@ -154,8 +154,8 @@ function Bitchcrank:AutoE()
 		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)
 		if target and target.isEnemy then		
 			local windupRemaining = myHero.attackData.endTime - Game.Timer() - myHero.attackData.windDownTime
-			if windupRemaining < .05 then
-				Control.CastSpell(HK_E)
+			if windupRemaining < .15 then
+				DelayAction(function()Control.CastSpell(HK_E) end,.10)
 			end
 		end
 	end
