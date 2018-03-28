@@ -277,6 +277,23 @@ function AutoUtil:CalculateMagicDamage(target, damage)
 	return damage
 end
 
+function AutoUtil:GetNearestAlly(entity, range)
+	local ally = nil
+	local distance = math.huge
+	for i = 1,Game.HeroCount()  do
+		local hero = Game.Hero(i)	
+		if hero ~= entity and hero.isAlly and HPred:CanTargetALL(hero) then
+			local d = self:GetDistance(entity.pos, hero.pos)
+			if d < distance and d < range then
+				distance = d
+				ally = hero
+			end
+		end
+	end
+	if distance <  range then
+		return ally
+	end
+end
 function AutoUtil:NearestEnemy(entity)
 	local distance = 999999
 	local enemy = nil
@@ -586,7 +603,7 @@ function Brand:Tick()
 end
 
 function Brand:ReliableQ()
-	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value())
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 		--Check if they are ablaze or will be hit by W before Q
 		local WInterceptTime = self:GetWHitTime()		
@@ -603,7 +620,7 @@ function Brand:UnreliableQ(minAccuracy)
 	for i  = 1,Game.HeroCount(i) do
 		local enemy = Game.Hero(i)
 		if HPred:CanTarget(enemy) and HPred:HasBuff(enemy, "BrandAblaze") then	
-			local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, enemy,Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision)
+			local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, enemy,Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, nil)
 			if hitChance and hitChance >= minAccuracy and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 				SpecialCast(HK_Q, aimPosition)
 			end
@@ -764,12 +781,12 @@ function Soraka:AutoQ()
 	--No Reliable target: Check for harass/combo unreliable target instead
 	else
 		if Menu.Skills.Combo:Value() then
-			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value())	
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value(), nil)	
 			if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 				SpecialCast(HK_Q, aimPosition)
 			end	
 		elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
-			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value())	
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value(), nil)	
 			if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 				SpecialCast(HK_Q, aimPosition)
 			end	
@@ -987,12 +1004,12 @@ end
 
 function Zilean:UnreliableQ()	
 	if Menu.Skills.Combo:Value() then
-		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value())	
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value(),nil)	
 		if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 			SpecialCast(HK_Q, aimPosition)
 		end	
 	elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
-		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value())	
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value(),nil)	
 		if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 			SpecialCast(HK_Q, aimPosition)
 		end	
@@ -1149,7 +1166,7 @@ function Nami:AutoQ()
 	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range and Menu.Skills.Q.Auto:Value() then
 		SpecialCast(HK_Q, aimPosition)		
 	elseif Menu.Skills.Combo:Value() then
-		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value())	
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),nil)	
 		if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 			SpecialCast(HK_Q, aimPosition)
 		end	
@@ -1217,7 +1234,7 @@ end
 function Lux:LoadSpells()
 	Q = {Range = 1175, Width = 60,Delay = 0.25, Speed = 1200, Collision = true}
 	W = {Range = 1075, Width = 120,Delay = 0.25, Speed = 1400}
-	E = {Range = 1000, Width = 120,Delay = 0.25, Speed = 1300}
+	E = {Range = 1000, Width = 350,Delay = 0.25, Speed = 1300}
 	R = {Range = 3340,Width = 115, Delay = 1, Speed = math.huge}
 end
 
@@ -1228,12 +1245,18 @@ function Lux:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })	
 		
-	--Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
-	--Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
-	--Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
+	Menu.Skills:MenuElement({id = "W", name = "[W] Prismatic Barrier", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
+	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 10, min = 5, max = 50, step = 5 })	
+	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 3, min = 1, max = 5, step = 1 })
+		
+	Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 		
 	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})
-	--Menu.Skills.R:MenuElement({id = "Targets", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast when spacebar held down", value = 2, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Combo Target Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast when spacebar held down", value = 2, min = 1, max = 5, step = 1 })	
 	Menu.Skills.R:MenuElement({id = "Life", name = "Enemy Health", tooltip = "How low enemies must be to auto cast on them when they are immobile", value = 400, min = 100, max = 2000, step = 100 })	
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 		
@@ -1251,6 +1274,10 @@ function Lux:Tick()
 		self:AutoQ()		
 	end
 			
+	if Ready(_W) then
+		self:AutoW()
+	end
+	
 	if Ready(_E) then
 		self:AutoE()
 	end
@@ -1265,20 +1292,113 @@ function Lux:AutoQ()
 	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range and Menu.Skills.Q.Auto:Value() then
 		SpecialCast(HK_Q, aimPosition)		
 	elseif Menu.Skills.Combo:Value() then
-		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value())	
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),nil)	
 		if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 			SpecialCast(HK_Q, aimPosition)
 		end	
 	end
 end
 
+function Lux:AutoW()
+	--Find allies who have taken X% damage in the last second. Calculate how many would be hit if we cast W on them
+	--Choose ally that results in the most predicted allies hit with W to cast it on
+	local aimPositions = {}
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly and AutoUtil:GetDistance(myHero.pos, hero.pos) < W.Range and _allyHealthPercentage[hero.charName] then			
+			local deltaLifeLost = _allyHealthPercentage[hero.charName] - CurrentPctLife(hero)
+			if deltaLifeLost >= Menu.Skills.W.Damage:Value() then
+				--Count how many allies will be hit
+				
+				if hero == myHero then
+					local tempHero = AutoUtil:GetNearestAlly(myHero, W.Range)
+					if tempHero then
+						hero = tempHero
+					end
+				end
+				
+				local aimPosition = HPred:PredictUnitPosition(hero, W.Delay + HPred:GetDistance(myHero.pos, hero.pos) / W.Speed)				
+				local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, W.Delay, W.Speed, W.Width, true)
+				if targetCount >= Menu.Skills.W.Count:Value() then
+					table.insert(aimPositions, {aimPosition, targetCount})		
+				end
+			end
+		end
+	end
+	
+	table.sort(aimPositions, function( a, b ) return a[2] < b[2] end)
+	if #aimPositions > 0 then
+		SpecialCast(HK_W, aimPositions[1][1])
+	end
+	UpdateAllyHealth()
+end
+
+local eMissile
+local eParticle
+
+function Lux:IsETraveling()
+	return eMissile and eMissile.name and eMissile.name == "LuxLightStrikeKugel"
+end
+function Lux:IsELanded()
+	return eParticle and eParticle.name and eParticle.name == "Lux_Base_E_tar_aoe_sound"
+end
+
 function Lux:AutoE()
+
+	if self:IsELanded() then
+		if AutoUtil:NearestEnemy(eParticle) < E.Width  then	
+			SpecialCast(HK_E)
+		end		
+	else
+		
+		--Try to cast E or search for missile
+		local eData = myHero:GetSpellData(_E)
+		local deltaECastTime = Game.Timer() - eData.castTime
+		if not self:IsETraveling() and deltaECastTime < .25 then
+			for i = 1, Game.MissileCount() do
+				local missile = Game.Missile(i)			
+				if missile.name == "LuxLightStrikeKugel" and HPred:GetDistance(missile.pos, myHero.pos) < 400 then
+					eMissile = missile
+					break
+				end
+			end
+		elseif deltaECastTime < 5 then			
+			--Try to seach for particle
+			for i = 1, Game.ParticleCount() do 
+				local particle = Game.Particle(i)
+				if particle.name == "Lux_Base_E_tar_aoe_sound" then
+					eParticle = particle
+					break
+				end
+			end
+		else			
+			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
+			if Menu.Skills.E.Auto:Value() and target and HPred:GetDistance(myHero.pos, aimPosition) <= E.Range and Menu.Skills.E.Auto:Value() and target.health <= Menu.Skills.R.Life:Value() then
+				SpecialCast(HK_E, aimPosition)
+			elseif Menu.Skills.Combo:Value() then					
+				local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, E.Range, E.Delay, E.Speed, E.Width, E.Collision, Menu.Skills.E.Accuracy:Value(),nil)
+				if hitRate then
+					SpecialCast(HK_E, aimPosition)
+				end
+			end
+		end	
+	end	
 end
 
 function Lux:AutoR()
 
+	local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, R.Range, R.Delay, R.Speed, R.Width, R.Collision, Menu.Skills.R.Accuracy:Value(),nil)
+	if hitRate then	
+		local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, R.Delay, R.Speed, R.Width, false)
+		if targetCount >= Menu.Skills.R.Count:Value() then
+			SpecialCast(HK_R, aimPosition)
+		end
+	end
+	
+	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
 	if target and HPred:GetDistance(myHero.pos, aimPosition) <= R.Range and Menu.Skills.R.Auto:Value() and target.health <= Menu.Skills.R.Life:Value() then
+
 		--Set the aim position to be closer to our character/mouse so that we could try to aim from offscreen
 		SpecialCast(HK_R, aimPosition)
 	end
@@ -1435,11 +1555,13 @@ function Blitzcrank:CanRKillsteal()
 end
 
 
+
+
 class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
 
-local _reviveQueryFrequency = .2
+local _reviveQueryFrequency = 3
 local _lastReviveQuery = Game.Timer()
 local _reviveLookupTable = 
 	{ 
@@ -1525,8 +1647,7 @@ function HPred:GetEnemyNexusPosition()
 end
 
 
-function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision, midDash, hitTime)
-
+function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision)
 	--TODO: Target whitelist. This will target anyone which is definitely not what we want
 	--For now we can handle in the champ script. That will cause issues with multiple people in range who are goood targets though.
 	
@@ -1580,9 +1701,24 @@ function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccu
 	end	
 end
 
+--Will return how many allies or enemies will be hit by a linear spell based on current waypoint data.
+function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAllies)
+	local targetCount = 0
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
+			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
+			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
+			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
+				targetCount = targetCount + 1
+			end
+		end
+	end
+	return targetCount
+end
+
 --Will return the valid target who has the highest hit chance and meets all conditions (minHitChance, whitelist check, etc)
 function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist)
-
 	local _validTargets = {}
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
@@ -1796,7 +1932,7 @@ function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radiu
 	local aimPosition
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if particle and _blinkLookupTable[particle.name] then
+		if particle and _blinkLookupTable[particle.name] and self:GetDistance(source, particle.pos) < range then
 			local pPos = particle.pos
 			for k,v in pairs(self:GetEnemyHeroes()) do
 				local t = v
@@ -1931,7 +2067,7 @@ function HPred:UpdateMovementHistory(unit)
 end
 
 --Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
-function HPred:PredictUnitPosition(unit, delay, path)
+function HPred:PredictUnitPosition(unit, delay)
 	local predictedPosition = unit.pos
 	local timeRemaining = delay
 	local pathNodes = self:GetPathNodes(unit)
@@ -2122,14 +2258,14 @@ end
 function HPred:CheckMinionCollision(origin, endPos, delay, speed, radius, frequency)
 		
 	if not frequency then
-		frequency = radius / 2
+		frequency = radius
 	end
 	local directionVector = (endPos - origin):Normalized()
 	local checkCount = self:GetDistance(origin, endPos) / frequency
 	for i = 1, checkCount do
 		local checkPosition = origin + directionVector * i * frequency
 		local checkDelay = delay + self:GetDistance(origin, checkPosition) / speed
-		if self:IsMinionIntersection(checkPosition, radius, checkDelay) then
+		if self:IsMinionIntersection(checkPosition, radius, checkDelay, radius * 3) then
 			return true
 		end
 	end
@@ -2152,6 +2288,18 @@ function HPred:IsMinionIntersection(location, radius, delay, maxDistance)
 	end
 	return false
 end
+
+function HPred:VectorPointProjectionOnLineSegment(v1, v2, v)
+	assert(v1 and v2 and v, "VectorPointProjectionOnLineSegment: wrong argument types (3 <Vector> expected)")
+	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
+	local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
+	local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
+	local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
+	local isOnSegment = rS == rL
+	local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
+	return pointSegment, pointLine, isOnSegment
+end
+
 
 function HPred:GetRecallingData(unit)
 	for K, Buff in pairs(GetBuffs(unit)) do
