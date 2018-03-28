@@ -1247,16 +1247,17 @@ function Lux:CreateMenu()
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Prismatic Barrier", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
-	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 10, min = 5, max = 50, step = 5 })	
-	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 3, min = 1, max = 5, step = 1 })
+	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 50, step = 5 })	
+	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 1, min = 1, max = 5, step = 1 })
 		
 	Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 5, step = 1 })	
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 		
 	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Combo Target Accuracy", value = 3, min = 1, max = 5, step = 1 })	
-	Menu.Skills.R:MenuElement({id = "Count", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast when spacebar held down", value = 2, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast when spacebar held down", value = 2, min = 1, max = 5, step = 1 })
+	
 	Menu.Skills.R:MenuElement({id = "Life", name = "Enemy Health", tooltip = "How low enemies must be to auto cast on them when they are immobile", value = 400, min = 100, max = 2000, step = 100 })	
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 		
@@ -1274,7 +1275,7 @@ function Lux:Tick()
 		self:AutoQ()		
 	end
 			
-	if Ready(_W) then
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		self:AutoW()
 	end
 	
