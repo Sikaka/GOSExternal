@@ -92,7 +92,8 @@ function IsAttacking()
 end
 
 function SpecialCast(key, pos)
-	if NextSpellCast > Game.Timer() then return end
+	if NextSpellCast > Game.Timer() then return end	
+	if pos and pos.x and not pos:To2D().onScreen then return end
 	
 	SetMovement(false)
 	if not pos then
@@ -1251,7 +1252,7 @@ function Lux:CreateMenu()
 	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 1, min = 1, max = 5, step = 1 })
 		
 	Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 5, step = 1 })	
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 		
 	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})
@@ -1354,25 +1355,7 @@ function Lux:AutoE()
 		
 		--Try to cast E or search for missile
 		local eData = myHero:GetSpellData(_E)
-		local deltaECastTime = Game.Timer() - eData.castTime
-		if not self:IsETraveling() and deltaECastTime < .25 then
-			for i = 1, Game.MissileCount() do
-				local missile = Game.Missile(i)			
-				if missile.name == "LuxLightStrikeKugel" and HPred:GetDistance(missile.pos, myHero.pos) < 400 then
-					eMissile = missile
-					break
-				end
-			end
-		elseif deltaECastTime < 5 then			
-			--Try to seach for particle
-			for i = 1, Game.ParticleCount() do 
-				local particle = Game.Particle(i)
-				if particle.name == "Lux_Base_E_tar_aoe_sound" then
-					eParticle = particle
-					break
-				end
-			end
-		else			
+		if eData.cd > 0 then		
 			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
 			if Menu.Skills.E.Auto:Value() and target and HPred:GetDistance(myHero.pos, aimPosition) <= E.Range and Menu.Skills.E.Auto:Value() and target.health <= Menu.Skills.R.Life:Value() then
 				SpecialCast(HK_E, aimPosition)
@@ -1382,7 +1365,29 @@ function Lux:AutoE()
 					SpecialCast(HK_E, aimPosition)
 				end
 			end
-		end	
+		else
+			local deltaECastTime = Game.Timer() - eData.castTime
+			if not self:IsETraveling() and deltaECastTime < .25 then
+				for i = 1, Game.MissileCount() do
+					local missile = Game.Missile(i)			
+					if missile.name == "LuxLightStrikeKugel" and HPred:GetDistance(missile.pos, myHero.pos) < 400 then
+						eMissile = missile
+						break
+					end
+				end
+			elseif deltaECastTime < 5 then			
+				--Try to seach for particle
+				for i = 1, Game.ParticleCount() do 
+					local particle = Game.Particle(i)
+					if particle.name == "Lux_Base_E_tar_aoe_sound" then
+						eParticle = particle
+						break
+					end
+				end
+			end
+		end
+		
+		
 	end	
 end
 
