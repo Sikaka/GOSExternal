@@ -25,11 +25,7 @@ function()
 	Menu.General:MenuElement({id = "DrawE", name = "Draw E Range", value = false})
 	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = false})
 	Menu.General:MenuElement({id = "SkillFrequency", name = "Skill Frequency", value = .3, min = .1, max = 1, step = .1})
-	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})	
-	
-	
-	Menu.General:MenuElement({id = "CustomCast", name = "Custom Spellcast", tooltip = "Turn this on if your skillshots fire wrong direction sometimes",  value = false})
-	
+	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})
 	Callback.Add("Draw", function() CoreDraw() end)
 end)
 
@@ -94,19 +90,11 @@ end
 function SpecialCast(key, pos)
 	if NextSpellCast > Game.Timer() then return end	
 	if pos and pos.x and not pos:To2D().onScreen then return end
-	
-	SetMovement(false)
-	if not pos then
-		Control.CastSpell(key)		
-	elseif not Menu.General.CustomCast:Value() then
-		Control.CastSpell(key, pos)
+	if  _G.SDK and _G.Control then
+		_G.Control.CastSpell(key, pos)
 	else
-		local _mousePos = mousePos
-		Control.SetCursorPos(pos)
-		DelayAction(function()Control.CastSpell(key, pos) end,.05)
-		DelayAction(function()Control.SetCursorPos(_mousePos) end,.1)
+		Control.CastSpell(key, pos)
 	end	
-	DelayAction(function()SetMovement(true) end,.1)
 	NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
 end
  	
@@ -567,7 +555,7 @@ function Brand:UpdateWWhiteList()
 end
 
 function Brand:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true or IsEvading() == true then return end
+	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
 
 	--Reliable spells cast even if combo key is NOT pressed and are the most likely to hit.
 	if Ready(_W) then
@@ -957,7 +945,7 @@ function Zilean:Draw()
 end
 
 function Zilean:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true  or IsEvading() == true then return end	
+	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Use Ult on Allies	
@@ -1134,7 +1122,7 @@ function Nami:Draw()
 end
 
 function Nami:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true  or IsEvading() == true then return end	
+	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Auto Bubble Immobile targets and unreliable targets if combo button held down
@@ -1266,10 +1254,12 @@ function Lux:CreateMenu()
 end
 
 function Lux:Draw()
+
+
 end
 
 function Lux:Tick()
-	if myHero.dead or Game.IsChatOpen() == true or IsRecalling() == true  or IsEvading() == true then return end	
+	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	if Ready(_Q) then
@@ -1287,6 +1277,8 @@ function Lux:Tick()
 	if Ready(_R) then
 		self:AutoR()
 	end
+	
+	UpdateAllyHealth()
 end
 
 function Lux:AutoQ()
@@ -1332,7 +1324,6 @@ function Lux:AutoW()
 	if #aimPositions > 0 then
 		SpecialCast(HK_W, aimPositions[1][1])
 	end
-	UpdateAllyHealth()
 end
 
 local eMissile
@@ -1714,9 +1705,11 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 		local t = Game.Hero(i)
 		if self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
-			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
-			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
-				targetCount = targetCount + 1
+			if predictedPos:To2D().onScreen then
+				local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
+				if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
+					targetCount = targetCount + 1
+				end
 			end
 		end
 	end
@@ -1730,7 +1723,7 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 		local t = Game.Hero(i)
 		if self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
 			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
-			if hitChance >= minimumHitChance then
+			if hitChance >= minimumHitChance and aimPosition:To2D().onScreen then
 				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
 			end
 		end
@@ -1829,7 +1822,7 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 		local t = Game.Hero(i)
 		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
 			local dashEndPosition = t:GetPath(1)
-			if self:GetDistance(source, dashEndPosition) <= range then				
+			if self:GetDistance(source, dashEndPosition) <= range  and dashEndPosition:To2D().onScreen then				
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
 				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
 				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
@@ -1849,14 +1842,16 @@ function HPred:GetHourglassTarget(source, range, delay, speed, timingAccuracy, c
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		local success, timeRemaining = self:HasBuff(t, "zhonyasringshield")
-		if success and t.isEnemy then
-			local spellInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
-			local deltaInterceptTime = spellInterceptTime - timeRemaining
-			if spellInterceptTime > timeRemaining and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
-				target = t
-				aimPosition = t.pos
-				return target, aimPosition
+		if t.isEnemy and t.pos:To2D().onScreen then		
+			local success, timeRemaining = self:HasBuff(t, "zhonyasringshield")
+			if success then
+				local spellInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
+				local deltaInterceptTime = spellInterceptTime - timeRemaining
+				if spellInterceptTime > timeRemaining and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
+					target = t
+					aimPosition = t.pos
+					return target, aimPosition
+				end
 			end
 		end
 	end
@@ -1866,7 +1861,7 @@ function HPred:GetRevivingTarget(source, range, delay, speed, timingAccuracy, ch
 	local target
 	local aimPosition
 	for _, revive in pairs(_cachedRevives) do	
-		if revive.isEnemy then
+		if revive.isEnemy and revive.pos:To2D().onScreen then
 			local interceptTime = self:GetSpellInterceptTime(source, revive.pos, delay, speed)
 			if interceptTime > revive.expireTime - Game.Timer() and interceptTime - revive.expireTime - Game.Timer() < timingAccuracy then
 				target = self:GetEnemyByName(revive.owner)
@@ -1886,14 +1881,14 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 			local windupRemaining = t.activeSpell.startTime + t.activeSpell.windup - Game.Timer()
 			if windupRemaining > 0 then
 				local endPos
-				local range = _blinkSpellLookupTable[t.activeSpell.name]
-				if type(range) == "table" then
+				local blinkRange = _blinkSpellLookupTable[t.activeSpell.name]
+				if type(blinkRange) == "table" then
 					--Find the nearest matching particle to our mouse
-					local target, distance = self:GetNearestParticleByNames(t.pos, range)
+					local target, distance = self:GetNearestParticleByNames(t.pos, blinkRange)
 					if target and distance < 250 then					
 						endPos = target.pos		
 					end
-				elseif range > 0 then
+				elseif blinkRange > 0 then
 					endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)					
 					endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * math.min(self:GetDistance(t.activeSpell.startPos,endPos), range)
 				else
@@ -1902,15 +1897,15 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 						local offsetDirection						
 						
 						--We will land in front of our target relative to our starting position
-						if range == 0 then						
+						if blinkRange == 0 then						
 							offsetDirection = (blinkTarget.pos - t.pos):Normalized()
 						--We will land behind our target relative to our starting position
-						elseif range == -1 then						
+						elseif blinkRange == -1 then						
 							offsetDirection = (t.pos-blinkTarget.pos):Normalized()
 						--They can choose which side of target to come out on , there is no way currently to read this data so we will only use this calculation if the spell radius is large
-						elseif range == -255 then
+						elseif blinkRange == -255 then
 							if radius > 250 then
-									endPos = blinkTarget.pos
+								endPos = blinkTarget.pos
 							end							
 						end
 						
@@ -1923,7 +1918,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 				
 				local interceptTime = self:GetSpellInterceptTime(myHero.pos, endPos, delay,speed)
 				local deltaInterceptTime = interceptTime - windupRemaining
-				if  deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, endPos, delay, speed, radius)) then
+				if self:GetDistance(source, endPos) <= range and endPos:To2D().onScreen and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, endPos, delay, speed, radius)) then
 					target = t
 					aimPosition = endPos
 					return target,aimPosition					
@@ -1938,7 +1933,7 @@ function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radiu
 	local aimPosition
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if particle and _blinkLookupTable[particle.name] and self:GetDistance(source, particle.pos) < range then
+		if particle and _blinkLookupTable[particle.name] and self:GetDistance(source, particle.pos) < range and particle.pos:To2D().onScreen then
 			local pPos = particle.pos
 			for k,v in pairs(self:GetEnemyHeroes()) do
 				local t = v
@@ -1960,7 +1955,7 @@ function HPred:GetChannelingTarget(source, range, delay, speed, timingAccuracy, 
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
 		local interceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
-		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
+		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and t.pos:To2D().onScreen and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
 			target = t
 			aimPosition = t.pos	
 			return target, aimPosition
@@ -1973,7 +1968,7 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range then
+		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and t.pos:To2D().onScreen then
 			local immobileTime = self:GetImmobileTime(t)
 			
 			local interceptTime = self:GetSpellInterceptTime(source, t.pos, delay, speed)
@@ -1992,7 +1987,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 	--Get enemies who are teleporting to towers
 	for i = 1, Game.TurretCount() do
 		local turret = Game.Turret(i);
-		if turret.isEnemy and self:GetDistance(source, turret.pos) <= range then
+		if turret.isEnemy and self:GetDistance(source, turret.pos) <= range and turret.pos:To2D().onScreen then
 			local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
 			if hasBuff then
 				local interceptPosition = self:GetTeleportOffset(turret.pos,223.31)
@@ -2010,7 +2005,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		if ward.isEnemy and self:GetDistance(source, ward.pos) <= range then
+		if ward.isEnemy and self:GetDistance(source, ward.pos) <= range and ward.pos:To2D().onScreen then
 			local hasBuff, expiresAt = self:HasBuff(ward, "teleport_target")
 			if hasBuff then
 				local interceptPosition = self:GetTeleportOffset(ward.pos,100.01)
@@ -2027,7 +2022,7 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 	--Get enemies who are teleporting to minions
 	for i = 1, Game.MinionCount() do
 		local minion = Game.Minion(i);
-		if minion.isEnemy and self:GetDistance(source, minion.pos) <= range then
+		if minion.isEnemy and self:GetDistance(source, minion.pos) <= range and minion.pos:To2D().onScreen then
 			local hasBuff, expiresAt = self:HasBuff(minion, "teleport_target")
 			if hasBuff then	
 				local interceptPosition = self:GetTeleportOffset(minion.pos,143.25)
