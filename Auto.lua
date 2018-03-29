@@ -1399,8 +1399,9 @@ local eParticle
 function Lux:IsETraveling()
 	return eMissile and eMissile.name and eMissile.name == "LuxLightStrikeKugel"
 end
+
 function Lux:IsELanded()
-	return eParticle and eParticle.name and eParticle.name == "Lux_Base_E_tar_aoe_sound"
+	return eParticle and eParticle.name and string.match(eParticle.name, "E_tar_aoe_sound")
 end
 
 function Lux:AutoE()
