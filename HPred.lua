@@ -272,8 +272,8 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
 				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
 				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
-				local deltaInterceptTime = math.abs(skillInterceptTime - dashTimeRemaining)
-				if deltaInterceptTime < dashThreshold and (not checkCollision or not self:CheckMinionCollision(source, dashEndPosition, delay, speed, radius)) then
+				local deltaInterceptTime =skillInterceptTime - dashTimeRemaining
+				if deltaInterceptTime > 0 and deltaInterceptTime < dashThreshold and (not checkCollision or not self:CheckMinionCollision(source, dashEndPosition, delay, speed, radius)) then
 					target = t
 					aimPosition = dashEndPosition
 					return target, aimPosition

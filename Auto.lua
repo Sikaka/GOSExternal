@@ -1663,7 +1663,6 @@ function Lulu:CreateMenu()
 			Menu.Skills.E.Targets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
 		end
 	end
-	Menu.Skills.E:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 50, step = 5 })
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	
@@ -1720,7 +1719,9 @@ function Lulu:Tick()
 		if Menu.Skills.E.Killsteal:Value() then
 			self:KillstealE()
 		end
-		self:BuffE()
+		if CurrentPCtMana(myHero) >= Menu.Skills.E.Mana:Value() then
+			self:BuffE()
+		end
 	end
 	
 	if Ready(_Q) then
@@ -1738,7 +1739,7 @@ end
 
 function Lulu:AutoQ()
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
-	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range and Menu.Skills.Q.Auto:Value() then
+	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 		SpecialCast(HK_Q, aimPosition)		
 	elseif Menu.Skills.Combo:Value() then
 		--Don't unreliable max range Qs, they will almost never hit...
@@ -1808,6 +1809,7 @@ function Lulu:AutoR()
 		end
 	end
 end
+
 
 
 class "HPred"
@@ -2082,7 +2084,7 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
 				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
 				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
-				local deltaInterceptTime = skillInterceptTime - dashTimeRemaining
+				local deltaInterceptTime =skillInterceptTime - dashTimeRemaining
 				if deltaInterceptTime > 0 and deltaInterceptTime < dashThreshold and (not checkCollision or not self:CheckMinionCollision(source, dashEndPosition, delay, speed, radius)) then
 					target = t
 					aimPosition = dashEndPosition
