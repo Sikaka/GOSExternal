@@ -1012,6 +1012,8 @@ function Zilean:StunCombo(target, aimPosition)
 		Control.CastSpell(HK_E, target)
 	end
 	
+	
+	print("Casting Combo")
 	--Try spam casting it for the hell of it
 	Control.CastSpell(HK_Q, aimPosition)
 	DelayAction(function()Control.CastSpell(HK_Q, aimPosition) end,.10)
@@ -1221,7 +1223,7 @@ function Lux:__init()
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Lux:LoadSpells()
-	Q = {Range = 1175, Width = 60,Delay = 0.25, Speed = 1200, Collision = true}
+	Q = {Range = 1175, Width = 50,Delay = 0.25, Speed = 1200, Collision = true}
 	W = {Range = 1075, Width = 120,Delay = 0.25, Speed = 1400}
 	E = {Range = 1000, Width = 350,Delay = 0.25, Speed = 1300}
 	R = {Range = 3340,Width = 115, Delay = 1, Speed = math.huge}
@@ -1243,19 +1245,39 @@ function Lux:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 		
-	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Combo Target Accuracy", value = 3, min = 1, max = 5, step = 1 })	
-	Menu.Skills.R:MenuElement({id = "Count", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast when spacebar held down", value = 2, min = 1, max = 5, step = 1 })
-	
-	Menu.Skills.R:MenuElement({id = "Life", name = "Enemy Health", tooltip = "How low enemies must be to auto cast on them when they are immobile", value = 400, min = 100, max = 2000, step = 100 })	
-	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
+	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", tooltip = "How many targets we need to be able to hit to auto cast", value = 2, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Target Count", value = true, toggle = true })
+	Menu.Skills.R:MenuElement({id = "Killsteal", name = "Auto Killsteal", value = true, toggle = true })
 		
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
 
 function Lux:Draw()
+	
+end
 
-
+function Lux:PrintDebugSpells()
+local count = 0
+	for i = 1, Game.MissileCount() do
+		local missile = Game.Missile(i)	
+		local dist =  HPred:GetDistance(missile.pos, myHero.pos)
+		if dist > 100 and dist < 800 then
+			count = count + 1
+			local screenPos = missile.pos:To2D()
+			Draw.Text(missile.name, 13, screenPos.x, screenPos.y+ count * 15)
+		end
+	end
+	local count = 0
+	for i = 1, Game.ParticleCount() do
+		local particle = Game.Particle(i)		
+		local dist =  HPred:GetDistance(particle.pos, myHero.pos)
+		if dist > 100 and dist < 800 then
+			count = count + 1
+			local screenPos = particle.pos:To2D()
+			Draw.Text(particle.name, 13, screenPos.x, screenPos.y + count * 15)
+		end
+	end
 end
 
 function Lux:Tick()
@@ -1286,7 +1308,8 @@ function Lux:AutoQ()
 	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range and Menu.Skills.Q.Auto:Value() then
 		SpecialCast(HK_Q, aimPosition)		
 	elseif Menu.Skills.Combo:Value() then
-		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),nil)	
+		--Don't unreliable max range Qs, they will almost never hit...
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range* 2 / 3, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),nil)	
 		if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 			SpecialCast(HK_Q, aimPosition)
 		end	
@@ -1348,7 +1371,7 @@ function Lux:AutoE()
 		local eData = myHero:GetSpellData(_E)
 		if eData.cd > 0 then		
 			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
-			if Menu.Skills.E.Auto:Value() and target and HPred:GetDistance(myHero.pos, aimPosition) <= E.Range and Menu.Skills.E.Auto:Value() and target.health <= Menu.Skills.R.Life:Value() then
+			if Menu.Skills.E.Auto:Value() and target and HPred:GetDistance(myHero.pos, aimPosition) <= E.Range and Menu.Skills.E.Auto:Value() then
 				SpecialCast(HK_E, aimPosition)
 			elseif Menu.Skills.Combo:Value() then					
 				local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, E.Range, E.Delay, E.Speed, E.Width, E.Collision, Menu.Skills.E.Accuracy:Value(),nil)
@@ -1384,21 +1407,20 @@ end
 
 function Lux:AutoR()
 
-	local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, R.Range, R.Delay, R.Speed, R.Width, R.Collision, Menu.Skills.R.Accuracy:Value(),nil)
-	if hitRate then	
-		local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, R.Delay, R.Speed, R.Width, false)
-		if targetCount >= Menu.Skills.R.Count:Value() then
-			SpecialCast(HK_R, aimPosition)
-		end
-	end
-	
-	
+	local rDamage= 300 + (myHero:GetSpellData(_R).level -1) * 100 + myHero.ap * 0.75
+	--If the target is a near guarenteed hit then count how many targets it will hit: If enough targets are likely then cast regardless of health
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
-	if target and HPred:GetDistance(myHero.pos, aimPosition) <= R.Range and Menu.Skills.R.Auto:Value() and target.health <= Menu.Skills.R.Life:Value() then
-
-		--Set the aim position to be closer to our character/mouse so that we could try to aim from offscreen
-		SpecialCast(HK_R, aimPosition)
-	end
+	if target and HPred:GetDistance(myHero.pos, aimPosition) <= R.Range then
+		if Menu.Skills.R.Killsteal:Value() and AutoUtil:CalculateMagicDamage(target, rDamage) >= target.health then
+			SpecialCast(HK_R, aimPosition)
+		elseif Menu.Skills.R.Auto:Value() then
+			local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, R.Delay, R.Speed, R.Width, false)
+			print(targetCount)
+			if targetCount >= Menu.Skills.R.Count:Value() then
+				SpecialCast(HK_R, aimPosition)
+			end
+		end
+	end	
 end
 
 class "Blitzcrank" 
