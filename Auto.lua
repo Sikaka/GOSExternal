@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -27,8 +27,27 @@ function()
 	Menu.General:MenuElement({id = "SkillFrequency", name = "Skill Frequency", value = .3, min = .1, max = 1, step = .1})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})
 	Callback.Add("Draw", function() CoreDraw() end)
+	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end)
 
+
+function WndMsg(msg,key)
+	if msg == 513 then
+		local starget = nil
+		for i  = 1,Game.HeroCount(i) do
+			local enemy = Game.Hero(i)
+			if enemy.alive and enemy.isEnemy and HPred:GetDistance(mousePos, enemy.pos) < 250 then
+				starget = enemy
+				break
+			end
+		end
+		if starget then
+			forcedTarget = starget
+		else
+			forcedTarget = nil
+		end
+	end	
+end
 
 local isLoaded = false
 function TryLoad()
@@ -297,6 +316,17 @@ function AutoUtil:NearestEnemy(entity)
 		end
 	end
 	return distance, enemy
+end
+
+function AutoUtil:CountEnemiesNear(origin, range)
+	local count = 0
+	for i  = 1,Game.HeroCount(i) do
+		local enemy = Game.Hero(i)
+		if HPred:CanTarget(enemy) and AutoUtil:GetDistance(origin, enemy.pos) <= range then
+			count = count + 1
+		end			
+	end
+	return count
 end
 
 function AutoUtil:GetItemSlot(id)
@@ -582,11 +612,15 @@ function Brand:Tick()
 		if Ready(_Q) then		
 			self:UnreliableQ(Menu.Skills.Q.AccuracyCombo:Value())
 		end
+		if Ready(_R) then
+			self:AutoR()
+		end
 	else	
 		if Ready(_Q) then		
 			self:UnreliableQ(Menu.Skills.Q.AccuracyAuto:Value())
 		end
 	end
+	
 	
 	
 end
@@ -642,6 +676,19 @@ function Brand:ReliableE()
 			--TODO: Sort targets by priority and health (KS then priority list)
 			SpecialCast(HK_E, Hero.pos)
 			break
+		end
+	end
+end
+
+function Brand:AutoR()	
+	for i  = 1,Game.HeroCount(i) do
+		local enemy = Game.Hero(i)
+		if HPred:CanTarget(enemy) and HPred:HasBuff(enemy, "BrandAblaze") and HPred:GetDistance(myHero.pos, enemy.pos) <= R.Range then			
+			local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, 600)
+			if targetCount >= Menu.Skills.R.Count:Value() then
+				SpecialCast(HK_R, enemy.pos)
+				break				
+			end
 		end
 	end
 end
@@ -1238,7 +1285,7 @@ function Lux:CreateMenu()
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Prismatic Barrier", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
-	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 50, step = 5 })	
+	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 50, step = 5 })
 	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 1, min = 1, max = 5, step = 1 })
 		
 	Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
@@ -1254,7 +1301,6 @@ function Lux:CreateMenu()
 end
 
 function Lux:Draw()
-	
 end
 
 function Lux:PrintDebugSpells()
@@ -1393,7 +1439,7 @@ function Lux:AutoE()
 				--Try to seach for particle
 				for i = 1, Game.ParticleCount() do 
 					local particle = Game.Particle(i)
-					if particle.name == "Lux_Base_E_tar_aoe_sound" then
+					if string.find(particle.name, "E_tar_aoe_sound") then
 						eParticle = particle
 						break
 					end
@@ -1406,16 +1452,20 @@ function Lux:AutoE()
 end
 
 function Lux:AutoR()
-
 	local rDamage= 300 + (myHero:GetSpellData(_R).level -1) * 100 + myHero.ap * 0.75
+	--Check if the target has passive on them because that will deal extra damage
 	--If the target is a near guarenteed hit then count how many targets it will hit: If enough targets are likely then cast regardless of health
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
 	if target and HPred:GetDistance(myHero.pos, aimPosition) <= R.Range then
-		if Menu.Skills.R.Killsteal:Value() and AutoUtil:CalculateMagicDamage(target, rDamage) >= target.health then
+		local thisRDamage = rDamage
+		if HPred:HasBuff(target, "LuxIlluminatingFraulein",1) then
+			thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
+		end
+		
+		if Menu.Skills.R.Killsteal:Value() and AutoUtil:CalculateMagicDamage(target, thisRDamage) >= target.health then
 			SpecialCast(HK_R, aimPosition)
 		elseif Menu.Skills.R.Auto:Value() then
 			local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, R.Delay, R.Speed, R.Width, false)
-			print(targetCount)
 			if targetCount >= Menu.Skills.R.Count:Value() then
 				SpecialCast(HK_R, aimPosition)
 			end
@@ -1527,7 +1577,7 @@ function Blitzcrank:Tick()
 			Control.CastSpell(HK_R)
 		end
 		
-		local targetCount = self:REnemyCount()
+		local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, R.Range)
 		if targetCount >= Menu.Skills.R.Count:Value() or (Menu.Skills.R.KS:Value() and self:CanRKillsteal())then
 			Control.CastSpell(HK_R)
 		NextSpellCast = .35 + Game.Timer()
@@ -1548,16 +1598,6 @@ function Blitzcrank:AutoE()
 	end
 end
 
-function Blitzcrank:REnemyCount()
-	local count = 0
-	for i  = 1,Game.HeroCount(i) do
-		local enemy = Game.Hero(i)
-		if HPred:CanTarget(enemy) and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= R.Range then
-			count = count + 1
-		end			
-	end
-	return count
-end
 
 
 function Blitzcrank:CanRKillsteal()
@@ -1574,6 +1614,200 @@ function Blitzcrank:CanRKillsteal()
 end
 
 
+class "Lulu" 
+function Lulu:__init()
+
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Lulu:CreateMenu()
+
+	AutoUtil:SupportMenu(Menu)
+	
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	if AutoUtil:GetExhaust() then
+		Menu.Skills:MenuElement({id = "Exhaust", name = "Exhaust", type = MENU})	
+		Menu.Skills.Exhaust:MenuElement({id ="Targets", name ="Target List", type = MENU})
+		for i = 1, Game.HeroCount() do
+			local hero = Game.Hero(i)
+			if hero.isEnemy then
+				Menu.Skills.Exhaust.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+			end
+		end
+		Menu.Skills.Exhaust:MenuElement({id = "Health", tooltip ="How low health allies must be to use exhaust", name = "Ally Health", value = 40, min = 1, max = 100, step = 5 })	
+		Menu.Skills.Exhaust:MenuElement({id = "Radius", tooltip ="How close targets must be to allies to use exhaust", name = "Peel Distance", value = 200, min = 100, max = 1000, step = 25 })
+		Menu.Skills.Exhaust:MenuElement({id="Enabled", name="Enabled", value = false})	
+	end
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Glitterlance", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Immobile", name = "Cast On Immobile", value = true})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+		
+	Menu.Skills:MenuElement({id = "W", name = "[E] Whimsy", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Life", name = "Peel Life", value = 75, min = 0, max = 100, step = 5 })
+	Menu.Skills.W:MenuElement({id = "Range", name = "Peel Radius", value = 300, min = 100, max = 800, step = 50 })
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Help, Pix!", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Killsteal", name = "Killsteal", value = true})
+	Menu.Skills.E:MenuElement({id = "Targets", name = "Buff Ally List", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly and Hero ~= myHero then
+			Menu.Skills.E.Targets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		end
+	end
+	Menu.Skills.E:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 50, step = 5 })
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] Wild Growth", type = MENU})	
+	Menu.Skills.R:MenuElement({id = "PeelTargets", name = "Ally Peel List", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly then
+			Menu.Skills.R.PeelTargets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		end
+	end
+	Menu.Skills.R:MenuElement({id = "Life", name = "Current Percent Life", value = 25, min = 0, max = 100, step = 5 })
+	Menu.Skills.R:MenuElement({id = "Damage", name = "Recent Damage Received", value = 25, min = 5, max = 50, step = 5 })
+	
+	
+	Menu.Skills.R:MenuElement({id = "KnockupTargets", name = "Ally Knockup List", type = MENU})
+	for i = 1, Game.HeroCount() do
+		local Hero = Game.Hero(i)
+		if Hero.isAlly then
+			Menu.Skills.R.KnockupTargets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		end
+	end
+	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 2, min = 1, max = 5, step = 1 })		
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+end
+
+function Lulu:LoadSpells()
+	Q = {Range = 925, Width = 45,Delay = 0.25, Speed = 1500}
+	W = {Range = 650, Delay = 0.25, Speed = 1600}
+	E = {Range = 650, Delay = 0.25, Speed = math.huge}	
+	R = {Range = 900, Width = 400, Delay = 0.25, Speed = math.huge}
+end
+
+function Lulu:Draw()
+end
+
+function Lulu:Tick()
+	if IsRecalling() then return end	
+	if NextSpellCast > Game.Timer() then return end
+	
+	--Use ult to save ally or knockup enemy
+	if Ready(_R) then
+		self:AutoR()
+	end
+	
+	--Try to peel for allies using polymorph
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+		self:AutoW()
+	end	
+	
+	--Try to killsteal with E
+	if Ready(_E) then
+		if Menu.Skills.E.Killsteal:Value() then
+			self:KillstealE()
+		end
+		self:BuffE()
+	end
+	
+	if Ready(_Q) then
+		self:AutoQ()
+	end
+	
+	--Use Support Items
+	AutoUtil:UseSupportItems()
+	
+	--Use Exhaust if we have it
+	if Menu.Skills.Exhaust and Menu.Skills.Exhaust.Enabled:Value() then
+		AutoUtil.AutoExhaust()
+	end
+end
+
+function Lulu:AutoQ()
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+	if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range and Menu.Skills.Q.Auto:Value() then
+		SpecialCast(HK_Q, aimPosition)		
+	elseif Menu.Skills.Combo:Value() then
+		--Don't unreliable max range Qs, they will almost never hit...
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range* 2 / 3, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),nil)	
+		if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
+			SpecialCast(HK_Q, aimPosition)
+		end	
+	end
+end
+
+function Lulu:AutoW()
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if HPred:CanTarget(enemy) and HPred:GetDistance(myHero.pos, enemy.pos) <= W.Range then	
+			local nearestAlly = AutoUtil:GetNearestAlly(enemy, Menu.Skills.W.Range:Value())
+			if nearestAlly and Menu.Skills.W.Life:Value() >= CurrentPctLife(nearestAlly) then
+				SpecialCast(HK_W, enemy)
+			end
+		end
+	end		
+end
+
+function Lulu:BuffE()
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if  hero.isAlly and hero.isTargetable and hero.alive and AutoUtil:GetDistance(myHero.pos, hero.pos) <= E.Range and Menu.Skills.E.Targets[hero.charName] and Menu.Skills.E.Targets[hero.charName]:Value() then			
+			local targetHandle = nil			
+			if hero.activeSpell and hero.activeSpell.valid and hero.activeSpell.target then
+				targetHandle = hero.activeSpell.target
+			end			
+			if targetHandle then 		
+				local Enemy = GetHeroByHandle(targetHandle)
+				if Enemy and Enemy.isEnemy then
+					SpecialCast(HK_E, hero)
+				end
+			end
+		end
+	end
+end
+
+function Lulu:KillstealE()
+	local eDamage= 80 + (myHero:GetSpellData(_R).level -1) * 30 + myHero.ap * 0.4
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if HPred:CanTarget(enemy) and HPred:GetDistance(myHero.pos, enemy.pos) <= E.Range and AutoUtil:CalculateMagicDamage(enemy, eDamage) >= enemy.health then
+			SpecialCast(HK_E, enemy)			
+		end
+	end
+end
+
+function Lulu:AutoR()
+	for i = 1, Game.HeroCount() do
+		local ally = Game.Hero(i)
+		if ally.isAlly and HPred:CanTargetALL(ally) and HPred:GetDistance(myHero.pos, ally.pos) <= R.Range then
+			if Menu.Skills.R.KnockupTargets[ally.charName] and Menu.Skills.R.KnockupTargets[ally.charName]:Value() then		
+				local targetCount = AutoUtil:CountEnemiesNear(ally.pos, R.Width)
+				if targetCount >= Menu.Skills.R.Count:Value() then
+					SpecialCast(HK_R, ally)
+				end
+			end
+			if Menu.Skills.R.PeelTargets[ally.charName] and Menu.Skills.R.PeelTargets[ally.charName]:Value() and CurrentPctLife(ally) <= Menu.Skills.R.Life:Value() then
+				local deltaLifeLost = _allyHealthPercentage[ally.charName] - CurrentPctLife(ally)
+				if deltaLifeLost >= Menu.Skills.Damage:Value() then
+					SpecialCast(HK_R, ally)
+				end
+			end
+		end
+	end
+end
 
 
 class "HPred"
@@ -1848,8 +2082,8 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
 				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
 				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
-				local deltaInterceptTime = math.abs(skillInterceptTime - dashTimeRemaining)
-				if deltaInterceptTime < dashThreshold and (not checkCollision or not self:CheckMinionCollision(source, dashEndPosition, delay, speed, radius)) then
+				local deltaInterceptTime = skillInterceptTime - dashTimeRemaining
+				if deltaInterceptTime > 0 and deltaInterceptTime < dashThreshold and (not checkCollision or not self:CheckMinionCollision(source, dashEndPosition, delay, speed, radius)) then
 					target = t
 					aimPosition = dashEndPosition
 					return target, aimPosition
