@@ -1338,9 +1338,7 @@ function Lux:Tick()
 		self:AutoW()
 	end
 	
-	if Ready(_E) then
-		self:AutoE()
-	end
+	self:AutoE()
 			
 	if Ready(_R) then
 		self:AutoR()
@@ -1411,23 +1409,12 @@ function Lux:AutoE()
 		if AutoUtil:NearestEnemy(eParticle) < E.Width  then	
 			SpecialCast(HK_E)
 		end		
-	else
-		
+	else		
 		--Try to cast E or search for missile
 		local eData = myHero:GetSpellData(_E)
-		if eData.cd > 0 then		
-			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
-			if Menu.Skills.E.Auto:Value() and target and HPred:GetDistance(myHero.pos, aimPosition) <= E.Range and Menu.Skills.E.Auto:Value() then
-				SpecialCast(HK_E, aimPosition)
-			elseif Menu.Skills.Combo:Value() then					
-				local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, E.Range, E.Delay, E.Speed, E.Width, E.Collision, Menu.Skills.E.Accuracy:Value(),nil)
-				if hitRate then
-					SpecialCast(HK_E, aimPosition)
-				end
-			end
-		else
-			local deltaECastTime = Game.Timer() - eData.castTime
-			if not self:IsETraveling() and deltaECastTime < .25 then
+		if eData.toggleState == 1 then
+			--Check if we have the particle or not
+			if not self:IsETraveling() then
 				for i = 1, Game.MissileCount() do
 					local missile = Game.Missile(i)			
 					if missile.name == "LuxLightStrikeKugel" and HPred:GetDistance(missile.pos, myHero.pos) < 400 then
@@ -1435,19 +1422,28 @@ function Lux:AutoE()
 						break
 					end
 				end
-			elseif deltaECastTime < 5 then			
-				--Try to seach for particle
-				for i = 1, Game.ParticleCount() do 
-					local particle = Game.Particle(i)
-					if string.find(particle.name, "E_tar_aoe_sound") then
-						eParticle = particle
-						break
-					end
+			end
+		elseif eData.toggleState == 2 then		
+			for i = 1, Game.ParticleCount() do 
+				local particle = Game.Particle(i)
+				if string.match(particle.name, "E_tar_aoe_sound") then
+					eParticle = particle
+					break
+				end
+			end			
+		elseif Ready(_E) then
+			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
+			if Menu.Skills.E.Auto:Value() and target and HPred:GetDistance(myHero.pos, aimPosition) <= E.Range then
+				SpecialCast(HK_E, aimPosition)
+				eMissile = nil
+			elseif Menu.Skills.Combo:Value() then					
+				local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, E.Range, E.Delay, E.Speed, E.Width, E.Collision, Menu.Skills.E.Accuracy:Value(),nil)
+				if hitRate then
+					SpecialCast(HK_E, aimPosition)
+					eMissile = nil
 				end
 			end
 		end
-		
-		
 	end	
 end
 
