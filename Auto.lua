@@ -1862,7 +1862,7 @@ function MissFortune:Tick()
 		self:AutoQ()
 	end
 	
-	if Ready(_E) CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 		self:AutoE()
 	end
 end
