@@ -1899,7 +1899,7 @@ function MissFortune:AutoQ()
 	if (Menu.Skills.Q.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value()) or Menu.Skills.Combo:Value() then
 		for i = 1, Game.MinionCount() do
 			local t = Game.Minion(i)
-			if HPred:GetDistance(myHero.pos, t.pos) < Q.Range + t.boundingRadius and HPred:CanTarget(t) then --and (Menu.Skills.Combo:Value() or self:GetQDamage(t) >= t.health) then
+			if HPred:GetDistance(myHero.pos, t.pos) < Q.Range + t.boundingRadius and HPred:CanTarget(t) and (Menu.Skills.Combo:Value() or self:GetQDamage(t) >= t.health) then
 				local bounceTarget = self:GetQBounce(t)
 				if bounceTarget and HPred:CanTarget(bounceTarget) and string.match(bounceTarget.type, "Hero") then
 					SpecialCast(HK_Q, t)
