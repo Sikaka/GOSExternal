@@ -739,7 +739,6 @@ function Velkoz:GetStasisTarget(source, range, delay, speed, timingAccuracy)
 					local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, ward.pos, delay, speed)
 					if Buff.duration < skillInterceptTime and skillInterceptTime - Buff.duration < timingAccuracy then
 						--Return a dummy target to hit. We wont be checking their distance, only that they are a valid person to attack. Means less re-writes elsewhere
-						print("TELEPORT WARD")
 						return ward, ward.pos
 					end
 				end
@@ -757,7 +756,6 @@ function Velkoz:GetStasisTarget(source, range, delay, speed, timingAccuracy)
 					local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, minion.pos, delay, speed)
 					if Buff.duration < skillInterceptTime and skillInterceptTime - Buff.duration < timingAccuracy then
 						--Return a dummy target to hit. We wont be checking their distance, only that they are a valid person to attack. Means less re-writes elsewhere
-						print("TELEPORT MINION")
 						return minion, minion.pos
 					end
 				end
@@ -802,7 +800,7 @@ function Velkoz:GetInteruptTarget(source, range, delay, speed, timingAccuracy)
 				local deltaInterceptTime = math.abs(skillInterceptTime - dashTimeRemaining)
 				if deltaInterceptTime < timingAccuracy then
 					target = t
-					aimPosition = enemy.pathing.endPos
+					aimPosition = t.pathing.endPos
 					return target, aimPosition
 				end
 			end			
