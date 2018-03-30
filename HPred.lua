@@ -650,7 +650,7 @@ function HPred:GetObjectByHandle(handle)
 	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		if minion.ward == handle then
+		if ward.handle == handle then
 			target = ward
 			return target
 		end
@@ -658,8 +658,8 @@ function HPred:GetObjectByHandle(handle)
 	
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if particle.ward == handle then
-			target = ward
+		if particle.handle == handle then
+			target = particle
 			return target
 		end
 	end

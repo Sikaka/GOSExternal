@@ -492,7 +492,7 @@ function AutoUtil:AutoExhaust()
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
 		--It's an enemy who is within exhaust range and is toggled ON in ExhaustList
-		if enemy.isEnemy and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= 600 + enemy.boundingRadius and isValidTarget(enemy, 650) and Menu.Skills.Exhaust.Targets[enemy.charName] and Menu.Skills.Exhaust.Targets[enemy.charName]:Value() then
+		if enemy.isEnemy and AutoUtil:GetDistance(myHero.pos, enemy.pos) <= 600 + enemy.boundingRadius and HPred:CanTarget(enemy, 650) and Menu.Skills.Exhaust.Targets[enemy.charName] and Menu.Skills.Exhaust.Targets[enemy.charName]:Value() then
 			for allyIndex = 1, Game.HeroCount() do
 				local ally = Game.Hero(allyIndex)
 				if ally.isAlly and ally.alive and AutoUtil:GetDistance(enemy.pos, ally.pos) <= Menu.Skills.Exhaust.Radius:Value() and CurrentPctLife(ally) <= Menu.Skills.Exhaust.Health:Value() then
@@ -2459,7 +2459,7 @@ function HPred:GetObjectByHandle(handle)
 	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		if minion.ward == handle then
+		if ward.handle == handle then
 			target = ward
 			return target
 		end
@@ -2467,12 +2467,13 @@ function HPred:GetObjectByHandle(handle)
 	
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if particle.ward == handle then
-			target = ward
+		if particle.handle == handle then
+			target = particle
 			return target
 		end
 	end
 end
+
 
 function HPred:GetEnemyHeroByHandle(handle)	
 	local target
