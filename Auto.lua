@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -34,11 +34,12 @@ end)
 function WndMsg(msg,key)
 	if msg == 513 then
 		local starget = nil
+		local dist = 250
 		for i  = 1,Game.HeroCount(i) do
 			local enemy = Game.Hero(i)
-			if enemy.alive and enemy.isEnemy and HPred:GetDistance(mousePos, enemy.pos) < 250 then
+			if enemy.alive and enemy.isEnemy and HPred:GetDistance(mousePos, enemy.pos) < dist then
 				starget = enemy
-				break
+				dist = HPred:GetDistance(mousePos, enemy.pos)
 			end
 		end
 		if starget then
@@ -272,6 +273,16 @@ end
 
 function AutoUtil:GetDistance(p1, p2)
 	return math.sqrt(self:GetDistanceSqr(p1, p2))
+end
+
+function AutoUtil:CalculatePhysicalDamage(target, damage)			
+	local targetArmor = target.armor * myHero.armorPenPercent - myHero.armorPen
+	local damageReduction = 100 / ( 100 + targetArmor)
+	if targetArmor < 0 then
+		damageReduction = 2 - (100 / (100 - targetArmor))
+	end		
+	damage = damage * damageReduction	
+	return damage
 end
 
 function AutoUtil:CalculateMagicDamage(target, damage)			
@@ -1807,7 +1818,172 @@ function Lulu:AutoR()
 	end
 end
 
+class "MissFortune" 
+function MissFortune:__init()
 
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function MissFortune:CreateMenu()
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Double Up", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Minion Crit Bounce", value = true})
+	Menu.Skills.Q:MenuElement({id = "Hero", name = "Auto 2X Hero Bounce", value = true})
+	Menu.Skills.Q:MenuElement({id = "Killsteal", name = "Killsteal", value = true})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Make it Rain", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Cast on Immobile Targets", value = true})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 20, min = 5, max = 100, step = 5 })
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+end
+
+function MissFortune:LoadSpells()
+	Q = {Range = 650, Delay = .25, Speed = 1800}
+	E = {Range = 1000, Delay = .5, Width = 400}
+end
+
+function MissFortune:Draw()
+end
+
+function MissFortune:Tick()
+	if IsRecalling() then return end	
+	if NextSpellCast > Game.Timer() then return end
+	if self:IsRActive() then return end
+	
+	self:FindPassiveMark()
+	
+	if Ready(_Q) then
+		self:AutoQ()
+	end
+	
+	if Ready(_E) CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		self:AutoE()
+	end
+end
+
+function MissFortune:IsRActive()
+	return myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name =="MissFortuneBulletTime"
+end
+
+function MissFortune:AutoQ()
+	--Search for players we can kill
+	if Menu.Skills.Q.Killsteal:Value() then
+		for i = 1, Game.HeroCount() do
+			local t = Game.Hero(i)
+			if HPred:GetDistance(myHero.pos, t.pos) < Q.Range + t.boundingRadius and HPred:CanTarget(t) and self:GetQDamage(t) >= t.health then			
+				SpecialCast(HK_Q, t)
+			end
+		end		
+	end
+	
+	--Search for players we can target that will bounce to other players
+	if Menu.Skills.Q.Hero:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		for i = 1, Game.HeroCount() do
+			local t = Game.Hero(i)
+			if HPred:GetDistance(myHero.pos, t.pos) < Q.Range + t.boundingRadius and HPred:CanTarget(t) then
+				local bounceTarget = self:GetQBounce(t)
+				if bounceTarget and HPred:CanTarget(bounceTarget) and string.match(bounceTarget.type, "Hero") then
+					SpecialCast(HK_Q, t)
+				end
+			end
+		end
+	end
+	
+	--Search for minions that we can bounce Q off of
+	if (Menu.Skills.Q.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value()) or Menu.Skills.Combo:Value() then
+		for i = 1, Game.MinionCount() do
+			local t = Game.Minion(i)
+			if HPred:GetDistance(myHero.pos, t.pos) < Q.Range + t.boundingRadius and HPred:CanTarget(t) then --and (Menu.Skills.Combo:Value() or self:GetQDamage(t) >= t.health) then
+				local bounceTarget = self:GetQBounce(t)
+				if bounceTarget and HPred:CanTarget(bounceTarget) and string.match(bounceTarget.type, "Hero") then
+					SpecialCast(HK_Q, t)
+				end
+			end
+		end
+	end
+	
+	--Combo Q
+	if Menu.Skills.Combo:Value() then		
+		for i = 1, Game.HeroCount() do
+			local t = Game.Hero(i)
+			if HPred:GetDistance(myHero.pos, t.pos) < Q.Range + t.boundingRadius and HPred:CanTarget(t) then
+				SpecialCast(HK_Q, t)
+			end
+		end
+	end	
+end
+
+--Only cast on immobile targets, we dont want to waste it if not.
+function MissFortune:AutoE()
+	local target, aimPosition =HPred:GetImmobileTarget(myHero.pos, E.Range, E.Delay, math.huge,Menu.General.ReactionTime:Value())
+	if target and aimPosition then
+		SpecialCast(HK_E, aimPosition)
+	end
+end
+
+local _nextPassiveSearch = Game.Timer()
+local _passiveSearchFrequency = .25
+local _passiveSearchDistance = 1000
+local _passiveTarget
+function MissFortune:FindPassiveMark()
+	if _nextPassiveSearch > Game.Timer() then return end
+	_nextPassiveSearch = Game.Timer() + _passiveSearchFrequency
+	
+	for i = 1, Game.ParticleCount() do 
+		local particle = Game.Particle(i)
+		if HPred:GetDistance(myHero.pos, particle.pos) < _passiveSearchDistance and string.match(particle.name, "_P_Mark") then			
+			_passiveTarget = HPred:GetObjectByPosition(particle.pos)
+		end
+	end
+end
+
+local _passiveDamagePctByLevel = { .50, .50, .60, .60, .60, .60, .60, .70, .70, .80, .80,.90, .90, 1,1,1,1,1 }
+function MissFortune:GetQDamage(target)
+	local qDamage= myHero:GetSpellData(_Q).level * 20  + myHero.ap * 0.35+ myHero.totalDamage
+	
+	--Boost if they dont have love tap on them
+	if target ~= _passiveTarget then
+		local bonusDamage = myHero.totalDamage * _passiveDamagePctByLevel[myHero.levelData.lvl]
+		--Passive damage is half to minion
+		if not string.match(target.type, "Hero") then
+			bonusDamage = bonusDamage / 2
+		end		
+		qDamage = qDamage + bonusDamage
+	end
+	local qDamage = AutoUtil:CalculatePhysicalDamage(target, qDamage)
+	return qDamage
+end
+
+function MissFortune:GetQBounce(target)
+	local targets = {}
+	local angleTargetingWeight = 5
+	local bounceTargetingDelay = Q.Delay + HPred:GetDistance(myHero.pos, target.pos) / Q.Speed
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
+		if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475+ t.boundingRadius) then
+			table.insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * math.abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+		end
+	end		
+	for i = 1, Game.MinionCount() do
+		local t = Game.Minion(i)
+		local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
+		if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475 + t.boundingRadius) then
+			table.insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * math.abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+		end
+	end
+	
+	if #targets > 0 then
+		table.sort(targets, function( a, b ) return a[2] < b[2] end)
+		return targets[1][1]
+	end
+end
 
 class "HPred"
 
@@ -2473,7 +2649,40 @@ function HPred:GetObjectByHandle(handle)
 		end
 	end
 end
-
+function HPred:GetObjectByPosition(position)
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+	
+	for i = 1, Game.MinionCount() do
+		local enemy = Game.Minion(i)
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+	
+	for i = 1, Game.WardCount() do
+		local enemy = Game.Ward(i);
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+	
+	for i = 1, Game.ParticleCount() do 
+		local enemy = Game.Particle(i)
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+end
 
 function HPred:GetEnemyHeroByHandle(handle)	
 	local target
@@ -2575,6 +2784,13 @@ function HPred:GetEnemyByName(name)
 			target = enemy
 			return target
 		end
+	end
+end
+
+function HPred:IsPointInArc(source, origin, target, angle, range)
+	local deltaAngle = math.abs(HPred:Angle(origin, target) - HPred:Angle(source, origin))
+	if deltaAngle < angle and self:GetDistance(origin, target) < range then
+		return true
 	end
 end
 

@@ -664,6 +664,40 @@ function HPred:GetObjectByHandle(handle)
 		end
 	end
 end
+function HPred:GetObjectByPosition(position)
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+	
+	for i = 1, Game.MinionCount() do
+		local enemy = Game.Minion(i)
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+	
+	for i = 1, Game.WardCount() do
+		local enemy = Game.Ward(i);
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+	
+	for i = 1, Game.ParticleCount() do 
+		local enemy = Game.Particle(i)
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+end
 
 function HPred:GetEnemyHeroByHandle(handle)	
 	local target
@@ -765,6 +799,13 @@ function HPred:GetEnemyByName(name)
 			target = enemy
 			return target
 		end
+	end
+end
+
+function HPred:IsPointInArc(source, origin, target, angle, range)
+	local deltaAngle = math.abs(HPred:Angle(origin, target) - HPred:Angle(source, origin))
+	if deltaAngle < angle and self:GetDistance(origin, target) < range then
+		return true
 	end
 end
 
