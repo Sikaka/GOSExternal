@@ -109,7 +109,7 @@ function IsAttacking()
 end
 
 function SpecialCast(key, pos)
-	if not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end	
+	if not Menu.Skills.Combo:Value() and not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end	
 	if NextSpellCast > Game.Timer() then return end	
 	if pos and pos.x and not pos:To2D().onScreen then return end
 	if  _G.SDK and _G.Control then
