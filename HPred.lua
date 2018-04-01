@@ -211,7 +211,6 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed)	
 	local interceptTime = self:GetSpellInterceptTime(source, aimPosition, delay, speed)
 	local reactionTime = self:PredictReactionTime(target, .1)
-	local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
 	
 	--If they just now changed their path then assume they will keep it for at least a short while... slightly higher chance
 	if _movementHistory and _movementHistory[target.charName] and Game.Timer() - _movementHistory[target.charName]["ChangedAt"] < .25 then
@@ -224,16 +223,22 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	end	
 	
 	
+	local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
 	--Our spell is so wide or the target so slow or their reaction time is such that the spell will be nearly impossible to avoid
 	if movementRadius - target.boundingRadius <= radius /2 then
-		hitChance = 3
+		origin,movementRadius = self:UnitMovementBounds(target, interceptTime, 0)
+		if movementRadius - target.boundingRadius <= radius /2 then
+			hitChance = 4
+		else		
+			hitChance = 3
+		end
 	end	
 	
 	--If they are casting a spell then the accuracy will be fairly high. if the windup is longer than our delay then it's quite likely to hit. 
 	--Ideally we would predict where they will go AFTER the spell finishes but that's beyond the scope of this prediction
 	if target.activeSpell and target.activeSpell.valid then
 		if target.activeSpell.startTime + target.activeSpell.windup - Game.Timer() >= delay then
-			hitChance = 4
+			hitChance = 5
 		else			
 			hitChance = 3
 		end

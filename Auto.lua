@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -24,6 +24,7 @@ function()
 	Menu.General:MenuElement({id = "DrawW", name = "Draw W Range", value = false})
 	Menu.General:MenuElement({id = "DrawE", name = "Draw E Range", value = false})
 	Menu.General:MenuElement({id = "DrawR", name = "Draw R Range", value = false})
+	Menu.General:MenuElement({id = "AutoInTurret", name = "Auto Cast While In Enemy Turret Range", value = true})
 	Menu.General:MenuElement({id = "SkillFrequency", name = "Skill Frequency", value = .3, min = .1, max = 1, step = .1})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})
 	Callback.Add("Draw", function() CoreDraw() end)
@@ -108,6 +109,7 @@ function IsAttacking()
 end
 
 function SpecialCast(key, pos)
+	if not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end	
 	if NextSpellCast > Game.Timer() then return end	
 	if pos and pos.x and not pos:To2D().onScreen then return end
 	if  _G.SDK and _G.Control then
@@ -158,6 +160,16 @@ function IsRecalling()
 	return false
 end
 
+
+function InsideEnemyTurretRange()
+	for i = 1, Game.TurretCount() do
+		local turret = Game.Turret(i)
+		local range = (turret.boundingRadius + 750 + myHero.boundingRadius / 2)
+		if turret.isEnemy and HPred:GetDistance(turret.pos, myHero.pos) <=range then
+			return true
+		end
+	end
+end
 function UpdateAllyHealth()
 	local deltaTick = Game.Timer() - _allyHealthUpdateRate	
 	if deltaTick >= 1 then	
@@ -375,7 +387,6 @@ function AutoUtil:CastItem(unit, id, range)
 		local key = self.itemKey[keyIndex]
 
 		if key then
-			print(key)
 			if unit ~= myHero then
 				Control.CastSpell(key, unit.pos or unit)
 			else
@@ -1071,8 +1082,6 @@ function Zilean:StunCombo(target, aimPosition)
 		Control.CastSpell(HK_E, target)
 	end
 	
-	
-	print("Casting Combo")
 	--Try spam casting it for the hell of it
 	Control.CastSpell(HK_Q, aimPosition)
 	DelayAction(function()Control.CastSpell(HK_Q, aimPosition) end,.10)
@@ -1986,6 +1995,178 @@ function MissFortune:GetQBounce(target)
 	end
 end
 
+class "Karthus" 
+local _canUltCount = 0
+local _targetUltData = {}
+function Karthus:__init()
+
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Karthus:CreateMenu()
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Lay Waste", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 4, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "W", name = "[W] Wall of Pain", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.W:MenuElement({id = "Assist", name = "Assist Key",value = false,  key = 0x71})	
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Defile", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Active When Enemy In Range", value = true})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] Requiem", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Use In Passive (If Will Kill)", value = true})
+	Menu.Skills.R:MenuElement({id = "Draw", name = "Draw Kill Count", value = true})
+	
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+end
+
+function Karthus:LoadSpells()
+	Q = {Range = 874, Width = 100, Delay = .5, Speed = math.huge}
+	W = {Range = 1000, Width = 800, Delay = .25, Speed = math.huge}
+	E = { Range = 425 }
+end
+
+function Karthus:Draw()
+	if Ready(_R) and _canUltCount > 0 and Menu.Skills.R.Draw:Value() then
+		local drawPos = myHero.pos:To2D()
+		Draw.Text("[R] Can Kill " .. _canUltCount .. " Enemies!", 24, 100, 200)
+	end
+end
+
+function Karthus:Tick()
+	if IsRecalling() then return end	
+	if NextSpellCast > Game.Timer() then return end
+	
+	if Ready(_E) then
+		self:AutoE()
+	end
+	
+	if Ready(_R) then	
+		self:AutoR()
+	end
+	
+	if Ready(_W) then
+		self:AutoW()
+	end	
+	
+	if Ready(_Q) then
+		self:AutoQ()
+	end
+end
+
+
+function Karthus:AutoQ()
+
+	local hasCast = false
+	if Menu.Skills.Q.Auto:Value() then
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+		if target and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
+			SpecialCast(HK_Q, aimPosition)
+			hasCast = true
+		end
+	end
+	
+	if not hasCast and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		--TODO: Try Killstealing with Q? Will require some extra logic for sure.
+		if Menu.Skills.Combo:Value() then
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyCombo:Value(), nil)	
+			if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		elseif Menu.Skills.Q.Auto:Value() then
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value(), nil)	
+			if hitRate and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		end
+	end
+end
+
+function Karthus:AutoW()
+	--If we're pushing the assisted aim W key then find a unreliable target we can hit and cast on them (nearest mouse)
+	if Menu.Skills.W.Assist:Value() then		
+		local distance, target = AutoUtil:NearestEnemy(myHero)
+		if target and distance < W.Range then		
+			local castPos = HPred:PredictUnitPosition(target, W.Delay)
+			if HPred:GetDistance(myHero.pos, castPos) < W.Range / 3 * 2 then
+				SpecialCast(HK_W, castPos)
+			end
+		end
+	end	
+	
+	if Menu.Skills.Combo:Value() then
+		--Get the most targets we can hit?
+		local distance, target = AutoUtil:NearestEnemy(myHero)
+		if target and distance < W.Range then		
+			local castPos = HPred:PredictUnitPosition(target, W.Delay)
+			if HPred:GetDistance(myHero.pos, castPos) < W.Range / 3 * 2 then
+				SpecialCast(HK_W, castPos)
+			end
+		end
+	end
+end
+
+local _eActivationTime = 0
+
+function Karthus:AutoE()
+	local eData = myHero:GetSpellData(_E)
+	local distance, target = AutoUtil:NearestEnemy(myHero)
+	if distance < E.Range then
+		if eData.toggleState ==1 and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+			_eActivationTime = Game.Timer()
+			Control.CastSpell(HK_E)
+		elseif eData.toggleState == 2 and _eActivationTime > 0 and CurrentPctMana(myHero) < Menu.Skills.E.Mana:Value() then
+			Control.CastSpell(HK_E)
+			_eActivationTime = 0		
+		end
+	--Don't deactivate E if we are the ones who turned it on!
+	elseif eData.toggleState == 2 and _eActivationTime > 0 then
+		_eActivationTime = 0
+		Control.CastSpell(HK_E)
+	end
+end
+
+function Karthus:AutoR()
+	_canUltCount = 0
+	local rDamage= 250 + (myHero:GetSpellData(_R).level -1) * 150 + myHero.ap * 0.75
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if HPred:CanTarget(t) then
+			_targetUltData[t.charName] = {}
+			_targetUltData[t.charName]["LastVisible"] = Game.Timer()
+			_targetUltData[t.charName]["Damage"] = AutoUtil:CalculateMagicDamage(t, rDamage)
+			_targetUltData[t.charName]["Life"] = t.health
+		elseif not t.alive and _targetUltData[t.charName] then
+			_targetUltData[t.charName] = nil
+		end
+	end
+	
+	
+	for _, target in pairs(_targetUltData) do
+		if Game.Timer() - target.LastVisible < 3 and target.Damage > target.Life then
+			_canUltCount = _canUltCount + 1		
+		end
+	end	
+	
+	local hasBuff, timeRemaining = HPred:HasBuff(myHero, "KarthusDeathDefiedBuff")
+	if hasBuff and _canUltCount > 0 and Menu.Skills.R.Auto:Value() and timeRemaining < 4 then	
+		Control.CastSpell(HK_R)
+	end
+end
 
 
 class "HPred"
@@ -2199,7 +2380,6 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed)	
 	local interceptTime = self:GetSpellInterceptTime(source, aimPosition, delay, speed)
 	local reactionTime = self:PredictReactionTime(target, .1)
-	local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
 	
 	--If they just now changed their path then assume they will keep it for at least a short while... slightly higher chance
 	if _movementHistory and _movementHistory[target.charName] and Game.Timer() - _movementHistory[target.charName]["ChangedAt"] < .25 then
@@ -2212,16 +2392,22 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	end	
 	
 	
+	local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
 	--Our spell is so wide or the target so slow or their reaction time is such that the spell will be nearly impossible to avoid
 	if movementRadius - target.boundingRadius <= radius /2 then
-		hitChance = 3
+		origin,movementRadius = self:UnitMovementBounds(target, interceptTime, 0)
+		if movementRadius - target.boundingRadius <= radius /2 then
+			hitChance = 4
+		else		
+			hitChance = 3
+		end
 	end	
 	
 	--If they are casting a spell then the accuracy will be fairly high. if the windup is longer than our delay then it's quite likely to hit. 
 	--Ideally we would predict where they will go AFTER the spell finishes but that's beyond the scope of this prediction
 	if target.activeSpell and target.activeSpell.valid then
 		if target.activeSpell.startTime + target.activeSpell.windup - Game.Timer() >= delay then
-			hitChance = 4
+			hitChance = 5
 		else			
 			hitChance = 3
 		end
