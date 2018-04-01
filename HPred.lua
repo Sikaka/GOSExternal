@@ -4,13 +4,16 @@ class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
 
-local _reviveQueryFrequency = 3
+local _reviveQueryFrequency = .2
 local _lastReviveQuery = Game.Timer()
 local _reviveLookupTable = 
 	{ 
 		["LifeAura.troy"] = 4, 
 		["ZileanBase_R_Buf.troy"] = 3,
 		["Aatrox_Base_Passive_Death_Activate"] = 3
+		
+		--TwistedFate_Base_R_Gatemarker_Red
+			--String match would be ideal.... could be different in other skins
 	}
 
 --Stores a collection of spells that will cause a character to blink
@@ -48,7 +51,7 @@ local _blinkLookupTable =
 	}
 
 local _cachedRevives = {}
-
+local _cachedTeleports = {}
 local _movementHistory = {}
 
 function HPred:Tick()
@@ -69,19 +72,32 @@ function HPred:Tick()
 		if not _cachedRevives[particle.networkID] and  _reviveLookupTable[particle.name] then
 			_cachedRevives[particle.networkID] = {}
 			_cachedRevives[particle.networkID]["expireTime"] = Game.Timer() + _reviveLookupTable[particle.name]			
-			local nearestDistance = 500
-			for i = 1, Game.HeroCount() do
-				local t = Game.Hero(i)
-				local tDistance = self:GetDistance(particle.pos, t.pos)
-				if tDistance < nearestDistance then
-					nearestDistance = nearestDistance
-					_cachedRevives[particle.networkID]["owner"] = t.charName
-					_cachedRevives[particle.networkID]["pos"] = t.pos
-					_cachedRevives[particle.networkID]["isEnemy"] = t.isEnemy					
-				end
+			local target = self:GetHeroByPosition(particle.pos)
+			if target.isEnemy then				
+				_cachedRevives[particle.networkID]["target"] = target
+				_cachedRevives[particle.networkID]["pos"] = target.pos
+				_cachedRevives[particle.networkID]["isEnemy"] = target.isEnemy	
 			end
 		end
 	end
+	
+	--Update hero movement history	
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		self:UpdateMovementHistory(t)
+	end
+	
+	--Remove old cached teleports	
+	for _, teleport in pairs(_cachedTeleports) do
+		if Game.Timer() > teleport.expireTime + .5 then
+			_cachedTeleports[_] = nil
+		end
+	end	
+	
+	--Update teleport cache
+	self:CacheTeleports()
+	
+	
 end
 
 function HPred:GetEnemyNexusPosition()
@@ -94,12 +110,6 @@ function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccu
 	--TODO: Target whitelist. This will target anyone which is definitely not what we want
 	--For now we can handle in the champ script. That will cause issues with multiple people in range who are goood targets though.
 	
-	
-	--Get stunned enemies
-	local target, aimPosition =self:GetImmobileTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
-	if target and aimPosition then
-		return target, aimPosition
-	end
 	
 	--Get hourglass enemies
 	target, aimPosition =self:GetHourglassTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
@@ -136,12 +146,18 @@ function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccu
 	if target and aimPosition then
 		return target, aimPosition
 	end
-
-	--Get blink targets
-	target, aimPosition =self:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
+	
+	--Get stunned enemies
+	local target, aimPosition =self:GetImmobileTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	if target and aimPosition then
 		return target, aimPosition
-	end	
+	end
+	
+	--Get blink targets
+	--target, aimPosition =self:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
+	--if target and aimPosition then
+	--	return target, aimPosition
+	--end	
 end
 
 --Will return how many allies or enemies will be hit by a linear spell based on current waypoint data.
@@ -189,9 +205,7 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 	end	
 end
 
-function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision)
-	self:UpdateMovementHistory(target)
-	
+function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision)	
 	local hitChance = 1	
 	
 	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed)	
@@ -310,7 +324,7 @@ function HPred:GetRevivingTarget(source, range, delay, speed, timingAccuracy, ch
 		if revive.isEnemy and revive.pos:To2D().onScreen then
 			local interceptTime = self:GetSpellInterceptTime(source, revive.pos, delay, speed)
 			if interceptTime > revive.expireTime - Game.Timer() and interceptTime - revive.expireTime - Game.Timer() < timingAccuracy then
-				target = self:GetEnemyByName(revive.owner)
+				target = revive.target
 				aimPosition = revive.pos
 				return target, aimPosition
 			end
@@ -427,40 +441,32 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 	end
 end
 
-function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
-	local target
-	local aimPosition
+function HPred:RecordTeleport(target, aimPos, endTime)
+	_cachedTeleports[target.networkID] = {}
+	_cachedTeleports[target.networkID]["target"] = target
+	_cachedTeleports[target.networkID]["aimPos"] = aimPos
+	_cachedTeleports[target.networkID]["expireTime"] = endTime + Game.Timer()
+end
+
+function HPred:CacheTeleports()
 	--Get enemies who are teleporting to towers
 	for i = 1, Game.TurretCount() do
 		local turret = Game.Turret(i);
-		if turret.isEnemy and self:GetDistance(source, turret.pos) <= range and turret.pos:To2D().onScreen then
+		if turret.isEnemy and not _cachedTeleports[turret.networkID] then
 			local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
 			if hasBuff then
-				local interceptPosition = self:GetTeleportOffset(turret.pos,223.31)
-				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
-				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
-					target = turret
-					aimPosition =interceptPosition
-					return target, aimPosition
-				end
+				self:RecordTeleport(turret, self:GetTeleportOffset(turret.pos,223.31),expiresAt)
 			end
 		end
 	end	
 	
-	--Get enemies who are teleporting to wards
-	
+	--Get enemies who are teleporting to wards	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		if ward.isEnemy and self:GetDistance(source, ward.pos) <= range and ward.pos:To2D().onScreen then
+		if ward.isEnemy and not _cachedTeleports[ward.networkID] then
 			local hasBuff, expiresAt = self:HasBuff(ward, "teleport_target")
 			if hasBuff then
-				local interceptPosition = self:GetTeleportOffset(ward.pos,100.01)
-				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
-				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
-					target = ward
-					aimPosition = interceptPosition
-					return target, aimPosition
-				end
+				self:RecordTeleport(ward, self:GetTeleportOffset(ward.pos,100.01),expiresAt)
 			end
 		end
 	end
@@ -468,19 +474,30 @@ function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy,
 	--Get enemies who are teleporting to minions
 	for i = 1, Game.MinionCount() do
 		local minion = Game.Minion(i);
-		if minion.isEnemy and self:GetDistance(source, minion.pos) <= range and minion.pos:To2D().onScreen then
+		if minion.isEnemy and not _cachedTeleports[minion.networkID] then
 			local hasBuff, expiresAt = self:HasBuff(minion, "teleport_target")
-			if hasBuff then	
-				local interceptPosition = self:GetTeleportOffset(minion.pos,143.25)
-				local deltaInterceptTime = self:GetSpellInterceptTime(source, interceptPosition, delay, speed) - expiresAt
-				if deltaInterceptTime > 0 and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, interceptPosition, delay, speed, radius)) then
-					target = minion				
-					aimPosition = interceptPosition
-					return target, aimPosition
-				end
+			if hasBuff then
+				self:RecordTeleport(minion, self:GetTeleportOffset(minion.pos,143.25),expiresAt)
 			end
 		end
-	end
+	end	
+end
+
+function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+
+	local target
+	local aimPosition
+	for _, teleport in pairs(_cachedTeleports) do
+		if teleport.expireTime > Game.Timer() and self:GetDistance(source, teleport.aimPos) <= range and teleport.aimPos:To2D().onScreen then			
+			local spellInterceptTime = self:GetSpellInterceptTime(source, teleport.aimPos, delay, speed)
+			local teleportRemaining = teleport.expireTime - Game.Timer()
+			if spellInterceptTime > teleportRemaining and spellInterceptTime - teleportRemaining <= timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, teleport.aimPos, delay, speed, radius)) then								
+				target = teleport.target
+				aimPosition = teleport.aimPos
+				return target, aimPosition
+			end
+		end
+	end		
 end
 
 function HPred:GetTargetMS(target)
@@ -664,6 +681,18 @@ function HPred:GetObjectByHandle(handle)
 		end
 	end
 end
+
+function HPred:GetHeroByPosition(position)
+	local target
+	for i = 1, Game.HeroCount() do
+		local enemy = Game.Hero(i)
+		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
+end
+
 function HPred:GetObjectByPosition(position)
 	local target
 	for i = 1, Game.HeroCount() do
