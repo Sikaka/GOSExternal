@@ -615,6 +615,10 @@ function Brand:Tick()
 		self:ReliableE()
 	end
 	
+	if Ready(_R) then
+		self:AutoR()
+	end
+	
 	--Unreliable spells are cast if the combo or harass key is pressed
 	if Menu.Skills.Combo:Value() then
 		if Ready(_W) then
@@ -622,9 +626,6 @@ function Brand:Tick()
 		end
 		if Ready(_Q) then		
 			self:UnreliableQ(Menu.Skills.Q.AccuracyCombo:Value())
-		end
-		if Ready(_R) then
-			self:AutoR()
 		end
 	else	
 		if Ready(_Q) then		
