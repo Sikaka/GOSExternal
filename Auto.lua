@@ -1737,7 +1737,7 @@ function Lulu:Tick()
 		if Menu.Skills.E.Killsteal:Value() then
 			self:KillstealE()
 		end
-		if CurrentPCtMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		if CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 			self:BuffE()
 		end
 	end
@@ -1753,6 +1753,8 @@ function Lulu:Tick()
 	if Menu.Skills.Exhaust and Menu.Skills.Exhaust.Enabled:Value() then
 		AutoUtil.AutoExhaust()
 	end
+	
+	UpdateAllyHealth()
 end
 
 function Lulu:AutoQ()
@@ -1818,7 +1820,7 @@ function Lulu:AutoR()
 					SpecialCast(HK_R, ally)
 				end
 			end
-			if Menu.Skills.R.PeelTargets[ally.charName] and Menu.Skills.R.PeelTargets[ally.charName]:Value() and CurrentPctLife(ally) <= Menu.Skills.R.Life:Value() then
+			if _allyHealthPercentage[ally.charName] and Menu.Skills.R.PeelTargets[ally.charName] and Menu.Skills.R.PeelTargets[ally.charName]:Value() and CurrentPctLife(ally) <= Menu.Skills.R.Life:Value() then
 				local deltaLifeLost = _allyHealthPercentage[ally.charName] - CurrentPctLife(ally)
 				if deltaLifeLost >= Menu.Skills.Damage:Value() then
 					SpecialCast(HK_R, ally)
@@ -2157,7 +2159,7 @@ function Karthus:AutoR()
 	
 	
 	for _, target in pairs(_targetUltData) do
-		if Game.Timer() - target.LastVisible < 3 and target.Damage > target.Life then
+		if Game.Timer() - target.LastVisible < 5 and target.Damage > target.Life then
 			_canUltCount = _canUltCount + 1		
 		end
 	end	
