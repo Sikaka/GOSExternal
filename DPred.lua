@@ -1,7 +1,7 @@
 class "DPred"
 
 
-if myHero.charName ~= "Sivir" then print("Only Sivir is Supported!") return end
+--if myHero.charName ~= "Sivir" then print("Only Sivir is Supported!") return end
 DANGER_LEVEL_MAXIMUM = 5
 DANGER_LEVEL_HIGH = 4
 DANGER_LEVEL_MEDIUM = 3
@@ -270,6 +270,12 @@ function DPred:Tick()
 			end
 		end
 		
+		if not _activeSkillshots[missile.networkID] and missile.missileData.target > 0 then
+			local target =  self:GetObjectByHandle(missile.missileData.owner)
+			if target.networkID == myHero.networkID then
+				print(missile.missileData.name)
+			end
+		end
 		--if _targetedMissiles[missile.networkID] and _targetedMissiles[missile.networkID].data.name == missile.name then	
 		--	_targetedMissiles[missile.networkID].lastSeen = currentTime
 		--elseif string.match(missile.missileData.name, "BasicAttack") then

@@ -7,6 +7,74 @@ if not table.contains(Heroes, myHero.charName) then print("Hero not supported: "
 
 local Scriptname,Version,Author,LVersion = "[Auto]","v2.0","Sikaka","0.01"
 
+local _atan = math.atan2
+local _pi = math.pi
+local _min = math.min
+local _abs = math.abs
+local _sqrt = math.sqrt
+local _huge = math.huge
+
+
+
+--[[ START - CUSTOM SPELL CASTING --]]
+
+local gsoSetCursorPos = nil
+local gsoExtraSetCursor = nil
+local gsoIsChangingCursorPos = false
+
+local function gsoCast(hkSpell, castPos, startPos, isLine)
+    local canCheck = false
+    if isLine then
+        for i = 1, 35 do
+            if startPos:Extended(castPos, 3500 - i * 100):ToScreen().onScreen then
+                castPos = startPos:Extended(castPos, 3400 - i * 100)
+                canCheck = true
+                break
+            end
+        end
+    end
+    if canCheck == true or castPos:ToScreen().onScreen then
+        local cPos = cursorPos
+        Control.SetCursorPos(castPos)
+        Control.KeyDown(hkSpell)
+        Control.KeyUp(hkSpell)
+        
+        gsoExtraSetCursor = castPos
+        gsoIsChangingCursorPos = true
+        gsoSetCursorPos = { endTime = GetTickCount() + 50, action = function() Control.SetCursorPos(cPos.x, cPos.y) end, active = true }
+        
+        NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
+    end
+end
+
+local gsoLoadedAddons = false
+local gsoStartTimer = Game.Timer()
+
+Callback.Add("Tick", function()
+    if not gsoLoadedAddons and Game.Timer() > gsoStartTimer + 5 then
+        if _G.SDK and _G.SDK.Orbwalker then
+            _G.SDK.Orbwalker:OnPreAttack(function(args) if gsoIsChangingCursorPos then args.Process = false end end)
+            _G.SDK.Orbwalker:OnPreMovement(function(args) if gsoIsChangingCursorPos then args.Process = false end end)
+        end
+        gsoLoadedAddons = true
+    end
+    if gsoSetCursorPos then
+        if gsoSetCursorPos.active and GetTickCount() > gsoSetCursorPos.endTime then
+            gsoSetCursorPos.action()
+            gsoSetCursorPos.active = false
+            gsoExtraSetCursor = nil
+        elseif not gsoSetCursorPos.active and GetTickCount() > gsoSetCursorPos.endTime + 25 then
+            gsoIsChangingCursorPos = false
+            gsoSetCursorPos = nil
+        end
+    end
+    if gsoExtraSetCursor then
+        Control.SetCursorPos(gsoExtraSetCursor)
+    end
+end)
+
+--[[ END - CUSTOM SPELL CASTING --]]
+
 Callback.Add("Load",
 function()	
 
@@ -27,6 +95,7 @@ function()
 	Menu.General:MenuElement({id = "AutoInTurret", name = "Auto Cast While In Enemy Turret Range", value = true})
 	Menu.General:MenuElement({id = "SkillFrequency", name = "Skill Frequency", value = .3, min = .1, max = 1, step = .1})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})
+	Menu.General:MenuElement({id = "AltCast", name = "Alternate Cast Mode", value = false})
 	Callback.Add("Draw", function() CoreDraw() end)
 	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end)
@@ -110,14 +179,19 @@ end
 
 function SpecialCast(key, pos)
 	if not Menu.Skills.Combo:Value() and not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end	
-	if NextSpellCast > Game.Timer() then return end	
-	if pos and pos.x and not pos:To2D().onScreen then return end
-	if  _G.SDK and _G.Control then
+	if NextSpellCast > Game.Timer() then return end		
+	if not pos then
+		Control.CastSpell(key)
+		return
+	end	
+	
+	if Menu.General.AltCast:Value() then
+		gsoCast(key, pos, startPos, isLine)
+	elseif _G.SDK and _G.Control then
 		_G.Control.CastSpell(key, pos)
 	else
 		Control.CastSpell(key, pos)
-	end	
-	NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
+	end
 end
  	
 function KnowsSpell(spell)
@@ -284,7 +358,7 @@ function AutoUtil:GetDistanceSqr(p1, p2)
 end
 
 function AutoUtil:GetDistance(p1, p2)
-	return math.sqrt(self:GetDistanceSqr(p1, p2))
+	return _sqrt(self:GetDistanceSqr(p1, p2))
 end
 
 function AutoUtil:CalculatePhysicalDamage(target, damage)			
@@ -310,7 +384,7 @@ end
 
 function AutoUtil:GetNearestAlly(entity, range)
 	local ally = nil
-	local distance = math.huge
+	local distance = _huge
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
 		if hero ~= entity and hero.isAlly and HPred:CanTargetALL(hero) then
@@ -460,7 +534,7 @@ function AutoUtil:AutoLocket()
 		end
 	end	
 	if injuredCount >= Menu.Items.Locket.Count:Value() then
-		AutoUtil:CastItem(myHero, 3190, math.huge)
+		AutoUtil:CastItem(myHero, 3190, _huge)
 	end
 end
 
@@ -535,8 +609,8 @@ function Brand:__init()
 end
 function Brand:LoadSpells()
 	Q = {Range = 1050, Width = 80, Delay = 0.25, Speed = 1550, Collision = true}
-	W = {Range = 900, Width = 250, Delay = 0.625, Speed = math.huge}
-	E = {Range = 600, Delay = 0.25, Speed = math.huge}
+	W = {Range = 900, Width = 250, Delay = 0.625, Speed = _huge}
+	E = {Range = 600, Delay = 0.25, Speed = _huge}
 	R = {Range = 750, Delay = 0.25, Speed = 1700}
 end
 
@@ -655,7 +729,7 @@ function Brand:ReliableQ()
 		local WInterceptTime = self:GetWHitTime()		
 		local QInterceptTime = HPred:GetSpellInterceptTime(myHero.pos, aimPosition, Q.Delay, Q.Speed)
 		
-		if HPred:HasBuff(target, "BrandAblaze") or (WCastPos and HPred:GetDistance(WCastPos, aimPosition) < W.Width and  QInterceptTime > WInterceptTime) then
+		if HPred:HasBuff(target, "BrandAblaze", QInterceptTime) or (WCastPos and HPred:GetDistance(WCastPos, aimPosition) < W.Width and  QInterceptTime > WInterceptTime) then
 			SpecialCast(HK_Q, aimPosition)
 		end
 	end
@@ -665,7 +739,7 @@ function Brand:UnreliableQ(minAccuracy)
 
 	for i  = 1,Game.HeroCount(i) do
 		local enemy = Game.Hero(i)
-		if HPred:CanTarget(enemy) and HPred:HasBuff(enemy, "BrandAblaze") then	
+		if HPred:CanTarget(enemy) and HPred:HasBuff(enemy, "BrandAblaze",1) then	
 			local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, enemy,Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, nil)
 			if hitChance and hitChance >= minAccuracy and HPred:GetDistance(myHero.pos, aimPosition) <= Q.Range then
 				SpecialCast(HK_Q, aimPosition)
@@ -731,7 +805,7 @@ function Soraka:LoadSpells()
 
 	Q = {Range = 800, Width = 235,Delay = 0.25, Speed = 1150}
 	W = {Range = 550 }
-	E = {Range = 925, Width = 300, Delay = 1, Speed = math.huge}
+	E = {Range = 925, Width = 300, Delay = 1, Speed = _huge}
 end
 
 function Soraka:CreateMenu()	
@@ -1133,7 +1207,7 @@ function Nami:__init()
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Nami:LoadSpells()
-	Q = {Range = 875, Width = 200,Delay = 0.95, Speed = math.huge}
+	Q = {Range = 875, Width = 200,Delay = 0.95, Speed = _huge}
 	W = {Range = 725}
 	E = { Range = 800}
 	R = {Range = 2750,Width = 215, Speed = 850, Delay = 0.5}
@@ -1294,7 +1368,7 @@ function Lux:LoadSpells()
 	Q = {Range = 1175, Width = 50,Delay = 0.25, Speed = 1200, Collision = true}
 	W = {Range = 1075, Width = 120,Delay = 0.25, Speed = 1400}
 	E = {Range = 1000, Width = 350,Delay = 0.25, Speed = 1300}
-	R = {Range = 3340,Width = 115, Delay = 1, Speed = math.huge}
+	R = {Range = 3340,Width = 115, Delay = 1, Speed = _huge}
 end
 
 function Lux:CreateMenu()
@@ -1315,8 +1389,15 @@ function Lux:CreateMenu()
 		
 	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})	
 	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", tooltip = "How many targets we need to be able to hit to auto cast", value = 2, min = 1, max = 5, step = 1 })	
-	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Target Count", value = true, toggle = true })
 	Menu.Skills.R:MenuElement({id = "Killsteal", name = "Auto Killsteal", value = true, toggle = true })
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Target Count", value = true, toggle = true })	
+	Menu.Skills.R:MenuElement({id = "Targets", name = "Auto Targets", type = MENU})	
+	for i = 1, Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			Menu.Skills.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
 		
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
@@ -1472,7 +1553,8 @@ end
 function Lux:AutoR()
 	local rDamage= 300 + (myHero:GetSpellData(_R).level -1) * 100 + myHero.ap * 0.75
 	--Check if the target has passive on them because that will deal extra damage
-	--If the target is a near guarenteed hit then count how many targets it will hit: If enough targets are likely then cast regardless of health
+	--If the target is a near guarenteed hit then count how many targets it will hit: If enough targets are likely then cast regardless of health	
+	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
 	if target and HPred:GetDistance(myHero.pos, aimPosition) <= R.Range then
 		local thisRDamage = rDamage
@@ -1482,7 +1564,7 @@ function Lux:AutoR()
 		
 		if Menu.Skills.R.Killsteal:Value() and AutoUtil:CalculateMagicDamage(target, thisRDamage) >= target.health then
 			SpecialCast(HK_R, aimPosition)
-		elseif Menu.Skills.R.Auto:Value() then
+		elseif Menu.Skills.R.Auto:Value() and Menu.Skills.R.Targets[target.charName] and Menu.Skills.R.Targets[target.charName]:Value() then
 			local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, R.Delay, R.Speed, R.Width, false)
 			if targetCount >= Menu.Skills.R.Count:Value() then
 				SpecialCast(HK_R, aimPosition)
@@ -1532,7 +1614,7 @@ end
 
 function Blitzcrank:LoadSpells()
 	Q = {Range = 925, Width = 120,Delay = 0.25, Speed = 1750,  Collision = true}
-	R = {Range = 600 ,Delay = 0.25, Speed = math.huge}
+	R = {Range = 600 ,Delay = 0.25, Speed = _huge}
 end
 
 function Blitzcrank:Draw()	
@@ -1711,8 +1793,8 @@ end
 function Lulu:LoadSpells()
 	Q = {Range = 925, Width = 45,Delay = 0.25, Speed = 1500}
 	W = {Range = 650, Delay = 0.25, Speed = 1600}
-	E = {Range = 650, Delay = 0.25, Speed = math.huge}	
-	R = {Range = 900, Width = 400, Delay = 0.25, Speed = math.huge}
+	E = {Range = 650, Delay = 0.25, Speed = _huge}	
+	R = {Range = 900, Width = 400, Delay = 0.25, Speed = _huge}
 end
 
 function Lulu:Draw()
@@ -1822,7 +1904,7 @@ function Lulu:AutoR()
 			end
 			if _allyHealthPercentage[ally.charName] and Menu.Skills.R.PeelTargets[ally.charName] and Menu.Skills.R.PeelTargets[ally.charName]:Value() and CurrentPctLife(ally) <= Menu.Skills.R.Life:Value() then
 				local deltaLifeLost = _allyHealthPercentage[ally.charName] - CurrentPctLife(ally)
-				if deltaLifeLost >= Menu.Skills.Damage:Value() then
+				if deltaLifeLost >= Menu.Skills.R.Damage:Value() then
 					SpecialCast(HK_R, ally)
 				end
 			end
@@ -1837,7 +1919,7 @@ function MissFortune:__init()
 	self:LoadSpells()
 	self:CreateMenu()
 	Callback.Add("Tick", function() self:Tick() end)
-	Callback.Add("Draw", function() self:Draw() end)
+	Callback.Add("Draw", function() self:Draw() end)	
 end
 
 function MissFortune:CreateMenu()
@@ -1921,7 +2003,7 @@ function MissFortune:AutoQ()
 	end
 	
 	--Combo Q
-	if Menu.Skills.Combo:Value() then		
+	if Menu.Skills.Combo:Value() then
 		for i = 1, Game.HeroCount() do
 			local t = Game.Hero(i)
 			if HPred:GetDistance(myHero.pos, t.pos) < Q.Range + t.boundingRadius and HPred:CanTarget(t) then
@@ -1933,7 +2015,7 @@ end
 
 --Only cast on immobile targets, we dont want to waste it if not.
 function MissFortune:AutoE()
-	local target, aimPosition =HPred:GetImmobileTarget(myHero.pos, E.Range, E.Delay, math.huge,Menu.General.ReactionTime:Value())
+	local target, aimPosition =HPred:GetImmobileTarget(myHero.pos, E.Range, E.Delay, _huge,Menu.General.ReactionTime:Value())
 	if target and aimPosition then
 		SpecialCast(HK_E, aimPosition)
 	end
@@ -1980,14 +2062,14 @@ function MissFortune:GetQBounce(target)
 		local t = Game.Hero(i)
 		local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
 		if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475+ t.boundingRadius) then
-			table.insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * math.abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+			table.insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
 		end
 	end		
 	for i = 1, Game.MinionCount() do
 		local t = Game.Minion(i)
 		local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
 		if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475 + t.boundingRadius) then
-			table.insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * math.abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+			table.insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
 		end
 	end
 	
@@ -2020,13 +2102,13 @@ function Karthus:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Wall of Pain", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.W:MenuElement({id = "Combo", name = "Auto Cast in Combo", value = false})
 	Menu.Skills.W:MenuElement({id = "Assist", name = "Assist Key",value = false,  key = 0x71})	
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Defile", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Active When Enemy In Range", value = true})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
-	
-	
+		
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Requiem", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Use In Passive (If Will Kill)", value = true})
@@ -2037,8 +2119,8 @@ function Karthus:CreateMenu()
 end
 
 function Karthus:LoadSpells()
-	Q = {Range = 874, Width = 100, Delay = .5, Speed = math.huge}
-	W = {Range = 1000, Width = 800, Delay = .25, Speed = math.huge}
+	Q = {Range = 874, Width = 100, Delay = .5, Speed = _huge}
+	W = {Range = 1000, Width = 800, Delay = .25, Speed = _huge}
 	E = { Range = 425 }
 end
 
@@ -2099,6 +2181,14 @@ function Karthus:AutoQ()
 end
 
 function Karthus:AutoW()
+	--Cast on reliable targets instead
+	if Menu.Skills.W.Auto:Value() then
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, W.Range, W.Delay, W.Speed,W.Width, Menu.General.ReactionTime:Value(), W.Collision)
+		if target and HPred:GetDistance(myHero.pos, aimPosition) <= W.Range then
+			SpecialCast(HK_W, aimPosition)
+		end
+	end
+	
 	--If we're pushing the assisted aim W key then find a unreliable target we can hit and cast on them (nearest mouse)
 	if Menu.Skills.W.Assist:Value() then		
 		local distance, target = AutoUtil:NearestEnemy(myHero)
@@ -2110,7 +2200,7 @@ function Karthus:AutoW()
 		end
 	end	
 	
-	if Menu.Skills.Combo:Value() then
+	if Menu.Skills.Combo:Value() and Menu.Skills.W.Combo:Value() then
 		--Get the most targets we can hit?
 		local distance, target = AutoUtil:NearestEnemy(myHero)
 		if target and distance < W.Range then		
@@ -2127,7 +2217,7 @@ local _eActivationTime = 0
 function Karthus:AutoE()
 	local eData = myHero:GetSpellData(_E)
 	local distance, target = AutoUtil:NearestEnemy(myHero)
-	if distance < E.Range then
+	if distance < E.Range and Menu.Skills.E.Auto:Value() then
 		if eData.toggleState ==1 and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 			_eActivationTime = Game.Timer()
 			Control.CastSpell(HK_E)
@@ -2171,10 +2261,21 @@ function Karthus:AutoR()
 end
 
 
+
+
+
+
+
 class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
 
+local _atan = math.atan2
+local _pi = math.pi
+local _min = math.min
+local _abs = math.abs
+local _sqrt = math.sqrt
+	
 local _reviveQueryFrequency = .2
 local _lastReviveQuery = Game.Timer()
 local _reviveLookupTable = 
@@ -2225,7 +2326,16 @@ local _cachedRevives = {}
 local _cachedTeleports = {}
 local _movementHistory = {}
 
+--Cache of all TARGETED missiles currently running
+local _cachedMissiles = {}
+local _incomingDamage = {}
+
 function HPred:Tick()
+	--Update missile cache
+	--DISABLED UNTIL LATER.
+	--self:CacheMissiles()
+	
+	
 	--Check for revives and record them	
 	if Game.Timer() - _lastReviveQuery < _reviveQueryFrequency then return end
 	_lastReviveQuery=Game.Timer()
@@ -2338,11 +2448,9 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 		local t = Game.Hero(i)
 		if self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
-			if predictedPos:To2D().onScreen then
-				local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
-				if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
-					targetCount = targetCount + 1
-				end
+			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
+			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
+				targetCount = targetCount + 1
 			end
 		end
 	end
@@ -2356,7 +2464,7 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 		local t = Game.Hero(i)
 		if self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
 			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
-			if hitChance >= minimumHitChance and aimPosition:To2D().onScreen then
+			if hitChance >= minimumHitChance then
 				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
 			end
 		end
@@ -2458,7 +2566,7 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 		local t = Game.Hero(i)
 		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
 			local dashEndPosition = t:GetPath(1)
-			if self:GetDistance(source, dashEndPosition) <= range  and dashEndPosition:To2D().onScreen then				
+			if self:GetDistance(source, dashEndPosition) <= range then				
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
 				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
 				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
@@ -2478,7 +2586,7 @@ function HPred:GetHourglassTarget(source, range, delay, speed, timingAccuracy, c
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if t.isEnemy and t.pos:To2D().onScreen then		
+		if t.isEnemy then		
 			local success, timeRemaining = self:HasBuff(t, "zhonyasringshield")
 			if success then
 				local spellInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
@@ -2497,7 +2605,7 @@ function HPred:GetRevivingTarget(source, range, delay, speed, timingAccuracy, ch
 	local target
 	local aimPosition
 	for _, revive in pairs(_cachedRevives) do	
-		if revive.isEnemy and revive.pos:To2D().onScreen then
+		if revive.isEnemy then
 			local interceptTime = self:GetSpellInterceptTime(source, revive.pos, delay, speed)
 			if interceptTime > revive.expireTime - Game.Timer() and interceptTime - revive.expireTime - Game.Timer() < timingAccuracy then
 				target = revive.target
@@ -2520,13 +2628,13 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 				local blinkRange = _blinkSpellLookupTable[t.activeSpell.name]
 				if type(blinkRange) == "table" then
 					--Find the nearest matching particle to our mouse
-					local target, distance = self:GetNearestParticleByNames(t.pos, blinkRange)
-					if target and distance < 250 then					
-						endPos = target.pos		
-					end
+					--local target, distance = self:GetNearestParticleByNames(t.pos, blinkRange)
+					--if target and distance < 250 then					
+					--	endPos = target.pos		
+					--end
 				elseif blinkRange > 0 then
 					endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)					
-					endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * math.min(self:GetDistance(t.activeSpell.startPos,endPos), range)
+					endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * _min(self:GetDistance(t.activeSpell.startPos,endPos), range)
 				else
 					local blinkTarget = self:GetObjectByHandle(t.activeSpell.target)
 					if blinkTarget then				
@@ -2554,7 +2662,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 				
 				local interceptTime = self:GetSpellInterceptTime(myHero.pos, endPos, delay,speed)
 				local deltaInterceptTime = interceptTime - windupRemaining
-				if self:GetDistance(source, endPos) <= range and endPos:To2D().onScreen and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, endPos, delay, speed, radius)) then
+				if self:GetDistance(source, endPos) <= range and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, endPos, delay, speed, radius)) then
 					target = t
 					aimPosition = endPos
 					return target,aimPosition					
@@ -2569,7 +2677,7 @@ function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radiu
 	local aimPosition
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if particle and _blinkLookupTable[particle.name] and self:GetDistance(source, particle.pos) < range and particle.pos:To2D().onScreen then
+		if particle and _blinkLookupTable[particle.name] and self:GetDistance(source, particle.pos) < range then
 			local pPos = particle.pos
 			for k,v in pairs(self:GetEnemyHeroes()) do
 				local t = v
@@ -2591,7 +2699,7 @@ function HPred:GetChannelingTarget(source, range, delay, speed, timingAccuracy, 
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
 		local interceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
-		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and t.pos:To2D().onScreen and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
+		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
 			target = t
 			aimPosition = t.pos	
 			return target, aimPosition
@@ -2604,7 +2712,7 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and t.pos:To2D().onScreen then
+		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range then
 			local immobileTime = self:GetImmobileTime(t)
 			
 			local interceptTime = self:GetSpellInterceptTime(source, t.pos, delay, speed)
@@ -2615,13 +2723,6 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 			end
 		end
 	end
-end
-
-function HPred:RecordTeleport(target, aimPos, endTime)
-	_cachedTeleports[target.networkID] = {}
-	_cachedTeleports[target.networkID]["target"] = target
-	_cachedTeleports[target.networkID]["aimPos"] = aimPos
-	_cachedTeleports[target.networkID]["expireTime"] = endTime + Game.Timer()
 end
 
 function HPred:CacheTeleports()
@@ -2659,12 +2760,97 @@ function HPred:CacheTeleports()
 	end	
 end
 
+function HPred:RecordTeleport(target, aimPos, endTime)
+	_cachedTeleports[target.networkID] = {}
+	_cachedTeleports[target.networkID]["target"] = target
+	_cachedTeleports[target.networkID]["aimPos"] = aimPos
+	_cachedTeleports[target.networkID]["expireTime"] = endTime + Game.Timer()
+end
+
+
+function HPred:CalculateIncomingDamage()
+	_incomingDamage = {}
+	local currentTime = Game.Timer()
+	for _, missile in pairs(_cachedMissiles) do	
+		local dist = self:GetDistance(missile.data.pos, missile.target.pos)			
+		if dist <= missile.target.boundingRadius * 1.5 or currentTime > missile.timeout then
+			_cachedMissiles[_] = nil
+		else
+			if not _incomingDamage[missile.target.networkID] then
+				_incomingDamage[missile.target.networkID] = missile.damage
+			else
+				_incomingDamage[missile.target.networkID] = _incomingDamage[missile.target.networkID] + missile.damage
+			end
+		end
+	end	
+end
+
+function HPred:GetIncomingDamage(target)
+	local damage = 0
+	if _incomingDamage[target.networkID] then
+		damage = _incomingDamage[target.networkID]
+	end
+	return damage
+end
+
+function HPred:CacheMissiles()
+	local currentTime = Game.Timer()
+	for i = 1, Game.MissileCount() do
+		local missile = Game.Missile(i)
+		--Check if there is a target for it
+		if not _cachedMissiles[missile.networkID] and missile.missileData and missile.missileData.target and missile.missileData.owner then
+			local missileName = missile.missileData.name
+			local owner =  self:GetObjectByHandle(missile.missileData.owner)	
+			local target =  self:GetObjectByHandle(missile.missileData.target)		
+			if owner and target and string.find(target.type, "Hero") then			
+				--The missile is an auto attack of some sort that is targeting a player	
+				if (string.find(missileName, "BasicAttack") or string.find(missileName, "CritAttack")) then
+					--Cache it all and update the count
+					_cachedMissiles[missile.networkID] = {}
+					_cachedMissiles[missile.networkID].target = target
+					_cachedMissiles[missile.networkID].data = missile
+					_cachedMissiles[missile.networkID].timeout = currentTime + 1.5
+					
+					local damage = owner.totalDamage
+					if string.find(missileName, "CritAttack") then
+						--Leave it rough we're not that concerned
+						damage = damage * 1.5
+					end
+					_cachedMissiles[missile.networkID].damage = self:CalculatePhysicalDamage(target, damage)
+				end
+			end
+		end
+	end
+end
+
+function HPred:CalculatePhysicalDamage(target, damage)			
+	local targetArmor = target.armor * myHero.armorPenPercent - myHero.armorPen
+	local damageReduction = 100 / ( 100 + targetArmor)
+	if targetArmor < 0 then
+		damageReduction = 2 - (100 / (100 - targetArmor))
+	end		
+	damage = damage * damageReduction	
+	return damage
+end
+
+function HPred:CalculateMagicDamage(target, damage)			
+	local targetMR = target.magicResist * myHero.magicPenPercent - myHero.magicPen
+	local damageReduction = 100 / ( 100 + targetMR)
+	if targetMR < 0 then
+		damageReduction = 2 - (100 / (100 - targetMR))
+	end		
+	damage = damage * damageReduction
+	
+	return damage
+end
+
+
 function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 
 	local target
 	local aimPosition
 	for _, teleport in pairs(_cachedTeleports) do
-		if teleport.expireTime > Game.Timer() and self:GetDistance(source, teleport.aimPos) <= range and teleport.aimPos:To2D().onScreen then			
+		if teleport.expireTime > Game.Timer() and self:GetDistance(source, teleport.aimPos) <= range then			
 			local spellInterceptTime = self:GetSpellInterceptTime(source, teleport.aimPos, delay, speed)
 			local teleportRemaining = teleport.expireTime - Game.Timer()
 			if spellInterceptTime > teleportRemaining and spellInterceptTime - teleportRemaining <= timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, teleport.aimPos, delay, speed, radius)) then								
@@ -2683,7 +2869,7 @@ end
 
 function HPred:Angle(A, B)
 	local deltaPos = A - B
-	local angle = math.atan2(deltaPos.x, deltaPos.z) *  180 / math.pi	
+	local angle = _atan(deltaPos.x, deltaPos.z) *  180 / _pi	
 	if angle < 0 then angle = angle + 360 end
 	return angle
 end
@@ -2918,7 +3104,7 @@ end
 --Finds the closest particle to the origin that is contained in the names array
 function HPred:GetNearestParticleByNames(origin, names)
 	local target
-	local distance = math.max
+	local distance = 999999
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
 		local d = self:GetDistance(origin, particle.pos)
@@ -3008,7 +3194,7 @@ function HPred:GetEnemyByName(name)
 end
 
 function HPred:IsPointInArc(source, origin, target, angle, range)
-	local deltaAngle = math.abs(HPred:Angle(origin, target) - HPred:Angle(source, origin))
+	local deltaAngle = _abs(HPred:Angle(origin, target) - HPred:Angle(source, origin))
 	if deltaAngle < angle and self:GetDistance(origin, target) < range then
 		return true
 	end
@@ -3030,5 +3216,5 @@ function HPred:GetDistanceSqr(p1, p2)
 end
 
 function HPred:GetDistance(p1, p2)
-	return math.sqrt(self:GetDistanceSqr(p1, p2))
+	return _sqrt(self:GetDistanceSqr(p1, p2))
 end

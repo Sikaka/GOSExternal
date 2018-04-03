@@ -4,6 +4,12 @@ class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
 
+local _atan = math.atan2
+local _pi = math.pi
+local _min = math.min
+local _abs = math.abs
+local _sqrt = math.sqrt
+	
 local _reviveQueryFrequency = .2
 local _lastReviveQuery = Game.Timer()
 local _reviveLookupTable = 
@@ -54,7 +60,16 @@ local _cachedRevives = {}
 local _cachedTeleports = {}
 local _movementHistory = {}
 
+--Cache of all TARGETED missiles currently running
+local _cachedMissiles = {}
+local _incomingDamage = {}
+
 function HPred:Tick()
+	--Update missile cache
+	--DISABLED UNTIL LATER.
+	--self:CacheMissiles()
+	
+	
 	--Check for revives and record them	
 	if Game.Timer() - _lastReviveQuery < _reviveQueryFrequency then return end
 	_lastReviveQuery=Game.Timer()
@@ -167,11 +182,9 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 		local t = Game.Hero(i)
 		if self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
-			if predictedPos:To2D().onScreen then
-				local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
-				if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
-					targetCount = targetCount + 1
-				end
+			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
+			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
+				targetCount = targetCount + 1
 			end
 		end
 	end
@@ -185,7 +198,7 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 		local t = Game.Hero(i)
 		if self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
 			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
-			if hitChance >= minimumHitChance and aimPosition:To2D().onScreen then
+			if hitChance >= minimumHitChance then
 				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
 			end
 		end
@@ -287,7 +300,7 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 		local t = Game.Hero(i)
 		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
 			local dashEndPosition = t:GetPath(1)
-			if self:GetDistance(source, dashEndPosition) <= range  and dashEndPosition:To2D().onScreen then				
+			if self:GetDistance(source, dashEndPosition) <= range then				
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
 				local dashTimeRemaining = self:GetDistance(t.pos, dashEndPosition) / t.pathing.dashSpeed
 				local skillInterceptTime = self:GetSpellInterceptTime(myHero.pos, dashEndPosition, delay, speed)
@@ -307,7 +320,7 @@ function HPred:GetHourglassTarget(source, range, delay, speed, timingAccuracy, c
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if t.isEnemy and t.pos:To2D().onScreen then		
+		if t.isEnemy then		
 			local success, timeRemaining = self:HasBuff(t, "zhonyasringshield")
 			if success then
 				local spellInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
@@ -326,7 +339,7 @@ function HPred:GetRevivingTarget(source, range, delay, speed, timingAccuracy, ch
 	local target
 	local aimPosition
 	for _, revive in pairs(_cachedRevives) do	
-		if revive.isEnemy and revive.pos:To2D().onScreen then
+		if revive.isEnemy then
 			local interceptTime = self:GetSpellInterceptTime(source, revive.pos, delay, speed)
 			if interceptTime > revive.expireTime - Game.Timer() and interceptTime - revive.expireTime - Game.Timer() < timingAccuracy then
 				target = revive.target
@@ -349,13 +362,13 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 				local blinkRange = _blinkSpellLookupTable[t.activeSpell.name]
 				if type(blinkRange) == "table" then
 					--Find the nearest matching particle to our mouse
-					local target, distance = self:GetNearestParticleByNames(t.pos, blinkRange)
-					if target and distance < 250 then					
-						endPos = target.pos		
-					end
+					--local target, distance = self:GetNearestParticleByNames(t.pos, blinkRange)
+					--if target and distance < 250 then					
+					--	endPos = target.pos		
+					--end
 				elseif blinkRange > 0 then
 					endPos = Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z)					
-					endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * math.min(self:GetDistance(t.activeSpell.startPos,endPos), range)
+					endPos = t.activeSpell.startPos + (endPos- t.activeSpell.startPos):Normalized() * _min(self:GetDistance(t.activeSpell.startPos,endPos), range)
 				else
 					local blinkTarget = self:GetObjectByHandle(t.activeSpell.target)
 					if blinkTarget then				
@@ -383,7 +396,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 				
 				local interceptTime = self:GetSpellInterceptTime(myHero.pos, endPos, delay,speed)
 				local deltaInterceptTime = interceptTime - windupRemaining
-				if self:GetDistance(source, endPos) <= range and endPos:To2D().onScreen and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, endPos, delay, speed, radius)) then
+				if self:GetDistance(source, endPos) <= range and deltaInterceptTime < timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, endPos, delay, speed, radius)) then
 					target = t
 					aimPosition = endPos
 					return target,aimPosition					
@@ -398,7 +411,7 @@ function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radiu
 	local aimPosition
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if particle and _blinkLookupTable[particle.name] and self:GetDistance(source, particle.pos) < range and particle.pos:To2D().onScreen then
+		if particle and _blinkLookupTable[particle.name] and self:GetDistance(source, particle.pos) < range then
 			local pPos = particle.pos
 			for k,v in pairs(self:GetEnemyHeroes()) do
 				local t = v
@@ -420,7 +433,7 @@ function HPred:GetChannelingTarget(source, range, delay, speed, timingAccuracy, 
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
 		local interceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
-		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and t.pos:To2D().onScreen and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
+		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
 			target = t
 			aimPosition = t.pos	
 			return target, aimPosition
@@ -433,7 +446,7 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range and t.pos:To2D().onScreen then
+		if self:CanTarget(t) and self:GetDistance(source, t.pos) <= range then
 			local immobileTime = self:GetImmobileTime(t)
 			
 			local interceptTime = self:GetSpellInterceptTime(source, t.pos, delay, speed)
@@ -444,13 +457,6 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 			end
 		end
 	end
-end
-
-function HPred:RecordTeleport(target, aimPos, endTime)
-	_cachedTeleports[target.networkID] = {}
-	_cachedTeleports[target.networkID]["target"] = target
-	_cachedTeleports[target.networkID]["aimPos"] = aimPos
-	_cachedTeleports[target.networkID]["expireTime"] = endTime + Game.Timer()
 end
 
 function HPred:CacheTeleports()
@@ -488,12 +494,97 @@ function HPred:CacheTeleports()
 	end	
 end
 
+function HPred:RecordTeleport(target, aimPos, endTime)
+	_cachedTeleports[target.networkID] = {}
+	_cachedTeleports[target.networkID]["target"] = target
+	_cachedTeleports[target.networkID]["aimPos"] = aimPos
+	_cachedTeleports[target.networkID]["expireTime"] = endTime + Game.Timer()
+end
+
+
+function HPred:CalculateIncomingDamage()
+	_incomingDamage = {}
+	local currentTime = Game.Timer()
+	for _, missile in pairs(_cachedMissiles) do	
+		local dist = self:GetDistance(missile.data.pos, missile.target.pos)			
+		if dist <= missile.target.boundingRadius * 1.5 or currentTime > missile.timeout then
+			_cachedMissiles[_] = nil
+		else
+			if not _incomingDamage[missile.target.networkID] then
+				_incomingDamage[missile.target.networkID] = missile.damage
+			else
+				_incomingDamage[missile.target.networkID] = _incomingDamage[missile.target.networkID] + missile.damage
+			end
+		end
+	end	
+end
+
+function HPred:GetIncomingDamage(target)
+	local damage = 0
+	if _incomingDamage[target.networkID] then
+		damage = _incomingDamage[target.networkID]
+	end
+	return damage
+end
+
+function HPred:CacheMissiles()
+	local currentTime = Game.Timer()
+	for i = 1, Game.MissileCount() do
+		local missile = Game.Missile(i)
+		--Check if there is a target for it
+		if not _cachedMissiles[missile.networkID] and missile.missileData and missile.missileData.target and missile.missileData.owner then
+			local missileName = missile.missileData.name
+			local owner =  self:GetObjectByHandle(missile.missileData.owner)	
+			local target =  self:GetObjectByHandle(missile.missileData.target)		
+			if owner and target and string.find(target.type, "Hero") then			
+				--The missile is an auto attack of some sort that is targeting a player	
+				if (string.find(missileName, "BasicAttack") or string.find(missileName, "CritAttack")) then
+					--Cache it all and update the count
+					_cachedMissiles[missile.networkID] = {}
+					_cachedMissiles[missile.networkID].target = target
+					_cachedMissiles[missile.networkID].data = missile
+					_cachedMissiles[missile.networkID].timeout = currentTime + 1.5
+					
+					local damage = owner.totalDamage
+					if string.find(missileName, "CritAttack") then
+						--Leave it rough we're not that concerned
+						damage = damage * 1.5
+					end
+					_cachedMissiles[missile.networkID].damage = self:CalculatePhysicalDamage(target, damage)
+				end
+			end
+		end
+	end
+end
+
+function HPred:CalculatePhysicalDamage(target, damage)			
+	local targetArmor = target.armor * myHero.armorPenPercent - myHero.armorPen
+	local damageReduction = 100 / ( 100 + targetArmor)
+	if targetArmor < 0 then
+		damageReduction = 2 - (100 / (100 - targetArmor))
+	end		
+	damage = damage * damageReduction	
+	return damage
+end
+
+function HPred:CalculateMagicDamage(target, damage)			
+	local targetMR = target.magicResist * myHero.magicPenPercent - myHero.magicPen
+	local damageReduction = 100 / ( 100 + targetMR)
+	if targetMR < 0 then
+		damageReduction = 2 - (100 / (100 - targetMR))
+	end		
+	damage = damage * damageReduction
+	
+	return damage
+end
+
+
 function HPred:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 
 	local target
 	local aimPosition
 	for _, teleport in pairs(_cachedTeleports) do
-		if teleport.expireTime > Game.Timer() and self:GetDistance(source, teleport.aimPos) <= range and teleport.aimPos:To2D().onScreen then			
+		if teleport.expireTime > Game.Timer() and self:GetDistance(source, teleport.aimPos) <= range then			
 			local spellInterceptTime = self:GetSpellInterceptTime(source, teleport.aimPos, delay, speed)
 			local teleportRemaining = teleport.expireTime - Game.Timer()
 			if spellInterceptTime > teleportRemaining and spellInterceptTime - teleportRemaining <= timingAccuracy and (not checkCollision or not self:CheckMinionCollision(source, teleport.aimPos, delay, speed, radius)) then								
@@ -512,7 +603,7 @@ end
 
 function HPred:Angle(A, B)
 	local deltaPos = A - B
-	local angle = math.atan2(deltaPos.x, deltaPos.z) *  180 / math.pi	
+	local angle = _atan(deltaPos.x, deltaPos.z) *  180 / _pi	
 	if angle < 0 then angle = angle + 360 end
 	return angle
 end
@@ -747,7 +838,7 @@ end
 --Finds the closest particle to the origin that is contained in the names array
 function HPred:GetNearestParticleByNames(origin, names)
 	local target
-	local distance = math.max
+	local distance = 999999
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
 		local d = self:GetDistance(origin, particle.pos)
@@ -837,7 +928,7 @@ function HPred:GetEnemyByName(name)
 end
 
 function HPred:IsPointInArc(source, origin, target, angle, range)
-	local deltaAngle = math.abs(HPred:Angle(origin, target) - HPred:Angle(source, origin))
+	local deltaAngle = _abs(HPred:Angle(origin, target) - HPred:Angle(source, origin))
 	if deltaAngle < angle and self:GetDistance(origin, target) < range then
 		return true
 	end
@@ -859,5 +950,5 @@ function HPred:GetDistanceSqr(p1, p2)
 end
 
 function HPred:GetDistance(p1, p2)
-	return math.sqrt(self:GetDistanceSqr(p1, p2))
+	return _sqrt(self:GetDistanceSqr(p1, p2))
 end
