@@ -188,7 +188,7 @@ function IsAttacking()
 	return false
 end
 
-function SpecialCast(key, pos)
+function SpecialCast(key, pos, startPos, isLine)
 	if not Menu.Skills.Combo:Value() and not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end	
 	if NextSpellCast > Game.Timer() then return end		
 	if not pos then
@@ -196,7 +196,13 @@ function SpecialCast(key, pos)
 		return
 	end	
 	
-	if Menu.General.AltCast:Value() then
+	if Menu.General.AltCast:Value() then	
+		if not isLine then
+			isLine = false
+		end
+		if not startPos then
+			startPos = myHero.pos
+		end
 		gsoCast(key, pos, startPos, isLine)
 	elseif _G.SDK and _G.Control then
 		_G.Control.CastSpell(key, pos)
