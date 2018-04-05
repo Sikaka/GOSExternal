@@ -78,6 +78,7 @@ function HPred:Tick()
 	--DISABLED UNTIL LATER.
 	--self:CacheMissiles()
 	
+	self:CacheParticles()
 	
 	--Check for revives and record them	
 	if Game.Timer() - _lastReviveQuery < _reviveQueryFrequency then return end
