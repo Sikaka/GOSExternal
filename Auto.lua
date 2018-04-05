@@ -1158,7 +1158,7 @@ end
 
 function Zilean:StunCombo(target, aimPosition)
 	NextSpellCast = Game.Timer() + .5	
-	if Ready(_E) and AutoUtil:IsInRange(myHero.pos, target.pos,E.Range) then
+	if Ready(_E) and HPred:IsInRange(myHero.pos, target.pos,E.Range) then
 		--We can lead with E, if not just go for QWQ stun combo and we can E later if we really want
 		Control.CastSpell(HK_E, target)
 	end
@@ -1475,7 +1475,7 @@ function Lux:AutoW()
 	local aimPositions = {}
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and AutoUtil:IsInRange(myHero.pos, hero.pos, W.Range) and _allyHealthPercentage[hero.charName] then			
+		if hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, W.Range) and _allyHealthPercentage[hero.charName] then			
 			local deltaLifeLost = _allyHealthPercentage[hero.charName] - CurrentPctLife(hero)
 			if deltaLifeLost >= Menu.Skills.W.Damage:Value() then
 				--Count how many allies will be hit
