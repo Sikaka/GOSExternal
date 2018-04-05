@@ -6,10 +6,13 @@ Callback.Add("Tick", function() HPred:Tick() end)
 
 local _atan = math.atan2
 local _pi = math.pi
+local _max = math.max
 local _min = math.min
 local _abs = math.abs
 local _sqrt = math.sqrt
 local _find = string.find
+local _sub = string.sub
+local _len = string.len
 	
 local _reviveQueryFrequency = .2
 local _lastReviveQuery = Game.Timer()
@@ -64,6 +67,11 @@ local _movementHistory = {}
 --Cache of all TARGETED missiles currently running
 local _cachedMissiles = {}
 local _incomingDamage = {}
+
+--Cache of active enemy windwalls so we can calculate it when dealing with collision checks
+local _windwall
+local _windwallStartPos
+local _windwallWidth
 
 function HPred:Tick()
 	--Update missile cache
@@ -264,8 +272,10 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	end
 	
 	--Check minion block
-	if hitChance > 0 and checkCollision then	
-		if self:CheckMinionCollision(source, aimPosition, delay, speed, radius) then
+	if hitChance > 0 and checkCollision then
+		if self:IsWindwallBlocking(source, aimPosition) then
+			hitChance = -1		
+		elseif self:CheckMinionCollision(source, aimPosition, delay, speed, radius) then
 			hitChance = -1
 		end
 	end
@@ -502,7 +512,7 @@ function HPred:CalculateIncomingDamage()
 	local currentTime = Game.Timer()
 	for _, missile in pairs(_cachedMissiles) do	
 		local dist = self:GetDistance(missile.data.pos, missile.target.pos)			
-		if self:IsInRange(missile.data.pos, missile.target.pos, missile.target.boundingRadius * 1.5) or currentTime > missile.timeout then
+		if missile.name == "" then
 			_cachedMissiles[_] = nil
 		else
 			if not _incomingDamage[missile.target.networkID] then
@@ -520,6 +530,34 @@ function HPred:GetIncomingDamage(target)
 		damage = _incomingDamage[target.networkID]
 	end
 	return damage
+end
+
+
+local _maxCacheRange = 3000
+
+--Right now only used to cache enemy windwalls
+function HPred:CacheParticles()	
+	if _windwall and _windwall.name == "" then
+		_windwall = nil
+	end
+	
+	for i = 1, Game.ParticleCount() do
+		local particle = Game.Particle(i)		
+		if self:IsInRange(particle.pos, myHero.pos, _maxCacheRange) then			
+			if _find(particle.name, "W_windwall%d") and not _windwall then
+				--We don't care about ally windwalls for now
+				local owner =  self:GetObjectByHandle(particle.handle)
+				if owner and owner.isEnemy then
+					_windwall = particle
+					_windwallStartPos = Vector(particle.pos.x, particle.pos.y, particle.pos.z)				
+					
+					local index = _len(particle.name) - 5
+					local spellLevel = _sub(particle.name, index, index) -1 
+					_windwallWidth = 150 + spellLevel * 25					
+				end
+			end
+		end
+	end
 end
 
 function HPred:CacheMissiles()
@@ -901,6 +939,62 @@ function HPred:VectorPointProjectionOnLineSegment(v1, v2, v)
 	return pointSegment, pointLine, isOnSegment
 end
 
+--Determines if there is a windwall between the source and target pos. 
+function HPred:IsWindwallBlocking(source, target)
+	if _windwall then
+		local windwallFacing = (_windwallStartPos-_windwall.pos):Normalized()
+		return self:DoLineSegmentsIntersect(source, target, _windwall.pos + windwallFacing:Perpendicular() * _windwallWidth, _windwall.pos + windwallFacing:Perpendicular2() * _windwallWidth)
+	end	
+	return false
+end
+--Returns if two line segments cross eachother. AB is segment 1, CD is segment 2.
+function HPred:DoLineSegmentsIntersect(A, B, C, D)
+
+	local o1 = self:GetOrientation(A, B, C)
+	local o2 = self:GetOrientation(A, B, D)
+	local o3 = self:GetOrientation(C, D, A)
+	local o4 = self:GetOrientation(C, D, B)
+	
+	if o1 ~= o2 and o3 ~= o4 then
+		return true
+	end
+	
+	if o1 == 0 and self:IsOnSegment(A, C, B) then return true end
+	if o2 == 0 and self:IsOnSegment(A, D, B) then return true end
+	if o3 == 0 and self:IsOnSegment(C, A, D) then return true end
+	if o4 == 0 and self:IsOnSegment(C, B, D) then return true end
+	
+	return false
+end
+
+--Determines the orientation of ordered triplet
+--0 = Colinear
+--1 = Clockwise
+--2 = CounterClockwise
+function HPred:GetOrientation(A,B,C)
+	local val = (B.z - A.z) * (C.x - B.x) -
+		(B.x - A.x) * (C.z - B.z)
+	if val == 0 then
+		return 0
+	elseif val > 0 then
+		return 1
+	else
+		return 2
+	end
+	
+end
+
+function HPred:IsOnSegment(A, B, C)
+	return B.x <= _max(A.x, C.x) and 
+		B.x >= _min(A.x, C.x) and
+		B.z <= _max(A.z, C.z) and
+		B.z >= _min(A.z, C.z)
+end
+
+--Gets the slope between two vectors. Ignores Y because it is non-needed height data. Its all 2d math.
+function HPred:GetSlope(A, B)
+	return (B.z - A.z) / (B.x - A.x)
+end
 
 function HPred:GetEnemyByName(name)
 	local target

@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -1931,7 +1931,7 @@ function MissFortune:__init()
 	
 	if _G.SDK and _G.SDK.Orbwalker then
 		_usePostAttack = true
-		_G.SDK.Orbwalker:OnPostAttack(function(args) MissFortune:OnPostAttack() end)
+		_G.SDK.Orbwalker:OnPostAttack(function(args) self:OnPostAttack() end)
 	end
 end
 
@@ -1976,7 +1976,7 @@ end
 
 function MissFortune:OnPostAttack()	
 	if Ready(_Q) and Menu.Skills.Combo:Value() then	
-		local target = CurrentTarget(575)
+		local target = CurrentTarget(Q.Range)
 		if target then
 			SpecialCast(HK_Q, target.pos)
 		end
@@ -2273,6 +2273,143 @@ function Karthus:AutoR()
 end
 
 
+class "Illaoi" 
+function Illaoi:__init()
+
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Illaoi:CreateMenu()
+
+	Menu.General:MenuElement({id = "DrawQAim", name = "Draw Q Aim", value = true})
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Tentacle Smash", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+	Menu.Skills:MenuElement({id = "W", name = "[W] Harsh Lesson", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Attack Reset In Combo", value = true})
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Test of Spirit", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })	
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] Leap of Faith", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.R:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+end
+
+function Illaoi:LoadSpells()
+	Q = {Range = 850, Width = 100,Delay = 0.75, Speed = _huge }
+	E = {Range = 900, Width = 45, Delay = 0.25, Speed = 1800, Collision = true}
+	W = {Range = 350 }
+	R = {Range = 450, Delay = 0.5, Speed = _huge}
+end
+
+function Illaoi:Draw()	
+	if Ready(_Q) and Menu.General.DrawQAim:Value() and self.forcedTarget and self.forcedTarget.alive and self.forcedTarget.visible then	
+		local targetOrigin = HPred:PredictUnitPosition(self.forcedTarget, Q.Delay)
+		local interceptTime = HPred:GetSpellInterceptTime(myHero.pos, targetOrigin, Q.Delay, Q.Speed)			
+		local origin, radius = HPred:UnitMovementBounds(self.forcedTarget, interceptTime, Menu.General.ReactionTime:Value())		
+						
+		if radius < 25 then
+			radius = 25
+		end
+		
+		if HPred:IsInRange(myHero.pos, origin, Q.Range) then
+			Draw.Circle(origin, 25,10, Draw.Color(150, 255, 0,0))
+		else
+			Draw.Circle(origin, 25,10, Draw.Color(150, 0, 255,0))
+			Draw.Circle(origin, radius,1, Draw.Color(150, 255, 255,255))	
+		end
+	end	
+end
+
+function Illaoi:Tick()
+	if IsRecalling() then return end	
+	if NextSpellCast > Game.Timer() then return end
+	
+	local currentMana = CurrentPctMana(myHero)
+	
+	
+	local eData = myHero:GetSpellData(_E)
+	if Ready(_E) and eData.cd >0  then	
+		local hasCast = false
+		if Menu.Skills.E.Auto:Value() then
+			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
+			if target and not HPred:IsInRange(myHero.pos, aimPosition, E.Range) then
+				SpecialCast(HK_E, aimPosition)
+				hasCast = true
+			end
+		end
+		if not hasCast and Menu.Skills.Combo:Value() and currentMana >= Menu.Skills.E.Mana:Value() then			
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, E.Collision, Menu.Skills.E.Accuracy:Value())	
+			if hitRate and HPred:IsInRange(myHero.pos, aimPosition, E.Range) then				
+				SpecialCast(HK_E, aimPosition, myHero.pos, true)
+			end
+		end
+	end	
+	
+	if Ready(_W) and currentMana >= Menu.Skills.W.Mana:Value() then
+		self:AutoW()
+	end
+	
+	if Ready(_Q) and (Menu.Skills.Combo:Value() or (Menu.Skills.Q.Auto:Value() and currentMana >= Menu.Skills.Q.Mana:Value())) then
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+		if target and not HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+			SpecialCast(HK_Q, aimPosition)
+		elseif Menu.Skills.Combo:Value() then
+			--Unreliable Q				
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value())	
+			if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		end
+		
+	end
+	
+	
+	if Ready(_R) then		
+		local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, R.Range)
+		if targetCount >= Menu.Skills.R.Count:Value() then
+			Control.CastSpell(HK_R)
+		end
+	end
+end
+
+function Illaoi:AutoW()
+	--check if we are middle of an auto attack
+	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then
+		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)
+		if target and target.isEnemy then		
+			local windupRemaining = myHero.attackData.endTime - Game.Timer() - myHero.attackData.windDownTime
+			if windupRemaining < .15 then
+				DelayAction(function()Control.CastSpell(HK_W) end,.10)
+			end
+		end
+	end
+end
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2282,9 +2419,13 @@ Callback.Add("Tick", function() HPred:Tick() end)
 
 local _atan = math.atan2
 local _pi = math.pi
+local _max = math.max
 local _min = math.min
 local _abs = math.abs
 local _sqrt = math.sqrt
+local _find = string.find
+local _sub = string.sub
+local _len = string.len
 	
 local _reviveQueryFrequency = .2
 local _lastReviveQuery = Game.Timer()
@@ -2339,6 +2480,11 @@ local _movementHistory = {}
 --Cache of all TARGETED missiles currently running
 local _cachedMissiles = {}
 local _incomingDamage = {}
+
+--Cache of active enemy windwalls so we can calculate it when dealing with collision checks
+local _windwall
+local _windwallStartPos
+local _windwallWidth
 
 function HPred:Tick()
 	--Update missile cache
@@ -2539,8 +2685,10 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	end
 	
 	--Check minion block
-	if hitChance > 0 and checkCollision then	
-		if self:CheckMinionCollision(source, aimPosition, delay, speed, radius) then
+	if hitChance > 0 and checkCollision then
+		if self:IsWindwallBlocking(source, aimPosition) then
+			hitChance = -1		
+		elseif self:CheckMinionCollision(source, aimPosition, delay, speed, radius) then
 			hitChance = -1
 		end
 	end
@@ -2777,7 +2925,7 @@ function HPred:CalculateIncomingDamage()
 	local currentTime = Game.Timer()
 	for _, missile in pairs(_cachedMissiles) do	
 		local dist = self:GetDistance(missile.data.pos, missile.target.pos)			
-		if self:IsInRange(missile.data.pos, missile.target.pos, missile.target.boundingRadius * 1.5) or currentTime > missile.timeout then
+		if missile.name == "" then
 			_cachedMissiles[_] = nil
 		else
 			if not _incomingDamage[missile.target.networkID] then
@@ -2795,6 +2943,34 @@ function HPred:GetIncomingDamage(target)
 		damage = _incomingDamage[target.networkID]
 	end
 	return damage
+end
+
+
+local _maxCacheRange = 3000
+
+--Right now only used to cache enemy windwalls
+function HPred:CacheParticles()	
+	if _windwall and _windwall.name == "" then
+		_windwall = nil
+	end
+	
+	for i = 1, Game.ParticleCount() do
+		local particle = Game.Particle(i)		
+		if self:IsInRange(particle.pos, myHero.pos, _maxCacheRange) then			
+			if _find(particle.name, "W_windwall%d") and not _windwall then
+				--We don't care about ally windwalls for now
+				local owner =  self:GetObjectByHandle(particle.handle)
+				if owner and owner.isEnemy then
+					_windwall = particle
+					_windwallStartPos = Vector(particle.pos.x, particle.pos.y, particle.pos.z)				
+					
+					local index = _len(particle.name) - 5
+					local spellLevel = _sub(particle.name, index, index) -1 
+					_windwallWidth = 150 + spellLevel * 25					
+				end
+			end
+		end
+	end
 end
 
 function HPred:CacheMissiles()
@@ -3176,6 +3352,62 @@ function HPred:VectorPointProjectionOnLineSegment(v1, v2, v)
 	return pointSegment, pointLine, isOnSegment
 end
 
+--Determines if there is a windwall between the source and target pos. 
+function HPred:IsWindwallBlocking(source, target)
+	if _windwall then
+		local windwallFacing = (_windwallStartPos-_windwall.pos):Normalized()
+		return self:DoLineSegmentsIntersect(source, target, _windwall.pos + windwallFacing:Perpendicular() * _windwallWidth, _windwall.pos + windwallFacing:Perpendicular2() * _windwallWidth)
+	end	
+	return false
+end
+--Returns if two line segments cross eachother. AB is segment 1, CD is segment 2.
+function HPred:DoLineSegmentsIntersect(A, B, C, D)
+
+	local o1 = self:GetOrientation(A, B, C)
+	local o2 = self:GetOrientation(A, B, D)
+	local o3 = self:GetOrientation(C, D, A)
+	local o4 = self:GetOrientation(C, D, B)
+	
+	if o1 ~= o2 and o3 ~= o4 then
+		return true
+	end
+	
+	if o1 == 0 and self:IsOnSegment(A, C, B) then return true end
+	if o2 == 0 and self:IsOnSegment(A, D, B) then return true end
+	if o3 == 0 and self:IsOnSegment(C, A, D) then return true end
+	if o4 == 0 and self:IsOnSegment(C, B, D) then return true end
+	
+	return false
+end
+
+--Determines the orientation of ordered triplet
+--0 = Colinear
+--1 = Clockwise
+--2 = CounterClockwise
+function HPred:GetOrientation(A,B,C)
+	local val = (B.z - A.z) * (C.x - B.x) -
+		(B.x - A.x) * (C.z - B.z)
+	if val == 0 then
+		return 0
+	elseif val > 0 then
+		return 1
+	else
+		return 2
+	end
+	
+end
+
+function HPred:IsOnSegment(A, B, C)
+	return B.x <= _max(A.x, C.x) and 
+		B.x >= _min(A.x, C.x) and
+		B.z <= _max(A.z, C.z) and
+		B.z >= _min(A.z, C.z)
+end
+
+--Gets the slope between two vectors. Ignores Y because it is non-needed height data. Its all 2d math.
+function HPred:GetSlope(A, B)
+	return (B.z - A.z) / (B.x - A.x)
+end
 
 function HPred:GetEnemyByName(name)
 	local target
