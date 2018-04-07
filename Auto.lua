@@ -80,13 +80,6 @@ end)
 Callback.Add("Load",
 function()	
 
-	--Load from common folder OR let us use it if its already activated as its own script
-	if FileExist(COMMON_PATH .. "HPred.lua") then
-		require 'HPred'
-	else
-		HPred()
-	end	
-	
 	--Set up the initial menu for drawing and reaction time
 	Menu = MenuElement({type = MENU, id = myHero.charName, name = "[Auto] "..myHero.charName})	
 	Menu:MenuElement({id = "General", name = "General", type = MENU})
@@ -396,7 +389,7 @@ function AutoUtil:GetNearestAlly(entity, range)
 		local hero = Game.Hero(i)	
 		if hero ~= entity and hero.isAlly and HPred:CanTargetALL(hero) then
 			local d = HPred:GetDistanceSqr(entity.pos, hero.pos)
-			if d < distance and d < range then
+			if d < distance and d < range * range then
 				distance = d
 				ally = hero
 			end
@@ -406,6 +399,7 @@ function AutoUtil:GetNearestAlly(entity, range)
 		return ally
 	end
 end
+
 function AutoUtil:NearestEnemy(entity)
 	local distance = 999999
 	local enemy = nil
@@ -419,7 +413,7 @@ function AutoUtil:NearestEnemy(entity)
 			end
 		end
 	end
-	return distance, enemy
+	return _sqrt(distance), enemy
 end
 
 function AutoUtil:CountEnemiesNear(origin, range)
@@ -688,7 +682,7 @@ function Brand:UpdateWWhiteList()
 end
 
 function Brand:Tick()
-	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 
 	--Reliable spells cast even if combo key is NOT pressed and are the most likely to hit.
 	if Ready(_W) then
@@ -882,7 +876,7 @@ function Soraka:Draw()
 end
 
 function Soraka:Tick()
-	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	
 	--Heal allies with R
 	if Ready(_R) then
@@ -1096,7 +1090,7 @@ function Zilean:Draw()
 end
 
 function Zilean:Tick()
-	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Use Ult on Allies	
@@ -1273,7 +1267,7 @@ function Nami:Draw()
 end
 
 function Nami:Tick()
-	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Auto Bubble Immobile targets and unreliable targets if combo button held down
@@ -1436,7 +1430,7 @@ local count = 0
 end
 
 function Lux:Tick()
-	if myHero.dead or Game.IsChatOpen() or IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	if Ready(_Q) then
@@ -1626,10 +1620,10 @@ end
 
 function Blitzcrank:Draw()	
 	
-	if Ready(_Q) and Menu.General.DrawQAim:Value() and self.forcedTarget and self.forcedTarget.alive and self.forcedTarget.visible then	
-		local targetOrigin = HPred:PredictUnitPosition(self.forcedTarget, Q.Delay)
+	if Ready(_Q) and Menu.General.DrawQAim:Value() and forcedTarget and forcedTarget.alive and forcedTarget.visible then	
+		local targetOrigin = HPred:PredictUnitPosition(forcedTarget, Q.Delay)
 		local interceptTime = HPred:GetSpellInterceptTime(myHero.pos, targetOrigin, Q.Delay, Q.Speed)			
-		local origin, radius = HPred:UnitMovementBounds(self.forcedTarget, interceptTime, Menu.General.ReactionTime:Value())		
+		local origin, radius = HPred:UnitMovementBounds(forcedTarget, interceptTime, Menu.General.ReactionTime:Value())		
 						
 		if radius < 25 then
 			radius = 25
@@ -1762,7 +1756,7 @@ function Lulu:CreateMenu()
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Help, Pix!", type = MENU})
-	Menu.Skills.E:MenuElement({id = "Killsteal", name = "Killsteal", value = true})
+	Menu.Skills.E:MenuElement({id = "Combo", name = "Hit Enemies In Combo", value = true})
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Buff Ally List", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local Hero = Game.Hero(i)
@@ -1823,8 +1817,8 @@ function Lulu:Tick()
 	
 	--Try to killsteal with E
 	if Ready(_E) then
-		if Menu.Skills.E.Killsteal:Value() then
-			self:KillstealE()
+		if Menu.Skills.E.Combo:Value() and Menu.Skills.Combo:Value() then
+			self:ComboE()
 		end
 		if CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 			self:BuffE()
@@ -1889,13 +1883,10 @@ function Lulu:BuffE()
 	end
 end
 
-function Lulu:KillstealE()
-	local eDamage= 80 + (myHero:GetSpellData(_R).level -1) * 30 + myHero.ap * 0.4
-	for i = 1, Game.HeroCount() do
-		local enemy = Game.Hero(i)
-		if HPred:CanTarget(enemy) and HPred:IsInRange(myHero.pos, enemy.pos, E.Range) and AutoUtil:CalculateMagicDamage(enemy, eDamage) >= enemy.health then
-			SpecialCast(HK_E, enemy)			
-		end
+function Lulu:ComboE()
+	local target = CurrentTarget(E.Range)
+	if target and HPred:CanTarget(target) then
+		SpecialCast(HK_E, target)
 	end
 end
 
@@ -2296,8 +2287,7 @@ function Illaoi:CreateMenu()
 	Menu.Skills:MenuElement({id = "W", name = "[W] Harsh Lesson", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Attack Reset In Combo", value = true})
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
-	
-	
+		
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Test of Spirit", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
@@ -2319,16 +2309,16 @@ function Illaoi:LoadSpells()
 end
 
 function Illaoi:Draw()	
-	if Ready(_Q) and Menu.General.DrawQAim:Value() and self.forcedTarget and self.forcedTarget.alive and self.forcedTarget.visible then	
-		local targetOrigin = HPred:PredictUnitPosition(self.forcedTarget, Q.Delay)
-		local interceptTime = HPred:GetSpellInterceptTime(myHero.pos, targetOrigin, Q.Delay, Q.Speed)			
-		local origin, radius = HPred:UnitMovementBounds(self.forcedTarget, interceptTime, Menu.General.ReactionTime:Value())		
+	if Ready(_E) and Menu.General.DrawQAim:Value() and forcedTarget and forcedTarget.alive and forcedTarget.visible then	
+		local targetOrigin = HPred:PredictUnitPosition(forcedTarget, E.Delay)
+		local interceptTime = HPred:GetSpellInterceptTime(myHero.pos, targetOrigin, E.Delay, E.Speed)			
+		local origin, radius = HPred:UnitMovementBounds(forcedTarget, interceptTime, Menu.General.ReactionTime:Value())		
 						
 		if radius < 25 then
 			radius = 25
 		end
 		
-		if HPred:IsInRange(myHero.pos, origin, Q.Range) then
+		if HPred:IsInRange(myHero.pos, origin, E.Range) then
 			Draw.Circle(origin, 25,10, Draw.Color(150, 255, 0,0))
 		else
 			Draw.Circle(origin, 25,10, Draw.Color(150, 0, 255,0))
@@ -2337,12 +2327,40 @@ function Illaoi:Draw()
 	end	
 end
 
+
+
+local _spirit
+local _nextSpiritSearch = Game.Timer()
+
+function Illaoi:GetSpirit()
+	if _nextSpiritSearch > Game.Timer() then return end
+	_nextSpiritSearch = Game.Timer() + .25
+	
+	--Check if it still exists
+	if _spirit and _spirit.name == "" then
+		_spirit = nil	
+	end
+	if not _spirit then
+		for i = 1, Game.ParticleCount() do
+			local particle = Game.Particle(i)		
+			local dist =  HPred:GetDistance(particle.pos, myHero.pos)
+			if dist > 100 and dist < 800 then
+				if particle.name == "Illaoi_Base_E_Spirit" then
+					_spirit = particle
+					break
+				end
+			end
+		end
+	end
+end
+
 function Illaoi:Tick()
 	if IsRecalling() then return end	
 	if NextSpellCast > Game.Timer() then return end
 	
 	local currentMana = CurrentPctMana(myHero)
 	
+	self:GetSpirit()
 	
 	local eData = myHero:GetSpellData(_E)
 	if Ready(_E) and eData.cd >0  then	
@@ -2377,12 +2395,14 @@ function Illaoi:Tick()
 				SpecialCast(HK_Q, aimPosition)
 			end
 		end
-		
 	end
 	
-	
 	if Ready(_R) then		
-		local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, R.Range)
+		local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, R.Range)		
+		--Count their spirit as a hero! If we grab then ulting is probably a good idea.
+		if _spirit then
+			targetCount = targetCount + 1
+		end
 		if targetCount >= Menu.Skills.R.Count:Value() then
 			Control.CastSpell(HK_R)
 		end
@@ -2391,9 +2411,9 @@ end
 
 function Illaoi:AutoW()
 	--check if we are middle of an auto attack
-	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then
-		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)
-		if target and target.isEnemy then		
+	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then		
+		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)		
+		if target and target.isEnemy or (_spirit and HPred:IsInRange(myHero.pos, _spirit.pos, 200)) then		
 			local windupRemaining = myHero.attackData.endTime - Game.Timer() - myHero.attackData.windDownTime
 			if windupRemaining < .15 then
 				DelayAction(function()Control.CastSpell(HK_W) end,.10)
@@ -2401,10 +2421,6 @@ function Illaoi:AutoW()
 		end
 	end
 end
-
-
-
-
 
 
 
