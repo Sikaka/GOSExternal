@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -43,10 +43,29 @@ local function gsoCast(hkSpell, castPos, startPos, isLine)
         
         gsoExtraSetCursor = castPos
         gsoIsChangingCursorPos = true
-        gsoSetCursorPos = { endTime = GetTickCount() + 50, action = function() Control.SetCursorPos(cPos.x, cPos.y) end, active = true }
-        
-        NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
+        gsoSetCursorPos = { endTime = GetTickCount() + 50, action = function() Control.SetCursorPos(cPos.x, cPos.y) end, active = true }        
     end
+end
+
+
+local _nextVectorCast = Game.Timer()
+
+function VectorCast(startPos, endPos, hotkey)
+	if NextSpellCast > Game.Timer() then return end	
+	if _nextVectorCast > Game.Timer() then return end
+	_nextVectorCast = Game.Timer() + 2
+	NextSpellCast = Game.Timer() + .25
+	local cPos = cursorPos
+	Control.SetCursorPos(startPos)	
+	DelayAction(function()Control.KeyDown(hotkey) end,.05)
+	DelayAction(function()Control.SetCursorPos(endPos) end,.1)
+	DelayAction(function()Control.KeyUp(hotkey) end,.15)
+	
+	
+	
+	gsoExtraSetCursor = castPos
+	gsoIsChangingCursorPos = true
+	gsoSetCursorPos = { endTime = GetTickCount() + 160, action = function() Control.SetCursorPos(cPos.x, cPos.y) end, active = true }   
 end
 
 local gsoLoadedAddons = false
@@ -202,6 +221,8 @@ function SpecialCast(key, pos, startPos, isLine)
 	else
 		Control.CastSpell(key, pos)
 	end
+	
+	NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
 end
  	
 function KnowsSpell(spell)
@@ -1639,7 +1660,8 @@ function Blitzcrank:Draw()
 end
 
 function Blitzcrank:Tick()
-	if IsRecalling() then return end	
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--TODO: Only update whitelist every second
@@ -1802,7 +1824,8 @@ function Lulu:Draw()
 end
 
 function Lulu:Tick()
-	if IsRecalling() then return end	
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Use ult to save ally or knockup enemy
@@ -1950,7 +1973,8 @@ function MissFortune:Draw()
 end
 
 function MissFortune:Tick()
-	if IsRecalling() then return end	
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	if self:IsRActive() then return end
 	
@@ -2135,7 +2159,8 @@ function Karthus:Draw()
 end
 
 function Karthus:Tick()
-	if IsRecalling() then return end	
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	if Ready(_E) then
@@ -2355,7 +2380,8 @@ function Illaoi:GetSpirit()
 end
 
 function Illaoi:Tick()
-	if IsRecalling() then return end	
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	local currentMana = CurrentPctMana(myHero)
@@ -2427,8 +2453,267 @@ end
 
 
 
+class "Taliyah" 
+function Taliyah:__init()
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Taliyah:CreateMenu()
+
+	Menu.General:MenuElement({id = "DrawQAim", name = "Draw Q Aim", value = true})
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Threaded Volley", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+	Menu.Skills:MenuElement({id = "W", name = "[W] Seismic Shove", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.W:MenuElement({id = "PeelRange", name = "Push Range", value = 300, min = 100, max = 500, step = 50 })
+	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Peel Accuracy", value = 3, min = 1, max = 5, step = 1})
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Unraveled Earth", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })		
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+end
+
+function Taliyah:LoadSpells()
+	Q = {Range = 1000, Width = 45,Delay = 0.25, Speed = 2850, Collision = true }
+	W = {Range = 900, Width = 150,Delay = 0.25, Speed = _huge }
+	E = {Range = 800, Width = 300,Delay = 0.25, Speed = 2000 }
+end
+
+function Taliyah:Draw()	
+end
+
+function Taliyah:PrintDebugSpells()
+local count = 0
+	for i = 1, Game.MissileCount() do
+		local missile = Game.Missile(i)	
+		local dist =  HPred:GetDistance(missile.pos, myHero.pos)
+		if dist > 100 and dist < 800 then
+			count = count + 1
+			local screenPos = missile.pos:To2D()
+			Draw.Text(missile.name, 13, screenPos.x, screenPos.y+ count * 15)
+		end
+	end
+	local count = 0
+	for i = 1, Game.ParticleCount() do
+		local particle = Game.Particle(i)		
+		local dist =  HPred:GetDistance(particle.pos, myHero.pos)
+		if dist > 100 and dist < 800 then
+			count = count + 1
+			local screenPos = particle.pos:To2D()
+			Draw.Text(particle.name, 13, screenPos.x, screenPos.y + count * 15)
+		end
+	end
+end
+function Taliyah:Tick()
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if NextSpellCast > Game.Timer() then return end
+	
+	self:FindW()
+	if Ready(_E) then
+		self:AutoE()
+	end
+	
+	if Ready(_W) then
+		self:AutoW()
+	end
+	
+	if Ready(_Q) then
+		self:AutoQ()
+	end	
+end
 
 
+function Taliyah:AutoQ()	
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+	if Menu.Skills.Q.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,Q.Range) then
+		SpecialCast(HK_Q, aimPosition)
+	--No Reliable target: Check for harass/combo unreliable target instead
+	else
+		if Menu.Skills.Combo:Value() then
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(), nil)	
+			if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		end
+	end
+end
+
+
+local _wDirection
+local _wCastAt = Game.Timer()
+local _wParticle
+
+
+function Taliyah:FindW()	
+	if Game.Timer() - _wCastAt < 1 and not _wParticle then		
+		for i = 1, Game.ParticleCount() do 
+			local particle = Game.Particle(i)
+			if particle.name == "Taliyah_Base_W_indicator_arrow" then
+				_wParticle = particle
+			end
+		end
+	elseif _wParticle and _wParticle.name ~= "Taliyah_Base_W_indicator_arrow" then
+		_wParticle = nil		
+	end
+end
+function Taliyah:AutoW()
+	
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, W.Range, W.Delay, W.Speed,W.Width, Menu.General.ReactionTime:Value(), W.Collision)
+	if Menu.Skills.W.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,W.Range) then
+	
+		if HPred:IsInRange(myHero.pos, aimPosition, Menu.Skills.W.PeelRange:Value()) then	
+		--push them			
+			_wDirection = (aimPosition-myHero.pos):Normalized()
+			_wCastAt = Game.Timer()
+			VectorCast(aimPosition, aimPosition + _wDirection * 100, HK_W)
+		else
+			_wDirection = (myHero.pos- aimPosition):Normalized()
+			_wCastAt = Game.Timer()
+			VectorCast(aimPosition, aimPosition + _wDirection * 100, HK_W)
+		end
+		--receive satisfaction!
+	elseif Menu.Skills.Combo:Value() then
+		local distance, target = AutoUtil:NearestEnemy(myHero)
+		if target and HPred:IsInRange(myHero.pos, target.pos, Menu.Skills.W.PeelRange:Value()) then
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, W.Range, W.Delay, W.Speed, W.Width, W.Collision, Menu.Skills.W.Accuracy:Value(), nil)	
+			if hitRate and HPred:IsInRange(myHero.pos, aimPosition, W.Range) then
+				--Push them away
+				_wDirection = (aimPosition-myHero.pos):Normalized()
+				_wCastAt = Game.Timer()
+				VectorCast(aimPosition, aimPosition + _wDirection * 100, HK_W)
+			end
+		end
+	end
+end
+
+function Taliyah:AutoE()
+
+	--if Game.Timer() - _wCastAt < .6 and  _wParticle then
+		--Find a target near it that will be bounced			
+	--	local distance, target = AutoUtil:NearestEnemy(_wParticle)
+	--	if target and distance < 1200 then			
+	--		local origin,movementRadius = HPred:UnitMovementBounds(target, W.Delay - Game.Timer() - _wCastAt, 0)
+	--		if HPred:GetDistance(target.pos, _wParticle.pos) + movementRadius <= W.Width then
+	--			--Until we have a proper direction this is completely useless... like REALLY bad
+	--		end
+	--	end
+	--end
+	local target, aimPosition = HPred:GetGuarenteedTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
+	if Menu.Skills.E.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,E.Range) then		
+		
+		SpecialCast(HK_Q, aimPosition)
+		DelayAction(function()SpecialCast(HK_E, aimPosition) end,.15)
+	end
+end
+
+
+
+class "Kalista" 
+function Kalista:__init()
+
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Kalista:CreateMenu()
+
+	Menu.General:MenuElement({id = "DrawQAim", name = "Draw Q Aim", value = true})
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Pierce", type = MENU})
+	--Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Harass Through Minions", value = true})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+	Menu.Skills:MenuElement({id = "E", name = "[E] Rend", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Killsteal", name = "Killsteal", value = true})	
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+end
+
+function Kalista:LoadSpells()
+	Q = {Range = 1150, Width = 35,Delay = 0.35, Speed = 2100, Collision = true }
+end
+
+function Kalista:Draw()	
+end
+
+
+function Kalista:GetEStacks(target)
+	for i = 1, target.buffCount do 
+		local buff = target:GetBuff(i)
+		if buff.duration > 0 and buff.name == "kalistaexpungemarker" then
+			return buff.count
+		end
+	end
+	return 0
+end
+
+function Kalista:Tick()
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if NextSpellCast > Game.Timer() then return end
+	if Ready(_E) and Menu.Skills.E.Killsteal:Value() then
+		self:Killsteal()
+	end
+	if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		self:AutoQ()
+	end
+end
+
+
+function Kalista:AutoQ()	
+	if Menu.Skills.Combo:Value() then
+		--If we're in combo mode then we want to take the possible heroes in range and assign them a priority based on hitchance and E stacks
+		
+		local qTargets = {}
+		for i = 1, Game.HeroCount() do
+			local t = Game.Hero(i)
+			if HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, Q.Range) then
+				local hitRate, aimPosition = HPred:GetHitchance(myHero.pos, t, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision)
+				if hitRate and hitRate >= Menu.Skills.Q.Accuracy:Value() and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+					_insert(qTargets, {aimPosition, hitRate * self:GetEStacks(t)})
+				end
+			end
+		end
+		
+		_sort(qTargets, function( a, b ) return a[2] >b[2] end)	
+		if #qTargets > 0 then
+			SpecialCast(HK_Q, qTargets[1][1])
+		end
+	end
+end
+
+function Kalista:Killsteal()
+	local eDamage= 20 + (myHero:GetSpellData(_E).level -1) * 10 + myHero.totalDamage * 0.6
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, 525) then
+			--Calculate the damage to this specific target
+			local damage = eDamage + self:GetEStacks(t) * myHero.totalDamage * .3
+			damage = HPred:CalculatePhysicalDamage(t, damage)
+			if damage >= t.health then
+				Control.CastSpell(HK_E)
+			end
+		end
+	end
+end
 class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
@@ -2557,6 +2842,33 @@ end
 function HPred:GetEnemyNexusPosition()
 	--This is slightly wrong. It represents fountain not the nexus. Fix later.
 	if myHero.team == 100 then return Vector(14340, 171.977722167969, 14390); else return Vector(396,182.132507324219,462); end
+end
+
+
+function HPred:GetGuarenteedTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision)
+	--Get hourglass enemies
+	target, aimPosition =self:GetHourglassTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end
+	
+	--Get reviving target
+	target, aimPosition =self:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end	
+	
+	--Get teleporting enemies
+	target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
+	if target and aimPosition then
+		return target, aimPosition
+	end
+	
+	--Get stunned enemies
+	local target, aimPosition =self:GetImmobileTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end
 end
 
 
