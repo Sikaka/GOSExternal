@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -127,10 +127,10 @@ end
 function WndMsg(msg,key)
 	if msg == 513 then
 		local starget = nil
-		local dist = 1000
+		local dist = 10000
 		for i  = 1,Game.HeroCount(i) do
 			local enemy = Game.Hero(i)
-			if enemy.alive and enemy.isEnemy and HPred:IsInRange(mousePos, enemy.pos, dist) then
+			if enemy.alive and enemy.isEnemy and HPred:GetDistanceSqr(mousePos, enemy.pos) < dist then
 				starget = enemy
 				dist = HPred:GetDistanceSqr(mousePos, enemy.pos)
 			end
@@ -186,6 +186,16 @@ function SetMovement(bool)
 		_G.SDK.Orbwalker:SetAttack(bool)
 	else
 		GOS.BlockMovement = not bool
+		GOS.BlockAttack = not bool
+	end
+end
+
+function SetAttack(bool)
+	if _G.EOWLoaded then
+		EOW:SetAttacks(bool)
+	elseif _G.SDK then
+		_G.SDK.Orbwalker:SetAttack(bool)
+	else
 		GOS.BlockAttack = not bool
 	end
 end
@@ -499,8 +509,8 @@ function AutoUtil:CastItemMiniMap(pos, id)
 	end
 end
 
-function AutoUtil:HasBuffType(unit, buffType, duration)
-	for i = 0, 63 do
+function AutoUtil:HasBuffType(unit, buffType, duration)	
+	for i = 1, unit.buffCount do 
 		local Buff = unit:GetBuff(i)
 		if Buff.duration > duration and Buff.count > 0  and Buff.type == buffType then 
 			return true 
@@ -1387,9 +1397,9 @@ function Lux:__init()
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Lux:LoadSpells()
-	Q = {Range = 1175, Width = 50,Delay = 0.25, Speed = 1200, Collision = true}
+	Q = {Range = 1075, Width = 50,Delay = 0.25, Speed = 1200, Collision = true}
 	W = {Range = 1075, Width = 120,Delay = 0.25, Speed = 1400}
-	E = {Range = 1000, Width = 350,Delay = 0.25, Speed = 1300}
+	E = {Range = 1100, Width = 350,Delay = 0.25, Speed = 1300}
 	R = {Range = 3340,Width = 115, Delay = 1, Speed = _huge}
 end
 
@@ -1424,7 +1434,12 @@ function Lux:CreateMenu()
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
 
+local _nextMissileCache = Game.Timer()
 function Lux:Draw()
+	if _nextMissileCache > Game.Timer() then return end	
+	_nextMissileCache = Game.Timer() + .2
+	HPred:CacheMissiles()	
+	HPred:CalculateIncomingDamage()
 end
 
 function Lux:PrintDebugSpells()
@@ -1462,7 +1477,9 @@ function Lux:Tick()
 		self:AutoW()
 	end
 	
-	self:AutoE()
+	if Ready(_E) then
+		self:AutoE()
+	end
 			
 	if Ready(_R) then
 		self:AutoR()
@@ -1490,8 +1507,11 @@ function Lux:AutoW()
 	local aimPositions = {}
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, W.Range) and _allyHealthPercentage[hero.charName] then			
-			local deltaLifeLost = _allyHealthPercentage[hero.charName] - CurrentPctLife(hero)
+		if hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, W.Range) and _allyHealthPercentage[hero.charName] then		
+			local predictedLife = CurrentPctLife(hero)
+			local predictedLoss = HPred:GetIncomingDamage(hero)/ hero.maxHealth  * 100
+			predictedLife = predictedLife - predictedLoss
+			local deltaLifeLost = _allyHealthPercentage[hero.charName] - predictedLife
 			if deltaLifeLost >= Menu.Skills.W.Damage:Value() then
 				--Count how many allies will be hit
 				
@@ -1532,8 +1552,9 @@ function Lux:AutoE()
 
 	if self:IsELanded() then
 		if AutoUtil:NearestEnemy(eParticle) < E.Width  then	
-			SpecialCast(HK_E)
-		end		
+			Control.CastSpell(HK_E)
+			eParticle = nil
+		end	
 	else		
 		--Try to cast E or search for missile
 		local eData = myHero:GetSpellData(_E)
@@ -2714,6 +2735,174 @@ function Kalista:Killsteal()
 		end
 	end
 end
+
+class "Cassiopeia"
+function Cassiopeia:__init()
+
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Cassiopeia:CreateMenu()
+
+	Menu.General:MenuElement({id = "DrawQAim", name = "Draw Q Aim", value = true})
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Noxious Blast", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile", value = true})	
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+	Menu.Skills:MenuElement({id = "W", name = "[W] Miasma", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast On Immobile", value = true})
+	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Twin Fang", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Poison", name = "Only cast on poisoned enemies", value = true})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	Menu.Skills.E:MenuElement({id = "Farm", name = "Last Hit Poisoned Minions", value = true, toggle = true, key = 0x72})
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] Petrifying Gaze", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Count", name = "Ult Count", value = 2, min = 1, max = 5, step = 1 })
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+end
+
+function Cassiopeia:LoadSpells()
+	Q = {Range = 850, Width = 150,Delay = 0.4, Speed = _huge}
+	W = {Range = 800, Width = 160,Delay = 0.25, Speed = _huge}
+	E = {Range = 650}
+	R = {Range = 825,Delay = 0.5, Angle = 80}
+end
+
+function Cassiopeia:Draw()	
+end
+
+function Cassiopeia:IsTargetPoisoned(target)
+	for i = 1, target.buffCount do 
+		local buff = target:GetBuff(i)
+		if buff.duration > 0 and( buff.name == "cassiopeiaqdebuff" or buff.name == "cassiopeiawpoison")then
+			return true
+		end
+	end
+end
+
+function Cassiopeia:Tick()
+	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if NextSpellCast > Game.Timer() then return end
+	
+	
+	--If we're in combo mode, disable auto attacks entirely for the orbwalker
+	SetAttack(not Menu.Skills.Combo:Value())
+	
+	
+	if Ready(_R) then
+		self:AutoR()
+	end
+	
+	if Ready(_E) then
+		self:AutoE()
+	end
+	
+	if Ready(_Q) then
+		self:AutoQ()
+	end
+	
+	if Ready(_W) then
+		self:AutoW()
+	end
+	
+end
+
+function Cassiopeia:AutoQ()	
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+	if Menu.Skills.Q.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,Q.Range) then
+		SpecialCast(HK_Q, aimPosition)
+	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value())	
+		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+			SpecialCast(HK_Q, aimPosition)
+		end
+	end
+end
+
+function Cassiopeia:AutoW()	
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, W.Range, W.Delay, W.Speed,W.Width, Menu.General.ReactionTime:Value(), W.Collision)
+	if Menu.Skills.W.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,W.Range) then
+		SpecialCast(HK_W, aimPosition)
+	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, W.Range, W.Delay, W.Speed, W.Width, W.Collision, Menu.Skills.W.Accuracy:Value())	
+		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, W.Range) then
+			SpecialCast(HK_W, aimPosition)
+		end
+	end
+end
+
+
+local _nextFarmCheck = Game.Timer()
+local _ePoisonedBonusDamage = {10,30,50,70,90}
+
+function Cassiopeia:GetEDamage(target)
+	local eDamage = 50 + myHero.ap * 0.1
+	if self:IsTargetPoisoned(target) then
+		eDamage = eDamage + _ePoisonedBonusDamage[myHero:GetSpellData(_E).level] + myHero.ap * 0.5
+	end	
+	return eDamage
+end
+
+function Cassiopeia:AutoE()
+	if Menu.Skills.Combo:Value() then		
+		for i = 1, Game.HeroCount() do
+			local t = Game.Hero(i)
+			if HPred:CanTarget(t) and self:IsTargetPoisoned(t) and HPred:IsInRange(myHero.pos, t.pos, E.Range) then
+				SpecialCast(HK_E, t)
+			end
+		end
+	elseif Menu.Skills.E.Farm:Value() then
+		if _nextFarmCheck > Game.Timer() then return end
+		_nextFarmCheck = Game.Timer() + .2
+		for i = 1, Game.MinionCount() do
+			local minion = Game.Minion(i);
+			if HPred:CanTarget(minion) and self:IsTargetPoisoned(minion) and HPred:IsInRange(myHero.pos, minion.pos, E.Range) then			
+				if self:GetEDamage(minion) > minion.health then
+					SpecialCast(HK_E, minion.pos)
+				end
+			end
+		end	
+	end
+end
+
+function Cassiopeia:AutoR()
+
+	if Menu.Skills.Combo:Value() then
+		local distance, target = AutoUtil:NearestEnemy(myHero)
+		if target and distance < R.Range then
+			local aimPos = HPred:PredictUnitPosition(target, R.Delay)
+			local rCount = 0
+			local castAngle = HPred:Angle(myHero.pos,aimPos)
+			for i = 1, Game.HeroCount() do
+				local t = Game.Hero(i)
+				if HPred:CanTarget(t) then			
+					local predictedPosition = HPred:PredictUnitPosition(t, R.Delay)
+					local deltaAngle = _abs(HPred:Angle(myHero.pos, predictedPosition) - castAngle)
+					if deltaAngle <= 40 and HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
+						rCount = rCount + 1
+					end				
+				end
+			end		
+			if rCount >= Menu.Skills.R.Count:Value() then
+				SpecialCast(HK_R, aimPos)
+			end
+		end
+	end
+end
+
+
 class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
@@ -2934,7 +3123,7 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 		if self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
-			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
+			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) * (t.boundingRadius + width)) then
 				targetCount = targetCount + 1
 			end
 		end
@@ -3254,7 +3443,7 @@ function HPred:CalculateIncomingDamage()
 	local currentTime = Game.Timer()
 	for _, missile in pairs(_cachedMissiles) do	
 		local dist = self:GetDistance(missile.data.pos, missile.target.pos)			
-		if missile.name == "" then
+		if missile.name == "" or currentTime >= missile.timeout or dist < missile.target.boundingRadius then
 			_cachedMissiles[_] = nil
 		else
 			if not _incomingDamage[missile.target.networkID] then
@@ -3544,6 +3733,14 @@ function HPred:GetObjectByHandle(handle)
 		end
 	end
 	
+	for i = 1, Game.TurretCount() do 
+		local turret = Game.Turret(i)
+		if turret.handle == handle then
+			target = turret
+			return target
+		end
+	end
+	
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
 		if particle.handle == handle then
@@ -3673,7 +3870,7 @@ end
 function HPred:VectorPointProjectionOnLineSegment(v1, v2, v)
 	assert(v1 and v2 and v, "VectorPointProjectionOnLineSegment: wrong argument types (3 <Vector> expected)")
 	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
-	local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
+	local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
 	local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
 	local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
 	local isOnSegment = rS == rL
@@ -3768,11 +3965,11 @@ function HPred:GetEnemyHeroes()
 end
 
 function HPred:GetDistanceSqr(p1, p2)	
-	return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) 
 end
 
 function HPred:IsInRange(p1, p2, range)
-	return range * range >= (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
 end
 
 function HPred:GetDistance(p1, p2)

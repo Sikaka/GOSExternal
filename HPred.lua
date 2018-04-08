@@ -1,5 +1,4 @@
 
-
 class "HPred"
 
 Callback.Add("Tick", function() HPred:Tick() end)
@@ -131,6 +130,33 @@ function HPred:GetEnemyNexusPosition()
 end
 
 
+function HPred:GetGuarenteedTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision)
+	--Get hourglass enemies
+	target, aimPosition =self:GetHourglassTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end
+	
+	--Get reviving target
+	target, aimPosition =self:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end	
+	
+	--Get teleporting enemies
+	target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
+	if target and aimPosition then
+		return target, aimPosition
+	end
+	
+	--Get stunned enemies
+	local target, aimPosition =self:GetImmobileTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end
+end
+
+
 function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision)
 	--TODO: Target whitelist. This will target anyone which is definitely not what we want
 	--For now we can handle in the champ script. That will cause issues with multiple people in range who are goood targets though.
@@ -193,7 +219,7 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 		if self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
-			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) ^ 2) then
+			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) * (t.boundingRadius + width)) then
 				targetCount = targetCount + 1
 			end
 		end
@@ -932,7 +958,7 @@ end
 function HPred:VectorPointProjectionOnLineSegment(v1, v2, v)
 	assert(v1 and v2 and v, "VectorPointProjectionOnLineSegment: wrong argument types (3 <Vector> expected)")
 	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
-	local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
+	local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
 	local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
 	local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
 	local isOnSegment = rS == rL
@@ -1027,11 +1053,11 @@ function HPred:GetEnemyHeroes()
 end
 
 function HPred:GetDistanceSqr(p1, p2)	
-	return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) 
 end
 
 function HPred:IsInRange(p1, p2, range)
-	return range * range >= (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
 end
 
 function HPred:GetDistance(p1, p2)
