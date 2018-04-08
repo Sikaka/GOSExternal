@@ -180,13 +180,10 @@ end
 function SetMovement(bool)
 	if _G.EOWLoaded then
 		EOW:SetMovements(bool)
-		EOW:SetAttacks(bool)
 	elseif _G.SDK then
 		_G.SDK.Orbwalker:SetMovement(bool)
-		_G.SDK.Orbwalker:SetAttack(bool)
 	else
 		GOS.BlockMovement = not bool
-		GOS.BlockAttack = not bool
 	end
 end
 
@@ -267,8 +264,9 @@ function Ready(spellSlot)
 end
 
 function IsRecalling()
-	for K, Buff in pairs(GetBuffs(myHero)) do
-		if Buff.name == "recall" and Buff.duration > 0 then
+	for i = 1, Hero.buffCount do 
+		local buff = myHero:GetBuff(i)
+		if buff.name == "recall" and buff.duration > 0 then
 			return true
 		end
 	end
@@ -3311,7 +3309,12 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 						local offsetDirection						
 						
 						--We will land in front of our target relative to our starting position
-						if blinkRange == 0 then						
+						if blinkRange == 0 then				
+
+							if t.activeSpell.name ==  "AlphaStrike" then
+								windupRemaining = windupRemaining + .75
+								--TODO: Boost the windup time by the number of targets alpha will hit. Need to calculate the exact times this is just rough testing right now
+							end						
 							offsetDirection = (blinkTarget.pos - t.pos):Normalized()
 						--We will land behind our target relative to our starting position
 						elseif blinkRange == -1 then						
@@ -3324,7 +3327,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 						end
 						
 						if offsetDirection then
-							endPos = blinkTarget.pos - offsetDirection * 150
+							endPos = blinkTarget.pos - offsetDirection * blinkTarget.boundingRadius
 						end
 						
 					end
