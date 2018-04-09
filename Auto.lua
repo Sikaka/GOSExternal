@@ -264,7 +264,7 @@ function Ready(spellSlot)
 end
 
 function IsRecalling()
-	for i = 1, Hero.buffCount do 
+	for i = 1, myHero.buffCount do 
 		local buff = myHero:GetBuff(i)
 		if buff.name == "recall" and buff.duration > 0 then
 			return true
