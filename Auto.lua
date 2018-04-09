@@ -275,13 +275,13 @@ end
 
 
 function InsideEnemyTurretRange()
-	for i = 1, Game.TurretCount() do
-		local turret = Game.Turret(i)
-		local range = (turret.boundingRadius + 750 + myHero.boundingRadius / 2)
-		if turret.isEnemy and HPred:IsInRange(turret.pos, myHero.pos, range) then
-			return true
-		end
-	end
+	--for i = 1, Game.TurretCount() do
+	--	local turret = Game.Turret(i)
+	--	local range = (turret.boundingRadius + 750 + myHero.boundingRadius / 2)
+	--	if turret.isEnemy and HPred:IsInRange(turret.pos, myHero.pos, range) then
+	--		return true
+	--	end
+	--end
 end
 function UpdateAllyHealth()
 	local deltaTick = Game.Timer() - _allyHealthUpdateRate	
@@ -3400,15 +3400,15 @@ end
 
 function HPred:CacheTeleports()
 	--Get enemies who are teleporting to towers
-	for i = 1, Game.TurretCount() do
-		local turret = Game.Turret(i);
-		if turret.isEnemy and not _cachedTeleports[turret.networkID] then
-			local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
-			if hasBuff then
-				self:RecordTeleport(turret, self:GetTeleportOffset(turret.pos,223.31),expiresAt)
-			end
-		end
-	end	
+	--for i = 1, Game.TurretCount() do
+	--	local turret = Game.Turret(i);
+	--	if turret.isEnemy and not _cachedTeleports[turret.networkID] then
+	--		local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
+	--		if hasBuff then
+	--			self:RecordTeleport(turret, self:GetTeleportOffset(turret.pos,223.31),expiresAt)
+	--		end
+	--	end
+	--end	
 	
 	--Get enemies who are teleporting to wards	
 	for i = 1, Game.WardCount() do
@@ -3736,13 +3736,13 @@ function HPred:GetObjectByHandle(handle)
 		end
 	end
 	
-	for i = 1, Game.TurretCount() do 
-		local turret = Game.Turret(i)
-		if turret.handle == handle then
-			target = turret
-			return target
-		end
-	end
+	--for i = 1, Game.TurretCount() do 
+	--	local turret = Game.Turret(i)
+	--	if turret.handle == handle then
+	--		target = turret
+	--		return target
+	--	end
+	--end
 	
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
