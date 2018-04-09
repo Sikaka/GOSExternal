@@ -110,6 +110,7 @@ function()
 	Menu.General:MenuElement({id = "SkillFrequency", name = "Skill Frequency", value = .3, min = .1, max = 1, step = .1})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})
 	Menu.General:MenuElement({id = "AltCast", name = "Alternate Cast Mode", value = false})
+	Menu.General:MenuElement({id = "Delay", name = "Throttle Processing", value = false})
 	Callback.Add("Draw", function() CoreDraw() end)
 	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end)
@@ -153,10 +154,16 @@ end
 
 --Global draw function to be called from scripts to handle drawing spells and dashes - reduces duplicate code
 function CoreDraw()
+	
 	if not isLoaded then
 		TryLoad()
 		return
 	end
+	
+	--Disabled for now
+	if Menu.General.Delay:Value() then return end
+	
+	
 	if Q and Q.Range and KnowsSpell(_Q) and Menu.General.DrawQ:Value() then
 		Draw.Circle(myHero.pos, Q.Range, Draw.Color(150, 255, 0,0))
 	end	
@@ -204,6 +211,17 @@ end
 
 function IsAttacking()
 	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then return true end
+	return false
+end
+
+local _nextTick = Game.Timer()
+local _tickFrequency = .1
+
+function IsDelaying()
+	if _nextTick > Game.Timer() then return true end
+	if Menu.General.Delay:Value() then
+		_nextTick = Game.Timer() + _tickFrequency
+	end
 	return false
 end
 
@@ -710,9 +728,10 @@ function Brand:UpdateWWhiteList()
 	end
 end
 
-function Brand:Tick()
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
 
+function Brand:Tick()
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
+	
 	--Reliable spells cast even if combo key is NOT pressed and are the most likely to hit.
 	if Ready(_W) then
 		self:ReliableW()
@@ -905,7 +924,7 @@ function Soraka:Draw()
 end
 
 function Soraka:Tick()
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	
 	--Heal allies with R
 	if Ready(_R) then
@@ -1119,7 +1138,7 @@ function Zilean:Draw()
 end
 
 function Zilean:Tick()
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Use Ult on Allies	
@@ -1296,7 +1315,7 @@ function Nami:Draw()
 end
 
 function Nami:Tick()
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Auto Bubble Immobile targets and unreliable targets if combo button held down
@@ -1464,7 +1483,7 @@ local count = 0
 end
 
 function Lux:Tick()
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	if Ready(_Q) then
@@ -1680,7 +1699,7 @@ end
 
 function Blitzcrank:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--TODO: Only update whitelist every second
@@ -1844,7 +1863,7 @@ end
 
 function Lulu:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	--Use ult to save ally or knockup enemy
@@ -1993,7 +2012,7 @@ end
 
 function MissFortune:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	if self:IsRActive() then return end
 	
@@ -2179,7 +2198,7 @@ end
 
 function Karthus:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	if Ready(_E) then
@@ -2400,7 +2419,7 @@ end
 
 function Illaoi:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	local currentMana = CurrentPctMana(myHero)
@@ -2537,7 +2556,7 @@ local count = 0
 end
 function Taliyah:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	self:FindW()
@@ -2686,7 +2705,7 @@ end
 
 function Kalista:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	if Ready(_E) and Menu.Skills.E.Killsteal:Value() then
 		self:Killsteal()
@@ -2791,7 +2810,7 @@ end
 
 function Cassiopeia:Tick()
 	
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() then return end
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
 	
