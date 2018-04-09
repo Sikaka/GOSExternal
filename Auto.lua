@@ -731,7 +731,11 @@ end
 
 function Brand:Tick()
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
-	
+		
+	--UnCache the last W if its already hit
+	if WCastPos and Game.Timer() - WCastTime > 1.5 then
+		WCastPos = nil
+	end
 	--Reliable spells cast even if combo key is NOT pressed and are the most likely to hit.
 	if Ready(_W) then
 		self:ReliableW()
@@ -787,10 +791,13 @@ end
 function Brand:UnreliableQ(minAccuracy)
 
 	for i  = 1,Game.HeroCount(i) do
-		local enemy = Game.Hero(i)
-		if HPred:CanTarget(enemy) and HPred:HasBuff(enemy, "BrandAblaze",1) then	
+		local enemy = Game.Hero(i)		
+		if HPred:CanTarget(enemy) then	
 			local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, enemy,Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, nil)
-			if hitChance and hitChance >= minAccuracy and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+			
+			local WInterceptTime = self:GetWHitTime()		
+			local QInterceptTime = HPred:GetSpellInterceptTime(myHero.pos, aimPosition, Q.Delay, Q.Speed)
+			if hitChance and hitChance >= minAccuracy and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) and (HPred:HasBuff(enemy, "BrandAblaze",1) or (WCastPos and HPred:IsInRange(WCastPos, aimPosition, W.Width) and  QInterceptTime > WInterceptTime)) then
 				SpecialCast(HK_Q, aimPosition)
 			end
 		end
