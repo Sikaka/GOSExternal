@@ -131,7 +131,7 @@ function WndMsg(msg,key)
 		local dist = 10000
 		for i  = 1,Game.HeroCount(i) do
 			local enemy = Game.Hero(i)
-			if enemy.alive and enemy.isEnemy and HPred:GetDistanceSqr(mousePos, enemy.pos) < dist then
+			if enemy and enemy.alive and enemy.isEnemy and HPred:GetDistanceSqr(mousePos, enemy.pos) < dist then
 				starget = enemy
 				dist = HPred:GetDistanceSqr(mousePos, enemy.pos)
 			end
@@ -434,7 +434,7 @@ function AutoUtil:GetNearestAlly(entity, range)
 	local distance = _huge
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
-		if hero ~= entity and hero.isAlly and HPred:CanTargetALL(hero) then
+		if hero and hero ~= entity and hero.isAlly and HPred:CanTargetALL(hero) then
 			local d = HPred:GetDistanceSqr(entity.pos, hero.pos)
 			if d < distance and d < range * range then
 				distance = d
@@ -452,7 +452,7 @@ function AutoUtil:NearestEnemy(entity)
 	local enemy = nil
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
-		if HPred:CanTarget(hero) then
+		if hero and HPred:CanTarget(hero) then
 			local d = HPred:GetDistanceSqr(entity.pos, hero.pos)
 			if d < distance then
 				distance = d
@@ -467,7 +467,7 @@ function AutoUtil:CountEnemiesNear(origin, range)
 	local count = 0
 	for i  = 1,Game.HeroCount(i) do
 		local enemy = Game.Hero(i)
-		if HPred:CanTarget(enemy) and HPred:IsInRange(origin, enemy.pos, range) then
+		if enemy and  HPred:CanTarget(enemy) and HPred:IsInRange(origin, enemy.pos, range) then
 			count = count + 1
 		end			
 	end
@@ -557,12 +557,12 @@ end
 
 function AutoUtil:AutoCrucible()
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly and Hero.alive and Hero ~= myHero then
-			if Menu.Items.Crucible.Targets[Hero.charName] and Menu.Items.Crucible.Targets[Hero.charName]:Value() then
+		local hero = Game.Hero(i)
+		if hero and hero.isAlly and hero.alive and hero ~= myHero then
+			if Menu.Items.Crucible.Targets[hero.charName] and Menu.Items.Crucible.Targets[hero.charName]:Value() then
 				for ccName, ccType in pairs(_ccNames) do
-					if Menu.Items.Crucible.CC[ccName] and Menu.Items.Crucible.CC[ccName]:Value() and self:HasBuffType(Hero, ccType, Menu.Items.Crucible.CC.CleanseTime:Value()) then
-						AutoUtil:CastItem(Hero, 3222, 650)
+					if Menu.Items.Crucible.CC[ccName] and Menu.Items.Crucible.CC[ccName]:Value() and self:HasBuffType(hero, ccType, Menu.Items.Crucible.CC.CleanseTime:Value()) then
+						AutoUtil:CastItem(hero, 3222, 650)
 					end
 				end
 			end
@@ -574,7 +574,7 @@ function AutoUtil:AutoLocket()
 	local injuredCount = 0
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if _allyHealthPercentage and _allyHealthPercentage[hero.charName] and hero.isAlly and hero.alive and  HPred:IsInRange(myHero.pos, hero.pos, 700) then			
+		if hero and _allyHealthPercentage and _allyHealthPercentage[hero.charName] and hero.isAlly and hero.alive and  HPred:IsInRange(myHero.pos, hero.pos, 700) then			
 			local deltaLifeLost = _allyHealthPercentage[hero.charName] - CurrentPctLife(hero)
 			if deltaLifeLost >= Menu.Items.Locket.Threshold:Value() then
 				injuredCount = injuredCount + 1
@@ -591,7 +591,7 @@ function AutoUtil:AutoRedemption()
 	local aimPos
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and HPred:CanTargetALL(hero) and HPred:IsInRange(myHero.pos, hero.pos, 5500) and Menu.Items.Redemption.Targets[hero.charName] and Menu.Items.Redemption.Targets[hero.charName]:Value() >= CurrentPctLife(hero) then		
+		if hero and hero.isAlly and HPred:CanTargetALL(hero) and HPred:IsInRange(myHero.pos, hero.pos, 5500) and Menu.Items.Redemption.Targets[hero.charName] and Menu.Items.Redemption.Targets[hero.charName]:Value() >= CurrentPctLife(hero) then		
 			--Check if they are immobile for at least the duration we specified
 			if HPred:GetImmobileTime(hero) >= Menu.Items.Redemption.Duration:Value() then
 				targetCount = 0
@@ -599,7 +599,7 @@ function AutoUtil:AutoRedemption()
 				--we can start adding targets within range!!
 				for z = 1, Game.HeroCount() do
 					local target = Game.Hero(z)
-					if HPred:CanTargetALL(target) and HPred:IsInRange(hero.pos, HPred:PredictUnitPosition(target, 2),525) then
+					if target and HPred:CanTargetALL(target) and HPred:IsInRange(hero.pos, HPred:PredictUnitPosition(target, 2),525) then
 						targetCount = targetCount + 1						
 					end
 				end
@@ -636,10 +636,10 @@ function AutoUtil:AutoExhaust()
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
 		--It's an enemy who is within exhaust range and is toggled ON in ExhaustList
-		if enemy.isEnemy and HPred:IsInRange(myHero.pos, enemy.pos, 600 + enemy.boundingRadius) and HPred:CanTarget(enemy, 650) and Menu.Skills.Exhaust.Targets[enemy.charName] and Menu.Skills.Exhaust.Targets[enemy.charName]:Value() then
+		if enemy and enemy.isEnemy and HPred:IsInRange(myHero.pos, enemy.pos, 600 + enemy.boundingRadius) and HPred:CanTarget(enemy, 650) and Menu.Skills.Exhaust.Targets[enemy.charName] and Menu.Skills.Exhaust.Targets[enemy.charName]:Value() then
 			for allyIndex = 1, Game.HeroCount() do
 				local ally = Game.Hero(allyIndex)
-				if ally.isAlly and ally.alive and HPred:IsInRange(enemy.pos, ally.pos, 600 + enemy.Menu.Skills.Exhaust.Radius:Value()) and CurrentPctLife(ally) <= Menu.Skills.Exhaust.Health:Value() then
+				if ally and ally.isAlly and ally.alive and HPred:IsInRange(enemy.pos, ally.pos, 600 + enemy.Menu.Skills.Exhaust.Radius:Value()) and CurrentPctLife(ally) <= Menu.Skills.Exhaust.Health:Value() then
 					Control.CastSpell(exhaustHotkey, enemy)
 				end
 			end
@@ -676,9 +676,9 @@ function Brand:CreateMenu()
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Auto Cast Mana", value = 30, min = 1, max = 100, step = 5 })
 	Menu.Skills.W:MenuElement({id = "Targets", name = "Auto Harass Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isEnemy then
-			Menu.Skills.W.Targets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		local hero = Game.Hero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.W.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
 	
@@ -686,9 +686,9 @@ function Brand:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Auto Cast Mana", value = 15, min = 1, max = 100, step = 5 })
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Auto Harass Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isEnemy then
-			Menu.Skills.E.Targets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		local hero = Game.Hero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
 	
@@ -722,7 +722,7 @@ function Brand:UpdateWWhiteList()
 	_wWhiteList = {}
 	for i  = 1,Game.HeroCount(i) do
 		local enemy = Game.Hero(i)
-		if Menu.Skills.W.Targets[enemy.charName] and Menu.Skills.W.Targets[enemy.charName]:Value() then
+		if enemy and Menu.Skills.W.Targets[enemy.charName] and Menu.Skills.W.Targets[enemy.charName]:Value() then
 			_wWhiteList[enemy.charName] = true
 		end
 	end
@@ -792,7 +792,7 @@ function Brand:UnreliableQ(minAccuracy)
 
 	for i  = 1,Game.HeroCount(i) do
 		local enemy = Game.Hero(i)		
-		if HPred:CanTarget(enemy) then	
+		if enemy and HPred:CanTarget(enemy) then	
 			local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, enemy,Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, nil)
 			
 			local WInterceptTime = self:GetWHitTime()		
@@ -824,10 +824,10 @@ end
 
 function Brand:ReliableE()
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if HPred:CanTarget(Hero) and HPred:IsInRange(myHero.pos, Hero.pos, E.Range)  and Menu.Skills.E.Targets[Hero.charName] and Menu.Skills.E.Targets[Hero.charName]:Value() then
+		local hero = Game.Hero(i)
+		if hero and HPred:CanTarget(hero) and HPred:IsInRange(myHero.pos, hero.pos, E.Range)  and Menu.Skills.E.Targets[hero.charName] and Menu.Skills.E.Targets[hero.charName]:Value() then
 			--TODO: Sort targets by priority and health (KS then priority list)
-			SpecialCast(HK_E, Hero.pos)
+			SpecialCast(HK_E, hero.pos)
 			break
 		end
 	end
@@ -836,7 +836,7 @@ end
 function Brand:AutoR()	
 	for i  = 1,Game.HeroCount(i) do
 		local enemy = Game.Hero(i)
-		if HPred:CanTarget(enemy) and HPred:HasBuff(enemy, "BrandAblaze") and HPred:IsInRange(myHero.pos, enemy.pos, R.Range) then			
+		if enemy and HPred:CanTarget(enemy) and HPred:HasBuff(enemy, "BrandAblaze") and HPred:IsInRange(myHero.pos, enemy.pos, R.Range) then			
 			local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, 600)
 			if targetCount >= Menu.Skills.R.Count:Value() then
 				SpecialCast(HK_R, enemy.pos)
@@ -875,7 +875,7 @@ function Soraka:CreateMenu()
 		Menu.Skills.Exhaust:MenuElement({id ="Targets", name ="Target List", type = MENU})
 		for i = 1, Game.HeroCount() do
 			local hero = Game.Hero(i)
-			if hero.isEnemy then
+			if hero and hero.isEnemy then
 				Menu.Skills.Exhaust.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 			end
 		end
@@ -893,7 +893,7 @@ function Soraka:CreateMenu()
 	Menu.Skills.W:MenuElement({id = "Targets", name = "Target Settings", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and myHero ~= hero then
+		if hero and hero.isAlly and myHero ~= hero then
 			Menu.Skills.W.Targets:MenuElement({id = hero.charName, name = hero.charName, value = 50, min = 1, max = 100, step = 5 })		
 		end
 	end	
@@ -905,7 +905,7 @@ function Soraka:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Auto Interrupt Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isEnemy then
+		if hero and hero.isEnemy then
 			Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
@@ -914,7 +914,7 @@ function Soraka:CreateMenu()
 	Menu.Skills.R:MenuElement({id = "Targets", name = "Auto Save Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly then
+		if hero and hero.isAlly then
 			Menu.Skills.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
@@ -987,7 +987,7 @@ function Soraka:AutoW()
 	local targets = {}
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and hero.alive and hero.isTargetable and hero ~= myHero and HPred:IsInRange(myHero.pos, hero.pos, W.Range + hero.boundingRadius) and Menu.Skills.W.Targets[hero.charName] and Menu.Skills.W.Targets[hero.charName]:Value() >= CurrentPctLife(hero) then		
+		if hero and hero.isAlly and hero.alive and hero.isTargetable and hero ~= myHero and HPred:IsInRange(myHero.pos, hero.pos, W.Range + hero.boundingRadius) and Menu.Skills.W.Targets[hero.charName] and Menu.Skills.W.Targets[hero.charName]:Value() >= CurrentPctLife(hero) then		
 			local pctLife = CurrentPctLife(hero)
 			_insert(targets, {hero, pctLife})
 		end
@@ -1027,7 +1027,7 @@ function Soraka:GetInjuredRCount()
 	
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and hero.alive and _allyHealthPercentage and _allyHealthPercentage[hero.charName] then		
+		if hero and hero.isAlly and hero.alive and _allyHealthPercentage and _allyHealthPercentage[hero.charName] then		
 			local life = _allyHealthPercentage[hero.charName]
 			local deltaLifeLost = life - CurrentPctLife(hero)
 			if deltaLifeLost >= Menu.Skills.R.DamagePercent:Value() then
@@ -1049,7 +1049,7 @@ function Soraka:GetEmergencyRCount()
 	local isValid = false
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and hero.alive and CurrentPctLife(hero) <= 40 then
+		if hero and hero.isAlly and hero.alive and CurrentPctLife(hero) <= 40 then
 			count = count + 1
 			if not isValid and Menu.Skills.R.Targets[hero.charName] and Menu.Skills.R.Targets[hero.charName]:Value() then
 				isValid = true
@@ -1088,7 +1088,7 @@ function Zilean:CreateMenu()
 		Menu.Skills.Exhaust:MenuElement({id ="Targets", name ="Target List", type = MENU})
 		for i = 1, Game.HeroCount() do
 			local hero = Game.Hero(i)
-			if hero.isEnemy then
+			if hero and hero.isEnemy then
 				Menu.Skills.Exhaust.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 			end
 		end
@@ -1104,7 +1104,7 @@ function Zilean:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "Targets", name = "Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isEnemy then
+		if hero and hero.isEnemy then
 			Menu.Skills.Q.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
@@ -1122,7 +1122,7 @@ function Zilean:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isEnemy then
+		if hero and hero.isEnemy then
 			Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end	
@@ -1133,7 +1133,7 @@ function Zilean:CreateMenu()
 	Menu.Skills.R:MenuElement({id = "Targets", name = "Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly then
+		if hero and hero.isAlly then
 			Menu.Skills.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true})		
 		end
 	end	
@@ -1231,7 +1231,7 @@ function Zilean:AutoEPeel()
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
 		--Its an ally, they are in range and we've set them as a carry. Lets peel for them!
-		if hero.isAlly and CurrentPctLife(hero) <= Menu.Skills.E.Health:Value() and HPred:IsInRange(myHero.pos, hero.pos, E.Range  + Menu.Skills.E.Radius:Value()) then				
+		if hero and hero.isAlly and CurrentPctLife(hero) <= Menu.Skills.E.Health:Value() and HPred:IsInRange(myHero.pos, hero.pos, E.Range  + Menu.Skills.E.Radius:Value()) then				
 			if target ~= nil and  AutoUtil:NearestEnemy(hero) <= Menu.Skills.E.Radius:Value() and HPred:IsInRange(myHero.pos, target.pos, E.Range) then
 				Control.CastSpell(HK_E, target.pos)
 			end
@@ -1242,7 +1242,7 @@ end
 function Zilean:AutoR()
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, R.Range) and CurrentPctLife(hero) <= Menu.Skills.R.Health:Value() and Menu.Skills.R.Targets[hero.charName] and Menu.Skills.R.Targets[hero.charName]:Value() and _allyHealthPercentage[hero.charName] then			
+		if hero and hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, R.Range) and CurrentPctLife(hero) <= Menu.Skills.R.Health:Value() and Menu.Skills.R.Targets[hero.charName] and Menu.Skills.R.Targets[hero.charName]:Value() and _allyHealthPercentage[hero.charName] then			
 			local deltaLifeLost = _allyHealthPercentage[hero.charName] - CurrentPctLife(hero)
 			if deltaLifeLost >= Menu.Skills.R.Damage:Value() and AutoUtil:NearestEnemy(hero) < 800 then
 				Control.CastSpell(HK_R, hero.pos)
@@ -1280,7 +1280,7 @@ function Nami:CreateMenu()
 		Menu.Skills.Exhaust:MenuElement({id ="Targets", name ="Target List", type = MENU})
 		for i = 1, Game.HeroCount() do
 			local hero = Game.Hero(i)
-			if hero.isEnemy then
+			if hero and hero.isEnemy then
 				Menu.Skills.Exhaust.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 			end
 		end
@@ -1306,7 +1306,7 @@ function Nami:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Targets", type = MENU})
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly  then
+		if hero and hero.isAlly  then
 			if table.contains(_adcHeroes, hero.charName) then
 				Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 			else
@@ -1374,7 +1374,7 @@ end
 function Nami:AutoWNoBounce()
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and hero.alive and hero.isTargetable and HPred:IsInRange(myHero.pos, hero.pos,W.Range) and CurrentPctLife(hero) <= Menu.Skills.W.HealthEmergency:Value() then
+		if hero and hero.isAlly and hero.alive and hero.isTargetable and HPred:IsInRange(myHero.pos, hero.pos,W.Range) and CurrentPctLife(hero) <= Menu.Skills.W.HealthEmergency:Value() then
 			Control.CastSpell(HK_W, hero)			
 		end
 	end
@@ -1382,7 +1382,7 @@ end
 function Nami:AutoWBounce()	
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)		
-		if hero.isAlly and hero.alive and hero.isTargetable and HPred:IsInRange(myHero.pos, hero.pos, W.Range) and CurrentPctLife(hero) <= Menu.Skills.W.HealthBounce:Value() then
+		if hero and hero.isAlly and hero.alive and hero.isTargetable and HPred:IsInRange(myHero.pos, hero.pos, W.Range) and CurrentPctLife(hero) <= Menu.Skills.W.HealthBounce:Value() then
 			if AutoUtil:NearestEnemy(hero) < 500 then
 				Control.CastSpell(HK_W, hero)
 			end	
@@ -1393,7 +1393,7 @@ end
 function Nami:AutoE()
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if  hero.isAlly and hero.isTargetable and hero.alive and HPred:IsInRange(myHero.pos, hero.pos, E.Range) and Menu.Skills.E.Targets[hero.charName] and Menu.Skills.E.Targets[hero.charName]:Value() then
+		if hero and hero.isAlly and hero.isTargetable and hero.alive and HPred:IsInRange(myHero.pos, hero.pos, E.Range) and Menu.Skills.E.Targets[hero.charName] and Menu.Skills.E.Targets[hero.charName]:Value() then
 			
 			local targetHandle = nil			
 			if hero.activeSpell and hero.activeSpell.valid and hero.activeSpell.target then
@@ -1450,7 +1450,7 @@ function Lux:CreateMenu()
 	Menu.Skills.R:MenuElement({id = "Targets", name = "Auto Targets", type = MENU})	
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isEnemy then
+		if hero and hero.isEnemy then
 			Menu.Skills.R.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 		end
 	end
@@ -1470,21 +1470,25 @@ function Lux:PrintDebugSpells()
 local count = 0
 	for i = 1, Game.MissileCount() do
 		local missile = Game.Missile(i)	
-		local dist =  HPred:GetDistance(missile.pos, myHero.pos)
-		if dist > 100 and dist < 800 then
-			count = count + 1
-			local screenPos = missile.pos:To2D()
-			Draw.Text(missile.name, 13, screenPos.x, screenPos.y+ count * 15)
+		if missile then
+			local dist =  HPred:GetDistance(missile.pos, myHero.pos)
+			if dist > 100 and dist < 800 then
+				count = count + 1
+				local screenPos = missile.pos:To2D()
+				Draw.Text(missile.name, 13, screenPos.x, screenPos.y+ count * 15)
+			end
 		end
 	end
 	local count = 0
 	for i = 1, Game.ParticleCount() do
-		local particle = Game.Particle(i)		
-		local dist =  HPred:GetDistance(particle.pos, myHero.pos)
-		if dist > 100 and dist < 800 then
-			count = count + 1
-			local screenPos = particle.pos:To2D()
-			Draw.Text(particle.name, 13, screenPos.x, screenPos.y + count * 15)
+		local particle = Game.Particle(i)
+		if particle then		
+			local dist =  HPred:GetDistance(particle.pos, myHero.pos)
+			if dist > 100 and dist < 800 then
+				count = count + 1
+				local screenPos = particle.pos:To2D()
+				Draw.Text(particle.name, 13, screenPos.x, screenPos.y + count * 15)
+			end
 		end
 	end
 end
@@ -1531,7 +1535,7 @@ function Lux:AutoW()
 	local aimPositions = {}
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, W.Range) and _allyHealthPercentage[hero.charName] then		
+		if hero and hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, W.Range) and _allyHealthPercentage[hero.charName] then		
 			local predictedLife = CurrentPctLife(hero)
 			local predictedLoss = HPred:GetIncomingDamage(hero)/ hero.maxHealth  * 100
 			predictedLife = predictedLife - predictedLoss
@@ -1587,7 +1591,7 @@ function Lux:AutoE()
 			if not self:IsETraveling() then
 				for i = 1, Game.MissileCount() do
 					local missile = Game.Missile(i)			
-					if missile.name == "LuxLightStrikeKugel" and HPred:IsInRange(missile.pos, myHero.pos, 400) then
+					if missle and  missile.name == "LuxLightStrikeKugel" and HPred:IsInRange(missile.pos, myHero.pos, 400) then
 						eMissile = missile
 						break
 					end
@@ -1596,7 +1600,7 @@ function Lux:AutoE()
 		elseif eData.toggleState == 2 then		
 			for i = 1, Game.ParticleCount() do 
 				local particle = Game.Particle(i)
-				if _find(particle.name, "E_tar_aoe_sound") then
+				if particle and _find(particle.name, "E_tar_aoe_sound") then
 					eParticle = particle
 					break
 				end
@@ -1659,7 +1663,7 @@ function Blitzcrank:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "Targets", name = "Targets", type = MENU})	
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isEnemy then
+		if hero and hero.isEnemy then
 			Menu.Skills.Q.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 		end
 	end
@@ -1723,7 +1727,7 @@ function Blitzcrank:Tick()
 			local _whiteList = {}
 			for i  = 1,Game.HeroCount(i) do
 				local enemy = Game.Hero(i)
-				if Menu.Skills.Q.Targets[enemy.charName] and Menu.Skills.Q.Targets[enemy.charName]:Value() then
+				if enemy and Menu.Skills.Q.Targets[enemy.charName] and Menu.Skills.Q.Targets[enemy.charName]:Value() then
 					_whiteList[enemy.charName] = true
 				end
 			end
@@ -1772,7 +1776,7 @@ function Blitzcrank:CanRKillsteal()
 	local rDamage= 250 + (myHero:GetSpellData(_R).level -1) * 125 + myHero.ap 
 	for i  = 1,Game.HeroCount(i) do
 		local enemy = Game.Hero(i)
-		if enemy.alive and enemy.isEnemy and enemy.visible and enemy.isTargetable and HPred:IsInRange(myHero.pos, enemy.pos, R.Range) then
+		if enemy and enemy.alive and enemy.isEnemy and enemy.visible and enemy.isTargetable and HPred:IsInRange(myHero.pos, enemy.pos, R.Range) then
 			local damage = AutoUtil:CalculateMagicDamage(enemy, rDamage)
 			if damage >= enemy.health then
 				return true
@@ -1803,7 +1807,7 @@ function Lulu:CreateMenu()
 		Menu.Skills.Exhaust:MenuElement({id ="Targets", name ="Target List", type = MENU})
 		for i = 1, Game.HeroCount() do
 			local hero = Game.Hero(i)
-			if hero.isEnemy then
+			if hero and hero.isEnemy then
 				Menu.Skills.Exhaust.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 			end
 		end
@@ -1826,9 +1830,9 @@ function Lulu:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Combo", name = "Hit Enemies In Combo", value = true})
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Buff Ally List", type = MENU})
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly and Hero ~= myHero then
-			Menu.Skills.E.Targets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		local hero = Game.Hero(i)
+		if hero and hero.isAlly and hero ~= myHero then
+			Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
@@ -1837,9 +1841,9 @@ function Lulu:CreateMenu()
 	Menu.Skills:MenuElement({id = "R", name = "[R] Wild Growth", type = MENU})	
 	Menu.Skills.R:MenuElement({id = "PeelTargets", name = "Ally Peel List", type = MENU})
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly then
-			Menu.Skills.R.PeelTargets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		local hero = Game.Hero(i)
+		if hero and hero.isAlly then
+			Menu.Skills.R.PeelTargets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
 	Menu.Skills.R:MenuElement({id = "Life", name = "Current Percent Life", value = 25, min = 0, max = 100, step = 5 })
@@ -1848,9 +1852,9 @@ function Lulu:CreateMenu()
 	
 	Menu.Skills.R:MenuElement({id = "KnockupTargets", name = "Ally Knockup List", type = MENU})
 	for i = 1, Game.HeroCount() do
-		local Hero = Game.Hero(i)
-		if Hero.isAlly then
-			Menu.Skills.R.KnockupTargets:MenuElement({id = Hero.charName, name = Hero.charName, value = true, toggle = true})
+		local hero = Game.Hero(i)
+		if hero and hero.isAlly then
+			Menu.Skills.R.KnockupTargets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
 	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 2, min = 1, max = 5, step = 1 })		
@@ -1924,7 +1928,7 @@ end
 function Lulu:AutoW()
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
-		if HPred:CanTarget(enemy) and HPred:IsInRange(myHero.pos, enemy.pos, W.Range) then	
+		if enemy and HPred:CanTarget(enemy) and HPred:IsInRange(myHero.pos, enemy.pos, W.Range) then	
 			local nearestAlly = AutoUtil:GetNearestAlly(enemy, Menu.Skills.W.Range:Value())
 			if nearestAlly and Menu.Skills.W.Life:Value() >= CurrentPctLife(nearestAlly) then
 				SpecialCast(HK_W, enemy)
@@ -1936,7 +1940,7 @@ end
 function Lulu:BuffE()
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if  hero.isAlly and hero.isTargetable and hero.alive and HPred:IsInRange(myHero.pos, hero.pos, E.Range) and Menu.Skills.E.Targets[hero.charName] and Menu.Skills.E.Targets[hero.charName]:Value() then			
+		if  hero and hero.isAlly and hero.isTargetable and hero.alive and HPred:IsInRange(myHero.pos, hero.pos, E.Range) and Menu.Skills.E.Targets[hero.charName] and Menu.Skills.E.Targets[hero.charName]:Value() then			
 			local targetHandle = nil			
 			if hero.activeSpell and hero.activeSpell.valid and hero.activeSpell.target then
 				targetHandle = hero.activeSpell.target
@@ -1961,7 +1965,7 @@ end
 function Lulu:AutoR()
 	for i = 1, Game.HeroCount() do
 		local ally = Game.Hero(i)
-		if ally.isAlly and HPred:CanTargetALL(ally) and HPred:IsInRange(myHero.pos, ally.pos, R.Range) then
+		if ally and ally.isAlly and HPred:CanTargetALL(ally) and HPred:IsInRange(myHero.pos, ally.pos, R.Range) then
 			if Menu.Skills.R.KnockupTargets[ally.charName] and Menu.Skills.R.KnockupTargets[ally.charName]:Value() then		
 				local targetCount = AutoUtil:CountEnemiesNear(ally.pos, R.Width)
 				if targetCount >= Menu.Skills.R.Count:Value() then
@@ -2017,6 +2021,9 @@ end
 function MissFortune:Draw()
 end
 
+function MissFortune:GetLineSide(A, B, C)
+	return (B.x - A.x) * (C.z - A.z) - (B.z - A.z) * (C.x - A.x)
+end
 function MissFortune:Tick()
 	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
@@ -2052,7 +2059,7 @@ function MissFortune:AutoQ()
 	if Menu.Skills.Q.Killsteal:Value() then
 		for i = 1, Game.HeroCount() do
 			local t = Game.Hero(i)
-			if HPred:IsInRange(myHero.pos, t.pos, Q.Range + t.boundingRadius) and HPred:CanTarget(t) and self:GetQDamage(t) >= t.health then			
+			if t and HPred:IsInRange(myHero.pos, t.pos, Q.Range + t.boundingRadius) and HPred:CanTarget(t) and self:GetQDamage(t) >= t.health then			
 				SpecialCast(HK_Q, t)
 			end
 		end		
@@ -2062,7 +2069,7 @@ function MissFortune:AutoQ()
 	if Menu.Skills.Q.Hero:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		for i = 1, Game.HeroCount() do
 			local t = Game.Hero(i)
-			if HPred:IsInRange(myHero.pos, t.pos,Q.Range + t.boundingRadius) and HPred:CanTarget(t) then
+			if t and HPred:IsInRange(myHero.pos, t.pos,Q.Range + t.boundingRadius) and HPred:CanTarget(t) then
 				local bounceTarget = self:GetQBounce(t)
 				if bounceTarget and HPred:CanTarget(bounceTarget) and _find(bounceTarget.type, "Hero") then
 					SpecialCast(HK_Q, t)
@@ -2075,7 +2082,7 @@ function MissFortune:AutoQ()
 	if (Menu.Skills.Q.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value()) or Menu.Skills.Combo:Value() then
 		for i = 1, Game.MinionCount() do
 			local t = Game.Minion(i)
-			if HPred:IsInRange(myHero.pos, t.pos, Q.Range + t.boundingRadius) and HPred:CanTarget(t) and (Menu.Skills.Combo:Value() or self:GetQDamage(t) >= t.health) then
+			if t and HPred:IsInRange(myHero.pos, t.pos, Q.Range + t.boundingRadius) and HPred:CanTarget(t) and (Menu.Skills.Combo:Value() or self:GetQDamage(t) >= t.health) then
 				local bounceTarget = self:GetQBounce(t)
 				if bounceTarget and HPred:CanTarget(bounceTarget) and _find(bounceTarget.type, "Hero") then
 					SpecialCast(HK_Q, t)
@@ -2103,7 +2110,7 @@ function MissFortune:FindPassiveMark()
 	
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if HPred:IsInRange(myHero.pos, particle.pos, _passiveSearchDistance) and _find(particle.name, "_P_Mark") then			
+		if particle and HPred:IsInRange(myHero.pos, particle.pos, _passiveSearchDistance) and _find(particle.name, "_P_Mark") then			
 			_passiveTarget = HPred:GetObjectByPosition(particle.pos)
 		end
 	end
@@ -2132,16 +2139,20 @@ function MissFortune:GetQBounce(target)
 	local bounceTargetingDelay = Q.Delay + HPred:GetDistance(myHero.pos, target.pos) / Q.Speed
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
-		if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475+ t.boundingRadius) then
-			_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+		if t then
+			local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
+			if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475+ t.boundingRadius) then
+				_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+			end
 		end
 	end		
 	for i = 1, Game.MinionCount() do
 		local t = Game.Minion(i)
-		local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
-		if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475 + t.boundingRadius) then
-			_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+		if t then
+			local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
+			if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475 + t.boundingRadius) then
+				_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+			end
 		end
 	end
 	
@@ -2310,13 +2321,15 @@ function Karthus:AutoR()
 	local rDamage= 250 + (myHero:GetSpellData(_R).level -1) * 150 + myHero.ap * 0.75
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if HPred:CanTarget(t) then
-			_targetUltData[t.charName] = {}
-			_targetUltData[t.charName]["LastVisible"] = Game.Timer()
-			_targetUltData[t.charName]["Damage"] = AutoUtil:CalculateMagicDamage(t, rDamage)
-			_targetUltData[t.charName]["Life"] = t.health
-		elseif not t.alive and _targetUltData[t.charName] then
-			_targetUltData[t.charName] = nil
+		if t then
+			if HPred:CanTarget(t) then
+				_targetUltData[t.charName] = {}
+				_targetUltData[t.charName]["LastVisible"] = Game.Timer()
+				_targetUltData[t.charName]["Damage"] = AutoUtil:CalculateMagicDamage(t, rDamage)
+				_targetUltData[t.charName]["Life"] = t.health
+			elseif not t.alive and _targetUltData[t.charName] then
+				_targetUltData[t.charName] = nil
+			end
 		end
 	end
 	
@@ -2412,12 +2425,14 @@ function Illaoi:GetSpirit()
 	end
 	if not _spirit then
 		for i = 1, Game.ParticleCount() do
-			local particle = Game.Particle(i)		
-			local dist =  HPred:GetDistance(particle.pos, myHero.pos)
-			if dist > 100 and dist < 800 then
-				if particle.name == "Illaoi_Base_E_Spirit" then
-					_spirit = particle
-					break
+			local particle = Game.Particle(i)	
+			if particle then
+				local dist =  HPred:GetDistance(particle.pos, myHero.pos)
+				if dist > 100 and dist < 800 then
+					if particle.name == "Illaoi_Base_E_Spirit" then
+						_spirit = particle
+						break
+					end
 				end
 			end
 		end
@@ -2539,28 +2554,6 @@ end
 function Taliyah:Draw()	
 end
 
-function Taliyah:PrintDebugSpells()
-local count = 0
-	for i = 1, Game.MissileCount() do
-		local missile = Game.Missile(i)	
-		local dist =  HPred:GetDistance(missile.pos, myHero.pos)
-		if dist > 100 and dist < 800 then
-			count = count + 1
-			local screenPos = missile.pos:To2D()
-			Draw.Text(missile.name, 13, screenPos.x, screenPos.y+ count * 15)
-		end
-	end
-	local count = 0
-	for i = 1, Game.ParticleCount() do
-		local particle = Game.Particle(i)		
-		local dist =  HPred:GetDistance(particle.pos, myHero.pos)
-		if dist > 100 and dist < 800 then
-			count = count + 1
-			local screenPos = particle.pos:To2D()
-			Draw.Text(particle.name, 13, screenPos.x, screenPos.y + count * 15)
-		end
-	end
-end
 function Taliyah:Tick()
 	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
@@ -2606,7 +2599,7 @@ function Taliyah:FindW()
 	if Game.Timer() - _wCastAt < 1 and not _wParticle then		
 		for i = 1, Game.ParticleCount() do 
 			local particle = Game.Particle(i)
-			if particle.name == "Taliyah_Base_W_indicator_arrow" then
+			if particle and particle.name == "Taliyah_Base_W_indicator_arrow" then
 				_wParticle = particle
 			end
 		end
@@ -2730,7 +2723,7 @@ function Kalista:AutoQ()
 		local qTargets = {}
 		for i = 1, Game.HeroCount() do
 			local t = Game.Hero(i)
-			if HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, Q.Range) then
+			if t and HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, Q.Range) then
 				local hitRate, aimPosition = HPred:GetHitchance(myHero.pos, t, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision)
 				if hitRate and hitRate >= Menu.Skills.Q.Accuracy:Value() and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
 					_insert(qTargets, {aimPosition, hitRate * self:GetEStacks(t)})
@@ -2749,7 +2742,7 @@ function Kalista:Killsteal()
 	local eDamage= 20 + (myHero:GetSpellData(_E).level -1) * 10 + myHero.totalDamage * 0.6
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, 525) then
+		if t and HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, 525) then
 			--Calculate the damage to this specific target
 			local damage = eDamage + self:GetEStacks(t) * myHero.totalDamage * .3
 			damage = HPred:CalculatePhysicalDamage(t, damage)
@@ -2777,6 +2770,7 @@ function Cassiopeia:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Noxious Blast", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile", value = true})	
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 4, min = 1, max = 5, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
@@ -2788,7 +2782,8 @@ function Cassiopeia:CreateMenu()
 	Menu.Skills:MenuElement({id = "E", name = "[E] Twin Fang", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Poison", name = "Only cast on poisoned enemies", value = true})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
-	Menu.Skills.E:MenuElement({id = "Farm", name = "Last Hit Poisoned Minions", value = true, toggle = true, key = 0x72})
+	Menu.Skills.E:MenuElement({id = "Farm", name = "Last Hit Minions", value = true, toggle = true, key = 0x72})
+	Menu.Skills.E:MenuElement({id = "FarmPoison", name = "Only Last Hit Poisoned Minions", value = false, toggle = true})
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Petrifying Gaze", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Count", name = "Ult Count", value = 2, min = 1, max = 5, step = 1 })
@@ -2799,20 +2794,11 @@ end
 function Cassiopeia:LoadSpells()
 	Q = {Range = 850, Width = 150,Delay = 0.4, Speed = _huge}
 	W = {Range = 800, Width = 160,Delay = 0.25, Speed = _huge}
-	E = {Range = 650}
+	E = {Range = 690}
 	R = {Range = 825,Delay = 0.5, Angle = 80}
 end
 
 function Cassiopeia:Draw()	
-end
-
-function Cassiopeia:IsTargetPoisoned(target)
-	for i = 1, target.buffCount do 
-		local buff = target:GetBuff(i)
-		if buff.duration > 0 and( buff.name == "cassiopeiaqdebuff" or buff.name == "cassiopeiawpoison")then
-			return true
-		end
-	end
 end
 
 function Cassiopeia:Tick()
@@ -2843,12 +2829,26 @@ function Cassiopeia:Tick()
 	
 end
 
+function Cassiopeia:IsTargetPoisoned(target)
+	for i = 1, target.buffCount do 
+		local buff = target:GetBuff(i)
+		if buff.duration > 0 and( buff.name == "cassiopeiaqdebuff" or buff.name == "cassiopeiawpoison")then
+			return true
+		end
+	end
+end
+
 function Cassiopeia:AutoQ()	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 	if Menu.Skills.Q.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,Q.Range) then
 		SpecialCast(HK_Q, aimPosition)
 	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value())	
+		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+			SpecialCast(HK_Q, aimPosition)
+		end
+	else
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value())	
 		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
 			SpecialCast(HK_Q, aimPosition)
 		end
@@ -2869,35 +2869,55 @@ end
 
 
 local _nextFarmCheck = Game.Timer()
-local _ePoisonedBonusDamage = {10,30,50,70,90}
 
 function Cassiopeia:GetEDamage(target)
-	local eDamage = 50 + myHero.ap * 0.1
-	if self:IsTargetPoisoned(target) then
-		eDamage = eDamage + _ePoisonedBonusDamage[myHero:GetSpellData(_E).level] + myHero.ap * 0.5
-	end	
-	return eDamage
+    local level = myHero:GetSpellData(_E).level
+    local damage = 48 + 4 * myHero.levelData.lvl + 0.1 * myHero.ap + (self:IsTargetPoisoned(target) and ({10, 30, 50, 70, 90})[level] + 0.60 * myHero.ap or 0)	
+	damage = HPred:CalculateMagicDamage(target, damage)		
+	return damage
 end
 
+
 function Cassiopeia:AutoE()
-	if Menu.Skills.Combo:Value() then		
-		for i = 1, Game.HeroCount() do
-			local t = Game.Hero(i)
-			if HPred:CanTarget(t) and self:IsTargetPoisoned(t) and HPred:IsInRange(myHero.pos, t.pos, E.Range) then
-				SpecialCast(HK_E, t)
+	if Menu.Skills.Combo:Value() then
+		self:ComboE(Menu.Skills.E.Poison:Value())
+	elseif Menu.Skills.E.Farm:Value() then
+		self:FarmE()
+	end
+end
+
+function Cassiopeia:FarmE()	
+	if _nextFarmCheck > Game.Timer() then return end
+	_nextFarmCheck = Game.Timer() + .2
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i);
+		if minion and HPred:CanTarget(minion) and HPred:IsInRange(myHero.pos, minion.pos, E.Range) and (self:IsTargetPoisoned(minion) or not Menu.Skills.E.FarmPoison:Value()) then			
+			if self:GetEDamage(minion) > minion.health then
+				SpecialCast(HK_E, minion.pos)
+				break
 			end
 		end
-	elseif Menu.Skills.E.Farm:Value() then
-		if _nextFarmCheck > Game.Timer() then return end
-		_nextFarmCheck = Game.Timer() + .2
-		for i = 1, Game.MinionCount() do
-			local minion = Game.Minion(i);
-			if HPred:CanTarget(minion) and self:IsTargetPoisoned(minion) and HPred:IsInRange(myHero.pos, minion.pos, E.Range) then			
-				if self:GetEDamage(minion) > minion.health then
-					SpecialCast(HK_E, minion.pos)
-				end
+	end
+end
+
+function Cassiopeia:ComboE(requirePoison)
+	local eTargets = {}
+	for i = 1, Game.HeroCount() do
+		local t = Game.Hero(i)
+		if t and HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, Q.Range) then
+			local eDamage = self:GetEDamage(t)
+			if eDamage >= t.health then
+				eDamage = _huge
+			--If the E wont kill them and they aren't poisoned and we have it set to ONLY E poisoned enemies then exclude them as a target...			
+			elseif requirePoison and not self:IsTargetPoisoned(t) then
+				eDamage = 0
 			end
-		end	
+			_insert(eTargets, {t.pos, eDamage})
+		end
+	end
+	_sort(eTargets, function( a, b ) return a[2] >b[2] end)	
+	if #eTargets > 0 and eTargets[1][2] > 0 then
+		SpecialCast(HK_E, eTargets[1][1])
 	end
 end
 
@@ -2911,7 +2931,7 @@ function Cassiopeia:AutoR()
 			local castAngle = HPred:Angle(myHero.pos,aimPos)
 			for i = 1, Game.HeroCount() do
 				local t = Game.Hero(i)
-				if HPred:CanTarget(t) then			
+				if t and HPred:CanTarget(t) then			
 					local predictedPosition = HPred:PredictUnitPosition(t, R.Delay)
 					local deltaAngle = _abs(HPred:Angle(myHero.pos, predictedPosition) - castAngle)
 					if deltaAngle <= 40 and HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
@@ -3021,7 +3041,7 @@ function HPred:Tick()
 	--Cache new revives
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if not _cachedRevives[particle.networkID] and  _reviveLookupTable[particle.name] then
+		if particle and not _cachedRevives[particle.networkID] and  _reviveLookupTable[particle.name] then
 			_cachedRevives[particle.networkID] = {}
 			_cachedRevives[particle.networkID]["expireTime"] = Game.Timer() + _reviveLookupTable[particle.name]			
 			local target = self:GetHeroByPosition(particle.pos)
@@ -3036,12 +3056,14 @@ function HPred:Tick()
 	--Update hero movement history	
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		self:UpdateMovementHistory(t)
+		if t then
+			self:UpdateMovementHistory(t)
+		end
 	end
 	
 	--Remove old cached teleports	
 	for _, teleport in pairs(_cachedTeleports) do
-		if Game.Timer() > teleport.expireTime + .5 then
+		if teleport and Game.Timer() > teleport.expireTime + .5 then
 			_cachedTeleports[_] = nil
 		end
 	end	
@@ -3144,7 +3166,7 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 	local targetCount = 0
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
+		if t and self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
 			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) * (t.boundingRadius + width)) then
@@ -3160,7 +3182,7 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 	local _validTargets = {}
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
+		if t and self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
 			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
 			if hitChance >= minimumHitChance then
 				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
@@ -3258,7 +3280,7 @@ function HPred:GetDashingTarget(source, range, delay, speed, dashThreshold, chec
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
+		if t and t.isEnemy and t.pathing.hasMovePath and t.pathing.isDashing and t.pathing.dashSpeed>500  then
 			local dashEndPosition = t:GetPath(1)
 			if self:IsInRange(source, dashEndPosition, range) then				
 				--The dash ends within range of our skill. We now need to find if our spell can connect with them very close to the time their dash will end
@@ -3280,7 +3302,7 @@ function HPred:GetHourglassTarget(source, range, delay, speed, timingAccuracy, c
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if t.isEnemy then		
+		if t and t.isEnemy then		
 			local success, timeRemaining = self:HasBuff(t, "zhonyasringshield")
 			if success then
 				local spellInterceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
@@ -3315,7 +3337,7 @@ function HPred:GetInstantDashTarget(source, range, delay, speed, timingAccuracy,
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if t.isEnemy and t.activeSpell and t.activeSpell.valid and _blinkSpellLookupTable[t.activeSpell.name] then
+		if t and t.isEnemy and t.activeSpell and t.activeSpell.valid and _blinkSpellLookupTable[t.activeSpell.name] then
 			local windupRemaining = t.activeSpell.startTime + t.activeSpell.windup - Game.Timer()
 			if windupRemaining > 0 then
 				local endPos
@@ -3397,11 +3419,13 @@ function HPred:GetChannelingTarget(source, range, delay, speed, timingAccuracy, 
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		local interceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
-		if self:CanTarget(t) and self:IsInRange(source, t.pos, range) and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
-			target = t
-			aimPosition = t.pos	
-			return target, aimPosition
+		if t then
+			local interceptTime = self:GetSpellInterceptTime(myHero.pos, t.pos, delay, speed)
+			if self:CanTarget(t) and self:IsInRange(source, t.pos, range) and self:IsChannelling(t, interceptTime) and (not checkCollision or not self:CheckMinionCollision(source, t.pos, delay, speed, radius)) then
+				target = t
+				aimPosition = t.pos	
+				return target, aimPosition
+			end
 		end
 	end
 end
@@ -3411,7 +3435,7 @@ function HPred:GetImmobileTarget(source, range, delay, speed, timingAccuracy, ch
 	local aimPosition
 	for i = 1, Game.HeroCount() do
 		local t = Game.Hero(i)
-		if self:CanTarget(t) and self:IsInRange(source, t.pos, range) then
+		if t and self:CanTarget(t) and self:IsInRange(source, t.pos, range) then
 			local immobileTime = self:GetImmobileTime(t)
 			
 			local interceptTime = self:GetSpellInterceptTime(source, t.pos, delay, speed)
@@ -3426,20 +3450,20 @@ end
 
 function HPred:CacheTeleports()
 	--Get enemies who are teleporting to towers
-	--for i = 1, Game.TurretCount() do
-	--	local turret = Game.Turret(i);
-	--	if turret.isEnemy and not _cachedTeleports[turret.networkID] then
-	--		local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
-	--		if hasBuff then
-	--			self:RecordTeleport(turret, self:GetTeleportOffset(turret.pos,223.31),expiresAt)
-	--		end
-	--	end
-	--end	
+	for i = 1, Game.TurretCount() do
+		local turret = Game.Turret(i);
+		if turret and turret.isEnemy and not _cachedTeleports[turret.networkID] then
+			local hasBuff, expiresAt = self:HasBuff(turret, "teleport_target")
+			if hasBuff then
+				self:RecordTeleport(turret, self:GetTeleportOffset(turret.pos,223.31),expiresAt)
+			end
+		end
+	end	
 	
 	--Get enemies who are teleporting to wards	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		if ward.isEnemy and not _cachedTeleports[ward.networkID] then
+		if ward and ward.isEnemy and not _cachedTeleports[ward.networkID] then
 			local hasBuff, expiresAt = self:HasBuff(ward, "teleport_target")
 			if hasBuff then
 				self:RecordTeleport(ward, self:GetTeleportOffset(ward.pos,100.01),expiresAt)
@@ -3450,7 +3474,7 @@ function HPred:CacheTeleports()
 	--Get enemies who are teleporting to minions
 	for i = 1, Game.MinionCount() do
 		local minion = Game.Minion(i);
-		if minion.isEnemy and not _cachedTeleports[minion.networkID] then
+		if minion and minion.isEnemy and not _cachedTeleports[minion.networkID] then
 			local hasBuff, expiresAt = self:HasBuff(minion, "teleport_target")
 			if hasBuff then
 				self:RecordTeleport(minion, self:GetTeleportOffset(minion.pos,143.25),expiresAt)
@@ -3470,15 +3494,17 @@ end
 function HPred:CalculateIncomingDamage()
 	_incomingDamage = {}
 	local currentTime = Game.Timer()
-	for _, missile in pairs(_cachedMissiles) do	
-		local dist = self:GetDistance(missile.data.pos, missile.target.pos)			
-		if missile.name == "" or currentTime >= missile.timeout or dist < missile.target.boundingRadius then
-			_cachedMissiles[_] = nil
-		else
-			if not _incomingDamage[missile.target.networkID] then
-				_incomingDamage[missile.target.networkID] = missile.damage
+	for _, missile in pairs(_cachedMissiles) do
+		if missile then 
+			local dist = self:GetDistance(missile.data.pos, missile.target.pos)			
+			if missile.name == "" or currentTime >= missile.timeout or dist < missile.target.boundingRadius then
+				_cachedMissiles[_] = nil
 			else
-				_incomingDamage[missile.target.networkID] = _incomingDamage[missile.target.networkID] + missile.damage
+				if not _incomingDamage[missile.target.networkID] then
+					_incomingDamage[missile.target.networkID] = missile.damage
+				else
+					_incomingDamage[missile.target.networkID] = _incomingDamage[missile.target.networkID] + missile.damage
+				end
 			end
 		end
 	end	
@@ -3503,7 +3529,7 @@ function HPred:CacheParticles()
 	
 	for i = 1, Game.ParticleCount() do
 		local particle = Game.Particle(i)		
-		if self:IsInRange(particle.pos, myHero.pos, _maxCacheRange) then			
+		if particle and self:IsInRange(particle.pos, myHero.pos, _maxCacheRange) then			
 			if _find(particle.name, "W_windwall%d") and not _windwall then
 				--We don't care about ally windwalls for now
 				local owner =  self:GetObjectByHandle(particle.handle)
@@ -3524,26 +3550,29 @@ function HPred:CacheMissiles()
 	local currentTime = Game.Timer()
 	for i = 1, Game.MissileCount() do
 		local missile = Game.Missile(i)
-		--Check if there is a target for it
-		if not _cachedMissiles[missile.networkID] and missile.missileData and missile.missileData.target and missile.missileData.owner then
-			local missileName = missile.missileData.name
-			local owner =  self:GetObjectByHandle(missile.missileData.owner)	
-			local target =  self:GetObjectByHandle(missile.missileData.target)		
-			if owner and target and _find(target.type, "Hero") then			
-				--The missile is an auto attack of some sort that is targeting a player	
-				if (_find(missileName, "BasicAttack") or _find(missileName, "CritAttack")) then
-					--Cache it all and update the count
-					_cachedMissiles[missile.networkID] = {}
-					_cachedMissiles[missile.networkID].target = target
-					_cachedMissiles[missile.networkID].data = missile
-					_cachedMissiles[missile.networkID].timeout = currentTime + 1.5
-					
-					local damage = owner.totalDamage
-					if _find(missileName, "CritAttack") then
-						--Leave it rough we're not that concerned
-						damage = damage * 1.5
+		if missile and not _cachedMissiles[missile.networkID] and missile.missileData then
+			--Handle targeted missiles
+			if missile.missileData.target and missile.missileData.owner then
+				local missileName = missile.missileData.name
+				local owner =  self:GetObjectByHandle(missile.missileData.owner)	
+				local target =  self:GetObjectByHandle(missile.missileData.target)		
+				if owner and target and _find(target.type, "Hero") then			
+					--The missile is an auto attack of some sort that is targeting a player	
+					if (_find(missileName, "BasicAttack") or _find(missileName, "CritAttack")) then
+						--Cache it all and update the count
+						_cachedMissiles[missile.networkID] = {}
+						_cachedMissiles[missile.networkID].target = target
+						_cachedMissiles[missile.networkID].data = missile
+						_cachedMissiles[missile.networkID].danger = 1
+						_cachedMissiles[missile.networkID].timeout = currentTime + 1.5
+						
+						local damage = owner.totalDamage
+						if _find(missileName, "CritAttack") then
+							--Leave it rough we're not that concerned
+							damage = damage * 1.5
+						end						
+						_cachedMissiles[missile.networkID].damage = self:CalculatePhysicalDamage(target, damage)
 					end
-					_cachedMissiles[missile.networkID].damage = self:CalculatePhysicalDamage(target, damage)
 				end
 			end
 		end
@@ -3740,7 +3769,7 @@ function HPred:GetObjectByHandle(handle)
 	local target
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
-		if enemy.handle == handle then
+		if enemy and enemy.handle == handle then
 			target = enemy
 			return target
 		end
@@ -3748,7 +3777,7 @@ function HPred:GetObjectByHandle(handle)
 	
 	for i = 1, Game.MinionCount() do
 		local minion = Game.Minion(i)
-		if minion.handle == handle then
+		if minion and minion.handle == handle then
 			target = minion
 			return target
 		end
@@ -3756,23 +3785,23 @@ function HPred:GetObjectByHandle(handle)
 	
 	for i = 1, Game.WardCount() do
 		local ward = Game.Ward(i);
-		if ward.handle == handle then
+		if ward and ward.handle == handle then
 			target = ward
 			return target
 		end
 	end
 	
-	--for i = 1, Game.TurretCount() do 
-	--	local turret = Game.Turret(i)
-	--	if turret.handle == handle then
-	--		target = turret
-	--		return target
-	--	end
-	--end
+	for i = 1, Game.TurretCount() do 
+		local turret = Game.Turret(i)
+		if turret and turret.handle == handle then
+			target = turret
+			return target
+		end
+	end
 	
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		if particle.handle == handle then
+		if particle and particle.handle == handle then
 			target = particle
 			return target
 		end
@@ -3783,7 +3812,7 @@ function HPred:GetHeroByPosition(position)
 	local target
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
-		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+		if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
 			target = enemy
 			return target
 		end
@@ -3794,7 +3823,7 @@ function HPred:GetObjectByPosition(position)
 	local target
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
-		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+		if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
 			target = enemy
 			return target
 		end
@@ -3802,7 +3831,7 @@ function HPred:GetObjectByPosition(position)
 	
 	for i = 1, Game.MinionCount() do
 		local enemy = Game.Minion(i)
-		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+		if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
 			target = enemy
 			return target
 		end
@@ -3810,7 +3839,7 @@ function HPred:GetObjectByPosition(position)
 	
 	for i = 1, Game.WardCount() do
 		local enemy = Game.Ward(i);
-		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+		if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
 			target = enemy
 			return target
 		end
@@ -3818,7 +3847,7 @@ function HPred:GetObjectByPosition(position)
 	
 	for i = 1, Game.ParticleCount() do 
 		local enemy = Game.Particle(i)
-		if enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+		if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
 			target = enemy
 			return target
 		end
@@ -3829,7 +3858,7 @@ function HPred:GetEnemyHeroByHandle(handle)
 	local target
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
-		if enemy.handle == handle then
+		if enemy and enemy.handle == handle then
 			target = enemy
 			return target
 		end
@@ -3842,10 +3871,12 @@ function HPred:GetNearestParticleByNames(origin, names)
 	local distance = 999999
 	for i = 1, Game.ParticleCount() do 
 		local particle = Game.Particle(i)
-		local d = self:GetDistance(origin, particle.pos)
-		if d < distance then
-			distance = d
-			target = particle
+		if particle then 
+			local d = self:GetDistance(origin, particle.pos)
+			if d < distance then
+				distance = d
+				target = particle
+			end
 		end
 	end
 	return target, distance
@@ -3886,7 +3917,7 @@ function HPred:IsMinionIntersection(location, radius, delay, maxDistance)
 	end
 	for i = 1, Game.MinionCount() do
 		local minion = Game.Minion(i)
-		if self:CanTarget(minion) and self:IsInRange(minion.pos, location, maxDistance) then
+		if minion and self:CanTarget(minion) and self:IsInRange(minion.pos, location, maxDistance) then
 			local predictedPosition = self:PredictUnitPosition(minion, delay)
 			if self:IsInRange(location, predictedPosition, radius + minion.boundingRadius) then
 				return true
@@ -3968,7 +3999,7 @@ function HPred:GetEnemyByName(name)
 	local target
 	for i = 1, Game.HeroCount() do
 		local enemy = Game.Hero(i)
-		if enemy.isEnemy and enemy.charName == name then
+		if enemy and enemy.isEnemy and enemy.charName == name then
 			target = enemy
 			return target
 		end
