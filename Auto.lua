@@ -641,7 +641,7 @@ function AutoUtil:AutoExhaust()
 		if enemy and enemy.isEnemy and HPred:IsInRange(myHero.pos, enemy.pos, 600 + enemy.boundingRadius) and HPred:CanTarget(enemy, 650) and Menu.Skills.Exhaust.Targets[enemy.charName] and Menu.Skills.Exhaust.Targets[enemy.charName]:Value() then
 			for allyIndex = 1, Game.HeroCount() do
 				local ally = Game.Hero(allyIndex)
-				if ally and ally.isAlly and ally.alive and HPred:IsInRange(enemy.pos, ally.pos, 600 + enemy.Menu.Skills.Exhaust.Radius:Value()) and CurrentPctLife(ally) <= Menu.Skills.Exhaust.Health:Value() then
+				if ally and ally.isAlly and ally.alive and HPred:IsInRange(enemy.pos, ally.pos, 600 + Menu.Skills.Exhaust.Radius:Value()) and CurrentPctLife(ally) <= Menu.Skills.Exhaust.Health:Value() then
 					Control.CastSpell(exhaustHotkey, enemy)
 				end
 			end
@@ -2961,16 +2961,23 @@ function Azir:LoadSpells()
 	W = {Range = 500, Width = 375 ,Delay = 0.25, Speed = _huge}
 end
 
+local _cachedSoldiers = {}
 
 function Azir:Draw()
+	if forcedTarget then		
+		for _, soldier in pairs(_cachedSoldiers) do
+			local drawPos = soldier.data.pos:To2D()
+			local distance = HPred:GetDistance(soldier.data.pos, myHero.pos)
+			Draw.Text(distance, 12, drawPos)
+		end		
+	end
 end
 
-local _cachedSoldiers = {}
 function Azir:CanExtendAuto(target)
 	for _, soldier in pairs(_cachedSoldiers) do
-		local targetToSoldierDistance = HPred:GetDistance(target.pos, soldier.data.pos) - target.boundingRadius / 2
-		local heroToSoldierDistance = HPred:GetDistance(myHero.pos, soldier.data.pos) - soldier.data.boundingRadius / 2 - myHero.boundingRadius / 2
-		if targetToSoldierDistance < 375 and heroToSoldierDistance < 725 then
+		local targetToSoldierDistance = HPred:GetDistance(target.pos, soldier.data.pos)
+		local heroToSoldierDistance = HPred:GetDistance(myHero.pos, soldier.data.pos)
+		if targetToSoldierDistance < 375 and heroToSoldierDistance < 750 then
 			return true
 		end		
 	end	
@@ -2988,19 +2995,19 @@ function Azir:CacheSoldiers()
 		if particle and not _cachedSoldiers[particle.networkID] and _find(particle.name,"P_Soldier_Ring") then
 			_cachedSoldiers[particle.networkID] = {}			
 			_cachedSoldiers[particle.networkID].data = particle
-			_cachedSoldiers[particle.networkID].expires = currentTime + 10.1
+			_cachedSoldiers[particle.networkID].expires = currentTime + 10.25
 		end
 	end
 end
 
 local _lastAutoAttackOrder = Game.Timer()
 local _mousePos
-function Azir:Tick()
+function Azir:Tick()	
+	self:CacheSoldiers()
 	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
-	self:CacheSoldiers()
 
 	--Spawn soldiers on immobile
 	if Ready(_W) and Menu.Skills.W.Auto:Value() then
@@ -3028,8 +3035,9 @@ function Azir:Tick()
 				if HPred:IsInRange(toAim, aimPosition, 475) then
 					SpecialCast(HK_W, aimPosition)
 				end
-			end		
-		elseif myHero.attackData.state ~= STATE_WINDUP and myHero.attackData.state ~= STATE_WINDDOWN and Game.Timer() - _lastAutoAttackOrder > .25 then			
+			end
+		end
+		if myHero.attackData.state ~= STATE_WINDUP and myHero.attackData.state ~= STATE_WINDDOWN and Game.Timer() - _lastAutoAttackOrder > .25 then			
 			local aaUsed = false
 			for i = 1, Game.HeroCount() do
 				local t = Game.Hero(i)
