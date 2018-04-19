@@ -255,29 +255,22 @@ function IsDelaying()
 	return false
 end
 
-function SpecialCast(key, pos, startPos, isLine)
+function SpecialCast(key, pos, bypassTiming)
 	if not Menu.Skills.Combo:Value() and not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end	
-	if NextSpellCast > Game.Timer() then return end		
+	if not bypassTiming and NextSpellCast > Game.Timer() then return end		
 	if not pos then
 		Control.CastSpell(key)
 		return
 	end	
-	
-	if Menu.General.AltCast:Value() then	
-		if not isLine then
-			isLine = false
-		end
-		if not startPos then
-			startPos = myHero.pos
-		end
-		gsoCast(key, pos, startPos, isLine)
-	elseif _G.SDK and _G.Control then
+	if _G.SDK and _G.Control then
 		_G.Control.CastSpell(key, pos)
 	else
 		Control.CastSpell(key, pos)
 	end
 	
-	NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
+	if not bypassTiming then
+		NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
+	end
 end
  	
 function KnowsSpell(spell)
@@ -1166,10 +1159,7 @@ function Zilean:Tick()
 	
 	--Reliable Q combo
 	if Ready(_Q) then
-		self:ReliableQ()
-		if Game.Timer() > NextSpellCast then
-			self:UnreliableQ()
-		end
+		self:AutoQ()
 	end
 	
 	--Peel with E
@@ -1191,43 +1181,50 @@ function Zilean:Tick()
 	end
 end
 
-function Zilean:ReliableQ()
+
+function Zilean:AutoQ()	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
-	if target and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+	if target and HPred:CanTarget(target) and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) and Menu.Skills.Q.Targets[target.charName] and Menu.Skills.Q.Targets[target.charName]:Value() then
 		if Ready(_W) then
 			self:StunCombo(target, aimPosition)		
 		else	
-			Control.CastSpell(HK_Q, aimPosition)
-		end		
+			SpecialCast(HK_Q, aimPosition)
+		end	
+	--Unreliable Q
+	elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		local minAccuracy = Menu.Skills.Q.AccuracyAuto:Value()
+		if Menu.Skills.Combo:Value() and Menu.Skills.Q.AccuracyCombo:Value() < minAccuracy then
+			minAccuracy = Menu.Skills.Q.AccuracyCombo:Value()
+		end
+		
+		local _whiteList = {}
+		for i  = 1,LocalGameHeroCount(i) do
+			local enemy = LocalGameHero(i)
+			if enemy and Menu.Skills.Q.Targets[enemy.charName] and Menu.Skills.Q.Targets[enemy.charName]:Value() then
+				_whiteList[enemy.charName] = true
+			end
+		end
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision,minAccuracy,_whiteList)	
+		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+			SpecialCast(HK_Q, aimPosition)
+		end
+	
 	end
 end
 
-function Zilean:UnreliableQ()	
-	if Menu.Skills.Combo:Value() then
-		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value(),nil)	
-		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
-			SpecialCast(HK_Q, aimPosition)
-		end	
-	elseif CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
-		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.AccuracyAuto:Value(),nil)	
-		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
-			SpecialCast(HK_Q, aimPosition)
-		end	
-	end
-end
 
 function Zilean:StunCombo(target, aimPosition)
 	NextSpellCast = Game.Timer() + .5	
 	if Ready(_E) and HPred:IsInRange(myHero.pos, target.pos,E.Range) then
 		--We can lead with E, if not just go for QWQ stun combo and we can E later if we really want
-		Control.CastSpell(HK_E, target)
+		SpecialCast(HK_E, target, true)
 	end
 	
 	--Try spam casting it for the hell of it
-	Control.CastSpell(HK_Q, aimPosition)
-	DelayAction(function()Control.CastSpell(HK_Q, aimPosition) end,.10)
-	DelayAction(function()Control.CastSpell(HK_W) end,.15)
-	DelayAction(function()Control.CastSpell(HK_Q, aimPosition) end, 0.3)
+	SpecialCast(HK_Q, aimPosition, true)
+	DelayAction(function()SpecialCast(HK_Q, aimPosition, true) end,.10)
+	DelayAction(function()SpecialCast(HK_W) end,.15)
+	DelayAction(function()SpecialCast(HK_Q, aimPosition, true) end, 0.3)
 end
 
 function Zilean:AutoWReset()
@@ -1244,7 +1241,7 @@ function Zilean:AutoEPeel()
 		--Its an ally, they are in range and we've set them as a carry. Lets peel for them!
 		if hero and hero.isAlly and CurrentPctLife(hero) <= Menu.Skills.E.Health:Value() and HPred:IsInRange(myHero.pos, hero.pos, E.Range  + Menu.Skills.E.Radius:Value()) then				
 			if target ~= nil and  AutoUtil:NearestEnemy(hero) <= Menu.Skills.E.Radius:Value() and HPred:IsInRange(myHero.pos, target.pos, E.Range) then
-				Control.CastSpell(HK_E, target.pos)
+				SpecialCast(HK_E, target.pos, true)
 			end
 		end
 	end
@@ -1256,7 +1253,8 @@ function Zilean:AutoR()
 		if hero and hero.isAlly and HPred:IsInRange(myHero.pos, hero.pos, R.Range) and CurrentPctLife(hero) <= Menu.Skills.R.Health:Value() and Menu.Skills.R.Targets[hero.charName] and Menu.Skills.R.Targets[hero.charName]:Value() and _allyHealthPercentage[hero.networkID] then			
 			local deltaLifeLost = _allyHealthPercentage[hero.networkID] - CurrentPctLife(hero)
 			if deltaLifeLost >= Menu.Skills.R.Damage:Value() and AutoUtil:NearestEnemy(hero) < 800 then
-				Control.CastSpell(HK_R, hero.pos)
+				SpecialCast(HK_R, hero.pos, true)
+				break
 			end
 		end
 	end	
