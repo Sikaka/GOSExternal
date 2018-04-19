@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir", "Thresh"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -1711,9 +1711,9 @@ function Blitzcrank:Draw()
 		end
 		
 		if HPred:IsInRange(myHero.pos, origin, Q.Range) then
-			LocalDrawCircle(origin, 25,10, LocalDrawColor(150, 255, 0,0))
-		else
 			LocalDrawCircle(origin, 25,10, LocalDrawColor(150, 0, 255,0))
+		else
+			LocalDrawCircle(origin, 25,10, LocalDrawColor(150, 255, 0,0))
 			LocalDrawCircle(origin, radius,1, LocalDrawColor(150, 255, 255,255))	
 		end
 	end	
@@ -3149,6 +3149,185 @@ function Azir:Tick()
 		end
 	end
 end
+
+class "Thresh"
+function Thresh:__init()
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	Callback.Add("Tick", function() self:Tick() end)
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Thresh:CreateMenu()
+	Menu.General:MenuElement({id = "DrawQAim", name = "Draw Q Aim", value = true})
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Death Sentence", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Targets", name = "Targets", type = MENU})	
+	for i = 1, LocalGameHeroCount() do
+		local hero = LocalGameHero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.Q.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
+	Menu.Skills.Q:MenuElement({id = "Immobile", name = "Auto Hook Immobile", value = true})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+	Menu.Skills:MenuElement({id = "E", name = "[E] Flay", type = MENU})	
+	Menu.Skills.E:MenuElement({id = "Targets", name = "Auto Peel Targets", type = MENU})	
+	for i = 1, LocalGameHeroCount() do
+		local hero = LocalGameHero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
+		end
+	end
+	Menu.Skills.E:MenuElement({id = "PeelRange", name = "Auto Peel Range", value = 300, min = 100, max = 500, step = 50 })	
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 5, step = 1})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] The Box", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.R:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })	
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+end
+
+function Thresh:LoadSpells()
+	Q = {Range = 1100, Width = 55,Delay = 0.5, Speed = 1900,  Collision = true}
+	E = {Range = 400, Width = 95,Delay = 0.389, Speed = _huge }
+	R = {Range = 450 }
+end
+
+function Thresh:Draw()	
+	if Ready(_Q) and Menu.General.DrawQAim:Value() and forcedTarget and forcedTarget.alive and forcedTarget.visible then	
+		local targetOrigin = HPred:PredictUnitPosition(forcedTarget, Q.Delay)
+		local interceptTime = HPred:GetSpellInterceptTime(myHero.pos, targetOrigin, Q.Delay, Q.Speed)			
+		local origin, radius = HPred:UnitMovementBounds(forcedTarget, interceptTime, Menu.General.ReactionTime:Value())		
+						
+		if radius < 25 then
+			radius = 25
+		end
+		
+		if HPred:IsInRange(myHero.pos, origin, Q.Range) then
+			LocalDrawCircle(origin, 25,10, LocalDrawColor(150, 0, 255,0))
+		else
+			LocalDrawCircle(origin, 25,10, LocalDrawColor(150, 255, 0,0))
+			LocalDrawCircle(origin, radius,1, LocalDrawColor(150, 255, 255,255))	
+		end
+	end	
+end
+
+--Save a whitelist. Save it only once per 5 seconds: Todo onchange event for menu elements...
+local _qWhitelist = {}
+local _eWhitelist = {}
+local _nextWhitelistUpdate = Game.Timer()
+function Thresh:UpdateHookWhitelist()
+	if _nextWhitelistUpdate > Game.Timer() then return end
+	_nextWhitelistUpdate = Game.Timer() + 5
+	_qWhitelist = {}
+	_eWhitelist = {}
+	for i  = 1,LocalGameHeroCount(i) do
+		local enemy = LocalGameHero(i)
+		if enemy and Menu.Skills.Q.Targets[enemy.charName] and Menu.Skills.Q.Targets[enemy.charName]:Value() then
+			_qWhitelist[enemy.charName] = true
+		end
+		if enemy and Menu.Skills.E.Targets[enemy.charName] and Menu.Skills.E.Targets[enemy.charName]:Value() then
+			_eWhitelist[enemy.charName] = true
+		end
+	end
+end
+function Thresh:Tick()	
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
+	if NextSpellCast > Game.Timer() then return end
+	self:UpdateHookWhitelist()
+	
+	if Ready(_Q) then
+		self:AutoQ()
+	end	
+	
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		self:AutoE()
+	end
+	
+	if Ready(_R) and CurrentPctMana(myHero) >= Menu.Skills.R.Mana:Value() then		
+		local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, R.Range)
+		if targetCount >= Menu.Skills.R.Count:Value() then
+			Control.CastSpell(HK_R)
+			NextSpellCast = .35 + Game.Timer()
+		end
+	end
+end
+
+function Thresh:AutoQ()
+	local qData = myHero:GetSpellData(_Q)
+	if qData.name == "ThreshQ" and qData.currentCd == 0 then
+		if Menu.Skills.Q.Immobile:Value() then
+			local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+			if target then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		end
+		
+		if Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then						
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value(),_qWhitelist)	
+			if hitRate then
+				SpecialCast(HK_Q, aimPosition)
+			end
+		end
+	end
+end
+function Thresh:AutoE()
+	--Don't auto E if our Q is already launched or it wastes CC time... there are some ccases where this might be useful but lets leave out for now.
+	
+	if not Menu.Skills.Combo:Value() then		
+		local qData = myHero:GetSpellData(_Q)	
+		if qData.name == "ThreshQLeap" then return end
+	end
+	
+	
+	--Auto interrupt channeling targets by pushing them away
+	local target, aimPosition =HPred:GetChannelingTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value(), E.Collision, E.Width)
+	if target and aimPosition then
+		Control.CastSpell(HK_E, aimPosition)
+		return
+	end
+	local target, aimPosition =HPred:GetDashingTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value(), E.Collision, E.Width)
+	if target and aimPosition then
+		Control.CastSpell(HK_E, aimPosition)
+		return
+	end
+	
+	--Peel enemies away from us!
+	for i = 1, LocalGameHeroCount() do
+		local enemy = LocalGameHero(i)
+		if enemy and HPred:CanTarget(enemy) and HPred:IsInRange(myHero.pos, enemy.pos, Menu.Skills.E.PeelRange:Value()) and _eWhitelist[enemy.charName] then
+			Control.CastSpell(HK_E, enemy.pos)
+			return	
+		end
+	end
+	
+	--pull enemies towards us
+	if Menu.Skills.Combo:Value() then		
+		--GetHitchance(source, t, range, delay, speed, radius, checkCollision)
+		for i = 1, LocalGameHeroCount() do
+			local enemy = LocalGameHero(i)
+			if enemy and HPred:CanTarget(enemy) and HPred:IsInRange(myHero.pos, enemy.pos, E.Range) then
+				local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, enemy,E.Range, E.Delay, E.Speed, E.Width)
+				if aimPosition and hitChance and hitChance >= Menu.Skills.E.Accuracy:Value() then
+					--If they aren't in the list of targets we want to push away then instead we should pull them!
+					if not _eWhitelist[enemy.charName] then
+						aimPosition = myHero.pos + (myHero.pos - aimPosition):Normalized() * 100
+					end
+					SpecialCast(HK_E, aimPosition)
+					return
+				end
+			end
+		end
+	end	
+end
+
 
 class "HPred"
 
