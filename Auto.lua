@@ -42,6 +42,8 @@ local LocalGameObjectCount 			= Game.ObjectCount;
 local LocalGameObject				= Game.Object;
 local LocalGameMissileCount 		= Game.MissileCount;
 local LocalGameMissile				= Game.Missile;
+local LocalGameParticleCount 		= Game.ParticleCount;
+local LocalGameParticle				= Game.Particle;
 local LocalGameIsChatOpen			= Game.IsChatOpen;
 local LocalGameIsOnTop				= Game.IsOnTop;
 
@@ -243,7 +245,7 @@ function IsAttacking()
 end
 
 local _nextTick = Game.Timer()
-local _tickFrequency = .1
+local _tickFrequency = .2
 
 function IsDelaying()
 	if _nextTick > Game.Timer() then return true end
@@ -1001,7 +1003,9 @@ function Soraka:AutoW()
 	
 	_sort(targets, function( a, b ) return a[2] < b[2] end)	
 	if #targets > 0 then
-		SpecialCast(HK_W, targets[1][1].pos)
+		local castPos = targets[1][1].pos
+		targets = nil
+		SpecialCast(HK_W,castPos)
 	end
 	targets = nil
 end
@@ -1487,8 +1491,8 @@ local count = 0
 		end
 	end
 	local count = 0
-	for i = 1, Game.ParticleCount() do
-		local particle = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do
+		local particle = LocalGameParticle(i)
 		if particle ~= nil then		
 			local dist =  HPred:GetDistance(particle.pos, myHero.pos)
 			if dist > 100 and dist < 800 then
@@ -1568,7 +1572,9 @@ function Lux:AutoW()
 	
 	_sort(aimPositions, function( a, b ) return a[2] < b[2] end)
 	if #aimPositions > 0 then
-		SpecialCast(HK_W, aimPositions[1][1])
+		local aimPos = aimPositions[1][1]
+		aimPositions = nil
+		SpecialCast(HK_W, aimPos)
 	end
 end
 
@@ -1605,8 +1611,8 @@ function Lux:AutoE()
 				end
 			end
 		elseif eData.toggleState == 2 then		
-			for i = 1, Game.ParticleCount() do 
-				local particle = Game.Particle(i)
+			for i = 1, LocalGameParticleCount() do 
+				local particle = LocalGameParticle(i)
 				if particle and _find(particle.name, "E_tar_aoe_sound") then
 					eParticle = particle
 					break
@@ -2196,8 +2202,8 @@ function MissFortune:FindPassiveMark()
 	if _nextPassiveSearch > Game.Timer() then return end
 	_nextPassiveSearch = Game.Timer() + _passiveSearchFrequency
 	
-	for i = 1, Game.ParticleCount() do 
-		local particle = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do 
+		local particle = LocalGameParticle(i)
 		if particle and HPred:IsInRange(myHero.pos, particle.pos, _passiveSearchDistance) and _find(particle.name, "_P_Mark") then			
 			_passiveTarget = HPred:GetObjectByPosition(particle.pos)
 		end
@@ -2246,9 +2252,10 @@ function MissFortune:GetQBounce(target)
 	
 	if #targets > 0 then
 		_sort(targets, function( a, b ) return a[2] < b[2] end)
-		return targets[1][1]
+		local t = targets[1][1]
+		targets = nil
+		return t
 	end
-	targets = nil
 end
 
 class "Karthus" 
@@ -2495,8 +2502,8 @@ function Illaoi:GetSpirit()
 		_spirit = nil	
 	end
 	if not _spirit then
-		for i = 1, Game.ParticleCount() do
-			local particle = Game.Particle(i)	
+		for i = 1, LocalGameParticleCount() do
+			local particle = LocalGameParticle(i)	
 			if particle then
 				local dist =  HPred:GetDistance(particle.pos, myHero.pos)
 				if dist > 100 and dist < 800 then
@@ -2666,8 +2673,8 @@ local _wParticle
 
 function Taliyah:FindW()	
 	if Game.Timer() - _wCastAt < 1 and not _wParticle then		
-		for i = 1, Game.ParticleCount() do 
-			local particle = Game.Particle(i)
+		for i = 1, LocalGameParticleCount() do 
+			local particle = LocalGameParticle(i)
 			if particle and particle.name == "Taliyah_Base_W_indicator_arrow" then
 				_wParticle = particle
 			end
@@ -2800,7 +2807,9 @@ function Kalista:AutoQ()
 		
 		_sort(qTargets, function( a, b ) return a[2] >b[2] end)	
 		if #qTargets > 0 then
-			SpecialCast(HK_Q, qTargets[1][1])
+			local qTarget =qTargets[1][1]
+			qTargets = nil
+			SpecialCast(HK_Q, qTarget)
 		end
 	end
 end
@@ -2982,7 +2991,9 @@ function Cassiopeia:ComboE(requirePoison)
 	end
 	_sort(eTargets, function( a, b ) return a[2] >b[2] end)	
 	if #eTargets > 0 and eTargets[1][2] > 0 then
-		SpecialCast(HK_E, eTargets[1][1])
+		local eTarget = eTargets[1][1]
+		eTargets = nil
+		SpecialCast(HK_E, eTarget)
 	end
 end
 
@@ -3077,8 +3088,8 @@ function Azir:CacheSoldiers()
 			_cachedSoldiers[_] = nil
 		end
 	end
-	for i = 1, Game.ParticleCount() do 
-		local particle = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do 
+		local particle = LocalGameParticle(i)
 		if particle and not _cachedSoldiers[particle.networkID] and _find(particle.name,"P_Soldier_Ring") then
 			_cachedSoldiers[particle.networkID] = {}			
 			_cachedSoldiers[particle.networkID].data = particle
@@ -3235,8 +3246,8 @@ function HPred:Tick()
 	end
 	
 	--Cache new revives
-	for i = 1, Game.ParticleCount() do 
-		local particle = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do 
+		local particle = LocalGameParticle(i)
 		if particle and not _cachedRevives[particle.networkID] and  _reviveLookupTable[particle.name] then
 			_cachedRevives[particle.networkID] = {}
 			_cachedRevives[particle.networkID]["expireTime"] = Game.Timer() + _reviveLookupTable[particle.name]			
@@ -3395,6 +3406,7 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 		end		
 	end
 	
+	_validTargets = nil
 	if rHitChance >= minimumHitChance then
 		return rHitChance, rAimPosition
 	end	
@@ -3592,8 +3604,8 @@ end
 function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
 	local target
 	local aimPosition
-	for i = 1, Game.ParticleCount() do 
-		local particle = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do 
+		local particle = LocalGameParticle(i)
 		if particle and _blinkLookupTable[particle.name] and self:IsInRange(source, particle.pos, range) then
 			local pPos = particle.pos
 			for k,v in pairs(self:GetEnemyHeroes()) do
@@ -3723,8 +3735,8 @@ function HPred:CacheParticles()
 		_windwall = nil
 	end
 	
-	for i = 1, Game.ParticleCount() do
-		local particle = Game.Particle(i)		
+	for i = 1, LocalGameParticleCount() do
+		local particle = LocalGameParticle(i)		
 		if particle and self:IsInRange(particle.pos, myHero.pos, _maxCacheRange) then			
 			if _find(particle.name, "W_windwall%d") and not _windwall then
 				--We don't care about ally windwalls for now
@@ -3995,8 +4007,8 @@ function HPred:GetObjectByHandle(handle)
 		end
 	end
 	
-	for i = 1, Game.ParticleCount() do 
-		local particle = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do 
+		local particle = LocalGameParticle(i)
 		if particle and particle.handle == handle then
 			target = particle
 			return target
@@ -4041,8 +4053,8 @@ function HPred:GetObjectByPosition(position)
 	--	end
 	--end
 	
-	for i = 1, Game.ParticleCount() do 
-		local enemy = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do 
+		local enemy = LocalGameParticle(i)
 		if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
 			target = enemy
 			return target
@@ -4065,8 +4077,8 @@ end
 function HPred:GetNearestParticleByNames(origin, names)
 	local target
 	local distance = 999999
-	for i = 1, Game.ParticleCount() do 
-		local particle = Game.Particle(i)
+	for i = 1, LocalGameParticleCount() do 
+		local particle = LocalGameParticle(i)
 		if particle then 
 			local d = self:GetDistance(origin, particle.pos)
 			if d < distance then
