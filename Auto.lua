@@ -3175,6 +3175,11 @@ function Thresh:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
+	Menu.Skills:MenuElement({id = "W", name = "[W] Dark Passage", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Lantern On Q2", value = true})
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
+	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Flay", type = MENU})	
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Auto Peel Targets", type = MENU})	
 	for i = 1, LocalGameHeroCount() do
@@ -3196,6 +3201,7 @@ end
 
 function Thresh:LoadSpells()
 	Q = {Range = 1100, Width = 55,Delay = 0.5, Speed = 1900,  Collision = true}
+	W = {Range = 950 }
 	E = {Range = 400, Width = 95,Delay = 0.389, Speed = _huge }
 	R = {Range = 450 }
 end
@@ -3226,6 +3232,8 @@ local _nextWhitelistUpdate = Game.Timer()
 function Thresh:UpdateHookWhitelist()
 	if _nextWhitelistUpdate > Game.Timer() then return end
 	_nextWhitelistUpdate = Game.Timer() + 5
+	_qWhitelist = nil
+	_eWhitelist = nil
 	_qWhitelist = {}
 	_eWhitelist = {}
 	for i  = 1,LocalGameHeroCount(i) do
@@ -3242,6 +3250,10 @@ function Thresh:Tick()
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	self:UpdateHookWhitelist()
+	
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+		self:AutoW()
+	end
 	
 	if Ready(_Q) then
 		self:AutoQ()
@@ -3278,24 +3290,35 @@ function Thresh:AutoQ()
 		end
 	end
 end
-function Thresh:AutoE()
-	--Don't auto E if our Q is already launched or it wastes CC time... there are some ccases where this might be useful but lets leave out for now.
-	
-	if not Menu.Skills.Combo:Value() then		
-		local qData = myHero:GetSpellData(_Q)	
-		if qData.name == "ThreshQLeap" then return end
+
+function Thresh:AutoW()
+	if myHero.pathing and myHero.pathing.hasMovePath and myHero.pathing.isDashing and myHero.pathing.dashSpeed>500 then
+		for i = 1, LocalGameHeroCount() do
+			local ally = LocalGameHero(i)
+			if ally and ally ~= myHero and ally.isAlly and HPred:IsInRange(myHero.pos, ally.pos, W.Range) then
+				local castPos = HPred:PredictUnitPosition(ally, .35)
+				print("Shielding: " .. ally.charName)
+				Control.CastSpell(HK_W, castPos, true)
+				break
+			end
+		end
 	end
-	
-	
+end
+
+function Thresh:AutoE()
+	--Don't auto E if our Q is already launched or it wastes CC time... there are some ccases where this might be useful but lets leave out for now.	
+	local qData = myHero:GetSpellData(_Q)
+	if qData.name == "ThreshQLeap" then return end	
 	--Auto interrupt channeling targets by pushing them away
+	
 	local target, aimPosition =HPred:GetChannelingTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value(), E.Collision, E.Width)
 	if target and aimPosition then
-		Control.CastSpell(HK_E, aimPosition)
+		Control.CastSpell(HK_E, aimPosition, true)
 		return
 	end
 	local target, aimPosition =HPred:GetDashingTarget(myHero.pos, E.Range, E.Delay, E.Speed, Menu.General.ReactionTime:Value(), E.Collision, E.Width)
 	if target and aimPosition then
-		Control.CastSpell(HK_E, aimPosition)
+		Control.CastSpell(HK_E, aimPosition, true)
 		return
 	end
 	
@@ -3466,19 +3489,19 @@ end
 
 function HPred:GetGuarenteedTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision)
 	--Get hourglass enemies
-	target, aimPosition =self:GetHourglassTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target, aimPosition =self:GetHourglassTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	if target and aimPosition then
 		return target, aimPosition
 	end
 	
 	--Get reviving target
-	target, aimPosition =self:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target, aimPosition =self:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	if target and aimPosition then
 		return target, aimPosition
 	end	
 	
 	--Get teleporting enemies
-	target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
+	local target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
 	if target and aimPosition then
 		return target, aimPosition
 	end
@@ -3497,37 +3520,37 @@ function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccu
 	
 	
 	--Get hourglass enemies
-	target, aimPosition =self:GetHourglassTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target, aimPosition =self:GetHourglassTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	if target and aimPosition then
 		return target, aimPosition
 	end
 	
 	--Get reviving target
-	target, aimPosition =self:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target, aimPosition =self:GetRevivingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	if target and aimPosition then
 		return target, aimPosition
 	end
 	
 	--Get channeling enemies
-	target, aimPosition =self:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target, aimPosition =self:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 		if target and aimPosition then
 		return target, aimPosition
 	end
 	
 	--Get teleporting enemies
-	target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
+	local target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
 	if target and aimPosition then
 		return target, aimPosition
 	end
 	
 	--Get instant dash enemies
-	target, aimPosition =self:GetInstantDashTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	local target, aimPosition =self:GetInstantDashTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
 	if target and aimPosition then
 		return target, aimPosition
 	end	
 	
 	--Get dashing enemies
-	target, aimPosition =self:GetDashingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius, midDash)
+	local target, aimPosition =self:GetDashingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius, midDash)
 	if target and aimPosition then
 		return target, aimPosition
 	end
@@ -3539,10 +3562,10 @@ function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccu
 	end
 	
 	--Get blink targets
-	--target, aimPosition =self:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
-	--if target and aimPosition then
-	--	return target, aimPosition
-	--end	
+	local target, aimPosition =self:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
+	if target and aimPosition then
+		return target, aimPosition
+	end	
 end
 
 --Will return how many allies or enemies will be hit by a linear spell based on current waypoint data.
@@ -3785,8 +3808,8 @@ function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radiu
 		local particle = LocalGameParticle(i)
 		if particle and _blinkLookupTable[particle.name] and self:IsInRange(source, particle.pos, range) then
 			local pPos = particle.pos
-			for k,v in pairs(self:GetEnemyHeroes()) do
-				local t = v
+			for i = 1, LocalGameHeroCount() do
+				local t = LocalGameHero(i)
 				if t and t.isEnemy and self:IsInRange(t.pos, pPos, t.boundingRadius) then
 					if (not checkCollision or not self:CheckMinionCollision(source, pPos, delay, speed, radius)) then
 						target = t
@@ -4398,17 +4421,6 @@ function HPred:IsPointInArc(source, origin, target, angle, range)
 	end
 end
 
-function HPred:GetEnemyHeroes()
-	local _EnemyHeroes = {}
-  	for i = 1, LocalGameHeroCount() do
-    	local enemy = LocalGameHero(i)
-    	if enemy and enemy.isEnemy then
-	  		table.insert(_EnemyHeroes, enemy)
-  		end
-  	end
-  	return _EnemyHeroes
-end
-
 function HPred:GetDistanceSqr(p1, p2)
 	if not p1 or not p2 then
 		local dInfo = debug.getinfo(2)
@@ -4422,7 +4434,7 @@ function HPred:IsInRange(p1, p2, range)
 	if not p1 or not p2 then
 		local dInfo = debug.getinfo(2)
 		print("Undefined IsInRange target. Please report. Method: " .. dInfo.name .. "  Line: " .. dInfo.linedefined)
-		return _huge
+		return false
 	end
 	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
 end
