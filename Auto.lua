@@ -47,39 +47,10 @@ local LocalGameParticle				= Game.Particle;
 local LocalGameIsChatOpen			= Game.IsChatOpen;
 local LocalGameIsOnTop				= Game.IsOnTop;
 
-
---[[ START - CUSTOM SPELL CASTING --]]
-
-local gsoSetCursorPos = nil
-local gsoExtraSetCursor = nil
-local gsoIsChangingCursorPos = false
-
-local function gsoCast(hkSpell, castPos, startPos, isLine)
-    local canCheck = false
-    if isLine then
-        for i = 1, 35 do
-            if startPos:Extended(castPos, 3500 - i * 100):ToScreen().onScreen then
-                castPos = startPos:Extended(castPos, 3400 - i * 100)
-                canCheck = true
-                break
-            end
-        end
-    end
-    if canCheck == true or castPos:ToScreen().onScreen then
-        local cPos = cursorPos
-        Control.SetCursorPos(castPos)
-        Control.KeyDown(hkSpell)
-        Control.KeyUp(hkSpell)
-        
-        gsoExtraSetCursor = castPos
-        gsoIsChangingCursorPos = true
-        gsoSetCursorPos = { endTime = GetTickCount() + 50, action = function() Control.SetCursorPos(cPos.x, cPos.y) end, active = true }        
-    end
-end
-
+local BotTick
+local HPredTick
 
 local _nextVectorCast = Game.Timer()
-
 function VectorCast(startPos, endPos, hotkey)
 	if NextSpellCast > Game.Timer() then return end	
 	if _nextVectorCast > Game.Timer() then return end
@@ -89,42 +60,19 @@ function VectorCast(startPos, endPos, hotkey)
 	Control.SetCursorPos(startPos)	
 	DelayAction(function()Control.KeyDown(hotkey) end,.05)
 	DelayAction(function()Control.SetCursorPos(endPos) end,.1)
-	DelayAction(function()Control.KeyUp(hotkey) end,.15)
-	
-	
-	
-	gsoExtraSetCursor = castPos
-	gsoIsChangingCursorPos = true
-	gsoSetCursorPos = { endTime = GetTickCount() + 160, action = function() Control.SetCursorPos(cPos.x, cPos.y) end, active = true }   
+	DelayAction(function()Control.KeyUp(hotkey) end,.15) 
 end
 
-local gsoLoadedAddons = false
-local gsoStartTimer = Game.Timer()
-
 Callback.Add("Tick", function()
-    if not gsoLoadedAddons and Game.Timer() > gsoStartTimer + 5 then
-        if _G.SDK and _G.SDK.Orbwalker then
-            _G.SDK.Orbwalker:OnPreAttack(function(args) if gsoIsChangingCursorPos then args.Process = false end end)
-            _G.SDK.Orbwalker:OnPreMovement(function(args) if gsoIsChangingCursorPos then args.Process = false end end)
-        end
-        gsoLoadedAddons = true
-    end
-    if gsoSetCursorPos then
-        if gsoSetCursorPos.active and GetTickCount() > gsoSetCursorPos.endTime then
-            gsoSetCursorPos.action()
-            gsoSetCursorPos.active = false
-            gsoExtraSetCursor = nil
-        elseif not gsoSetCursorPos.active and GetTickCount() > gsoSetCursorPos.endTime + 25 then
-            gsoIsChangingCursorPos = false
-            gsoSetCursorPos = nil
-        end
-    end
-    if gsoExtraSetCursor then
-        Control.SetCursorPos(gsoExtraSetCursor)
-    end
+	if BotTick then
+		BotTick()
+	end
+	
+	if HPredTick then
+		HPredTick()
+	end
 end)
 
---[[ END - CUSTOM SPELL CASTING --]]
 
 Callback.Add("Load",
 function()	
@@ -178,8 +126,11 @@ local isLoaded = false
 function TryLoad()
 	if Game.Timer() < 30 then return end
 	isLoaded = true	
-	_G[myHero.charName]() 
+	_G[myHero.charName]()
 	AutoUtil()
+	
+	--Can re-enable this later to turn on teleport/revive/blink tracking
+	--HPredTick = HPred.Tick
 end
 
 --Global draw function to be called from scripts to handle drawing spells and dashes - reduces duplicate code
@@ -189,6 +140,8 @@ function CoreDraw()
 		TryLoad()
 		return
 	end
+	
+	Draw.Text("Last ran: " .. Game.Timer(), 14, 500, 25)
 	
 	--Disabled for now
 	if Menu.General.Delay:Value() then return end
@@ -677,7 +630,8 @@ function Brand:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Brand:LoadSpells()
@@ -740,35 +694,35 @@ function Brand:Tick()
 	end
 	--Reliable spells cast even if combo key is NOT pressed and are the most likely to hit.
 	if Ready(_W) then
-		self:ReliableW()
+		Brand:ReliableW()
 		if CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
-			self:UnreliableW(Menu.Skills.W.AccuracyAuto:Value())
+			Brand:UnreliableW(Menu.Skills.W.AccuracyAuto:Value())
 		end
 	end
 	
 	if Ready(_Q) then
-		self:ReliableQ()
+		Brand:ReliableQ()
 	end
 	
 	if Ready(_E) then
-		self:ReliableE()
+		Brand:ReliableE()
 	end
 	
 	if Ready(_R) then
-		self:AutoR()
+		Brand:AutoR()
 	end
 	
 	--Unreliable spells are cast if the combo or harass key is pressed
 	if Menu.Skills.Combo:Value() then
 		if Ready(_W) then
-			self:UnreliableW(Menu.Skills.W.AccuracyCombo:Value())
+			Brand:UnreliableW(Menu.Skills.W.AccuracyCombo:Value())
 		end
 		if Ready(_Q) then		
-			self:UnreliableQ(Menu.Skills.Q.AccuracyCombo:Value())
+			Brand:UnreliableQ(Menu.Skills.Q.AccuracyCombo:Value())
 		end
 	else	
 		if Ready(_Q) then		
-			self:UnreliableQ(Menu.Skills.Q.AccuracyAuto:Value())
+			Brand:UnreliableQ(Menu.Skills.Q.AccuracyAuto:Value())
 		end
 	end
 	
@@ -854,7 +808,7 @@ function Soraka:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Soraka:LoadSpells()
@@ -936,22 +890,22 @@ function Soraka:Tick()
 	
 	--Heal allies with R
 	if Ready(_R) then
-		self:AutoR()
+		Soraka:AutoR()
 	end
 	
 	--Heal allies with W
 	if Ready(_W) and CurrentPctLife(myHero) >=  Menu.Skills.W.Health:Value() and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
-		self:AutoW()
+		Soraka:AutoW()
 	end
 	
 	--Harass enemies with Q
 	if Ready(_Q) then
-		self:AutoQ()
+		Soraka:AutoQ()
 	end
 	
 	--Interrupt enemies with E
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-		self:AutoE()
+		Soraka:AutoE()
 	end
 	
 	--Use Support Items
@@ -1072,7 +1026,7 @@ function Zilean:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Zilean:LoadSpells()
@@ -1154,22 +1108,22 @@ function Zilean:Tick()
 	
 	--Use Ult on Allies	
 	if Ready(_R) then
-		self:AutoR()
+		Zilean:AutoR()
 	end
 	
 	--Reliable Q combo
 	if Ready(_Q) then
-		self:AutoQ()
+		Zilean:AutoQ()
 	end
 	
 	--Peel with E
 	if Ready(_E) then
-		self:AutoEPeel()
+		Zilean:AutoEPeel()
 	end
 	
 	--Reset cooldowns with W
 	if Ready(_W) then
-		self:AutoWReset()
+		Zilean:AutoWReset()
 	end
 		
 	--Use Support Items
@@ -1268,7 +1222,7 @@ function Nami:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Nami:LoadSpells()
@@ -1336,17 +1290,17 @@ function Nami:Tick()
 	
 	--Auto Bubble Immobile targets and unreliable targets if combo button held down
 	if Ready(_Q) then
-		self:AutoQ()		
+		Nami:AutoQ()		
 	end
 		
 	--Auto W bounce or solo target enemies
 	if Ready(_W) then
-		self:AutoW()
+		Nami:AutoW()
 	end
 	
 	--Auto E selected allies who are auto attacking enemies
 	if Ready(_E) and Menu.Skills.E.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-		self:AutoE()
+		Nami:AutoE()
 	end
 	
 	
@@ -1426,7 +1380,7 @@ function Lux:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 function Lux:LoadSpells()
@@ -1507,19 +1461,19 @@ function Lux:Tick()
 	if NextSpellCast > Game.Timer() then return end
 	
 	if Ready(_Q) then
-		self:AutoQ()
+		Lux:AutoQ()
 	end
 			
 	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
-		self:AutoW()
+		Lux:AutoW()
 	end
 	
 	if Ready(_E) then
-		self:AutoE()
+		Lux:AutoE()
 	end
 			
 	if Ready(_R) then
-		self:AutoR()
+		Lux:AutoR()
 	end
 	
 	UpdateAllyHealth()
@@ -1661,7 +1615,7 @@ function Blitzcrank:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -1750,7 +1704,7 @@ function Blitzcrank:Tick()
 	end	
 	
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-		self:AutoE()
+		Blitzcrank:AutoE()
 	end
 	if Ready(_R) and CurrentPctMana(myHero) >= Menu.Skills.R.Mana:Value() then
 	
@@ -1761,7 +1715,7 @@ function Blitzcrank:Tick()
 		end
 		
 		local targetCount = AutoUtil:CountEnemiesNear(myHero.pos, R.Range)
-		if targetCount >= Menu.Skills.R.Count:Value() or (Menu.Skills.R.KS:Value() and self:CanRKillsteal())then
+		if targetCount >= Menu.Skills.R.Count:Value() or (Menu.Skills.R.KS:Value() and Blitzcrank:CanRKillsteal())then
 			Control.CastSpell(HK_R)
 		NextSpellCast = .35 + Game.Timer()
 		end
@@ -1803,7 +1757,7 @@ function Lulu:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -1945,32 +1899,32 @@ function Lulu:Tick()
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
-	self:FindETarget()
+	Lulu:FindETarget()
 	
 	--Use ult to save ally or knockup enemy
 	if Ready(_R) then
-		self:AutoR()
+		Lulu:AutoR()
 	end
 	
 	--Try to peel for allies using polymorph
 	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.ComboMana:Value() then
-		self:AutoW()
+		Lulu:AutoW()
 	end	
 	
 	--Try to killsteal with E
 	if Ready(_E) then
 		if Menu.Skills.E.Combo:Value() and Menu.Skills.Combo:Value() then
-			self:ComboE()
+			Lulu:ComboE()
 		end
 		if CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-			self:BuffE()
+			Lulu:BuffE()
 		end
 	end
 	
 	if Ready(_Q) then
-		self:AutoQ(myHero.pos)
+		Lulu:AutoQ(myHero.pos)
 		if _eTarget ~= nil then
-			self:AutoQ(_eTarget.pos)
+			Lulu:AutoQ(_eTarget.pos)
 		end
 	end
 	
@@ -2081,7 +2035,7 @@ function MissFortune:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)	
 	
 	if _G.SDK and _G.SDK.Orbwalker then
@@ -2111,26 +2065,24 @@ function MissFortune:LoadSpells()
 end
 
 function MissFortune:Draw()
-	Draw.Text("Last ran: " .. Game.Timer(), 14, 500, 25)
 end
 
 function MissFortune:GetLineSide(A, B, C)
 	return (B.x - A.x) * (C.z - A.z) - (B.z - A.z) * (C.x - A.x)
 end
-function MissFortune:Tick()
-	
+function MissFortune:Tick()	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
-	if self:IsRActive() then return end
+	if MissFortune:IsRActive() then return end
 	
-	self:FindPassiveMark()
+	MissFortune:FindPassiveMark()
 	
 	if Ready(_Q) then
-		self:AutoQ()
+		MissFortune:AutoQ()
 	end
 	
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-		self:AutoE()
+		MissFortune:AutoE()
 	end
 end
 
@@ -2282,7 +2234,7 @@ function Karthus:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -2332,19 +2284,19 @@ function Karthus:Tick()
 	if NextSpellCast > Game.Timer() then return end
 	
 	if Ready(_E) then
-		self:AutoE()
+		Karthus:AutoE()
 	end
 	
 	if Ready(_R) then	
-		self:AutoR()
+		Karthus:AutoR()
 	end
 	
 	if Ready(_W) then
-		self:AutoW()
+		Karthus:AutoW()
 	end	
 	
 	if Ready(_Q) then
-		self:AutoQ()
+		Karthus:AutoQ()
 	end
 end
 
@@ -2465,7 +2417,7 @@ function Illaoi:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -2540,7 +2492,7 @@ function Illaoi:Tick()
 	
 	local currentMana = CurrentPctMana(myHero)
 	
-	self:GetSpirit()
+	Illaoi:GetSpirit()
 	
 	local eData = myHero:GetSpellData(_E)
 	if Ready(_E) and eData.cd >0  then	
@@ -2561,7 +2513,7 @@ function Illaoi:Tick()
 	end	
 	
 	if Ready(_W) and currentMana >= Menu.Skills.W.Mana:Value() then
-		self:AutoW()
+		Illaoi:AutoW()
 	end
 	
 	if Ready(_Q) and (Menu.Skills.Combo:Value() or (Menu.Skills.Q.Auto:Value() and currentMana >= Menu.Skills.Q.Mana:Value())) then
@@ -2612,7 +2564,7 @@ function Taliyah:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -2651,17 +2603,17 @@ function Taliyah:Tick()
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
-	self:FindW()
+	Taliyah:FindW()
 	if Ready(_E) then
-		self:AutoE()
+		Taliyah:AutoE()
 	end
 	
 	if Ready(_W) then
-		self:AutoW()
+		Taliyah:AutoW()
 	end
 	
 	if Ready(_Q) then
-		self:AutoQ()
+		Taliyah:AutoQ()
 	end	
 end
 
@@ -2757,7 +2709,7 @@ function Kalista:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -2798,10 +2750,10 @@ function Kalista:Tick()
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	if Ready(_E) and Menu.Skills.E.Killsteal:Value() then
-		self:Killsteal()
+		Kalista:Killsteal()
 	end
 	if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
-		self:AutoQ()
+		Kalista:AutoQ()
 	end
 end
 
@@ -2851,7 +2803,7 @@ function Cassiopeia:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -2902,19 +2854,19 @@ function Cassiopeia:Tick()
 	
 	
 	if Ready(_R) then
-		self:AutoR()
+		Cassiopeia:AutoR()
 	end
 	
 	if Ready(_E) then
-		self:AutoE()
+		Cassiopeia:AutoE()
 	end
 	
 	if Ready(_Q) then
-		self:AutoQ()
+		Cassiopeia:AutoQ()
 	end
 	
 	if Ready(_W) then
-		self:AutoW()
+		Cassiopeia:AutoW()
 	end
 	
 end
@@ -3045,7 +2997,7 @@ function Azir:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -3117,7 +3069,7 @@ end
 local _lastAutoAttackOrder = Game.Timer()
 local _mousePos
 function Azir:Tick()	
-	self:CacheSoldiers()
+	Azir:CacheSoldiers()
 	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
@@ -3155,7 +3107,7 @@ function Azir:Tick()
 			local aaUsed = false
 			for i = 1, LocalGameHeroCount() do
 				local t = LocalGameHero(i)
-				if t and HPred:CanTarget(t) and self:CanExtendAuto(t) then
+				if t and HPred:CanTarget(t) and Azir:CanExtendAuto(t) then
 					_lastAutoAttackOrder = Game.Timer()
 					_G.Control.Attack(t)
 					aaUsed = true
@@ -3173,7 +3125,7 @@ function Thresh:__init()
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
-	Callback.Add("Tick", function() self:Tick() end)
+	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
@@ -3267,18 +3219,18 @@ end
 function Thresh:Tick()	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
-	self:UpdateHookWhitelist()
+	Thresh:UpdateHookWhitelist()
 	
 	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
-		self:AutoW()
+		Thresh:AutoW()
 	end
 	
 	if Ready(_Q) then
-		self:AutoQ()
+		Thresh:AutoQ()
 	end	
 	
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-		self:AutoE()
+		Thresh:AutoE()
 	end
 	
 	if Ready(_R) and CurrentPctMana(myHero) >= Menu.Skills.R.Mana:Value() then		
@@ -3315,7 +3267,6 @@ function Thresh:AutoW()
 			local ally = LocalGameHero(i)
 			if ally and ally ~= myHero and ally.isAlly and HPred:IsInRange(myHero.pos, ally.pos, W.Range) then
 				local castPos = HPred:PredictUnitPosition(ally, .35)
-				print("Shielding: " .. ally.charName)
 				Control.CastSpell(HK_W, castPos, true)
 				break
 			end
@@ -3370,9 +3321,70 @@ function Thresh:AutoE()
 end
 
 
-class "HPred"
 
---Callback.Add("Tick", function() HPred:Tick() end)
+
+--[[
+		GENERAL API
+	
+	HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision)
+		Usage Purpose
+			Wrapper method to find an enemy who can be very reliably hit. Includes hourglas, teleport, blink, dash, CC and more.
+			Returns target, aimPosition
+		Param Description
+			Source: Where the spell will be cast from
+			Range: How far away to search for targets (max spell range)
+			Delay: How long it will take for the spell to cast
+			Speed: How fast the spell will travel
+			Radius: How wide the spell is for hitbox calculations
+			TimingAccuracy: General accuracy setting. This is how long after a hourglass/teleport/etc we can allow the spell to hit. I suggest ~0.25 seconds
+			CheckCollision: Determines if a linear skillshot can be body blocked by minions or other heroes
+			
+	HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist)
+		Usage Purpose
+			Finds any target in range who can be hit with at least 'minimumHitChance' of accuracy. Used as a wrapper for HPred:GetHitchance
+			Returns target, aimPosition
+		Param Description
+			Source: Where the spell will be cast from
+			Range: How far away to search for targets (max spell range)
+			Delay: How long it will take for the spell to cast
+			Speed: How fast the spell will travel
+			Radius: How wide the spell is for hitbox calculations
+			CheckCollision: Determines if a linear skillshot can be body blocked by minions or other heroes
+			MinimumHitChance: How confident must we be that the target can be hit for the target to qualify. Recommend accuracy of 3 on almost all skills
+				-1 	=	Invalid Target
+				1	=	Standard accuracy
+				2	=	Target is standing still or has changed movement path within the past 0.25 seconds
+				3	=	The target is auto attacking and our spell will give them little time to react in order to dodge
+				4	=	The target is using a spell and our spell will give them virtually no time in order to dodge
+				5	=	The target should not be able to dodge without using movement skills
+				
+	HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision)
+		Usage Purpose
+			Determines the hitchance of a spell on a specified target and where to aim the spell
+			Returns hitChance, aimPosition
+		Param Description
+			Source: Where the spell will be cast from
+			Target: What entity are we trying to hit
+			Range: How far away to search for targets (max spell range)
+			Delay: How long it will take for the spell to cast
+			Speed: How fast the spell will travel
+			Radius: How wide the spell is for hitbox calculations
+			CheckCollision: Determines if a linear skillshot can be body blocked by minions or other heroes
+			
+	HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAllies)
+		Usage Purpose
+			Determines how many targets will be hit if we cast a linear spell at a specified location - Can specify if the targets are enemies or allies
+			Returns total target count
+			
+			
+	HPred:GetGuarenteedTarget(source, range, delay, speed, radius, timingAccuracy, checkCollision)
+		UsagePurpose
+			Simplified version of GetReliableTarget - will only check for hourglass, revive, teleport and CCd targets. Useful for high priority skills where you don't want to cast it every time an enemy dashes
+			
+]]
+
+
+class "HPred"
 
 local _atan = math.atan2
 local _pi = math.pi
@@ -3384,8 +3396,8 @@ local _find = string.find
 local _sub = string.sub
 local _len = string.len
 	
-local _reviveQueryFrequency = .2
-local _lastReviveQuery = Game.Timer()
+local _tickFrequency = .2
+local _nextTick = Game.Timer()
 local _reviveLookupTable = 
 	{ 
 		["LifeAura.troy"] = 4, 
@@ -3430,6 +3442,7 @@ local _blinkLookupTable =
 		
 	}
 
+local _cachedBlinks = {}
 local _cachedRevives = {}
 local _cachedTeleports = {}
 local _movementHistory = {}
@@ -3443,21 +3456,19 @@ local _windwall
 local _windwallStartPos
 local _windwallWidth
 
-function HPred:Draw()	
-end
 
+--This must be called manually - It's not on by default because we've tracked down most of the freeze issues to this.
 function HPred:Tick()
 	--Update missile cache
 	--DISABLED UNTIL LATER.
 	--self:CacheMissiles()
 	
-	
-	--Check for revives and record them	
-	if Game.Timer() - _lastReviveQuery < _reviveQueryFrequency then return end
-	_lastReviveQuery=Game.Timer()
+	--Limit how often tick logic runs
+	if _nextTick > Game.Timer() then return end
+	_nextTick = Game.Timer() + _tickFrequency
 	
 	--Record windwall
-	self:CacheParticles()
+	HPred:CacheParticles()
 	
 	--Remove old cached revives
 	for _, revive in pairs(_cachedRevives) do
@@ -3466,17 +3477,36 @@ function HPred:Tick()
 		end
 	end
 	
-	--Cache new revives
+	--Remove old cached blinks
+	for _, revive in pairs(_cachedRevives) do
+		if Game.Timer() > revive.expireTime + .5 then
+			_cachedRevives[_] = nil
+		end
+	end
+	
 	for i = 1, LocalGameParticleCount() do 
 		local particle = LocalGameParticle(i)
+		--Record revives
 		if particle and not _cachedRevives[particle.networkID] and  _reviveLookupTable[particle.name] then
 			_cachedRevives[particle.networkID] = {}
 			_cachedRevives[particle.networkID]["expireTime"] = Game.Timer() + _reviveLookupTable[particle.name]			
-			local target = self:GetHeroByPosition(particle.pos)
+			local target = HPred:GetHeroByPosition(particle.pos)
 			if target.isEnemy then				
 				_cachedRevives[particle.networkID]["target"] = target
 				_cachedRevives[particle.networkID]["pos"] = target.pos
 				_cachedRevives[particle.networkID]["isEnemy"] = target.isEnemy	
+			end
+		end
+		
+		--Record blinks
+		if particle and not _cachedBlinks[particle.networkID] and  _blinkLookupTable[particle.name] then
+			_cachedBlinks[particle.networkID] = {}
+			_cachedBlinks[particle.networkID]["expireTime"] = Game.Timer() + _reviveLookupTable[particle.name]			
+			local target = HPred:GetHeroByPosition(particle.pos)
+			if target.isEnemy then				
+				_cachedBlinks[particle.networkID]["target"] = target
+				_cachedBlinks[particle.networkID]["pos"] = target.pos
+				_cachedBlinks[particle.networkID]["isEnemy"] = target.isEnemy	
 			end
 		end
 	end
@@ -3485,7 +3515,7 @@ function HPred:Tick()
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
 		if t then
-			self:UpdateMovementHistory(t)
+			HPred:UpdateMovementHistory(t)
 		end
 	end
 	
@@ -3497,9 +3527,7 @@ function HPred:Tick()
 	end	
 	
 	--Update teleport cache
-	self:CacheTeleports()
-	
-	
+	HPred:CacheTeleports()	
 end
 
 function HPred:GetEnemyNexusPosition()
@@ -3825,21 +3853,16 @@ end
 function HPred:GetBlinkTarget(source, range, speed, delay, checkCollision, radius)
 	local target
 	local aimPosition
-	for i = 1, LocalGameParticleCount() do 
-		local particle = LocalGameParticle(i)
-		if particle and _blinkLookupTable[particle.name] and self:IsInRange(source, particle.pos, range) then
+	for _, particle in pairs(_cachedBlinks) do
+		if particle  and self:IsInRange(source, particle.pos, range) then
+			local t = particle.target
 			local pPos = particle.pos
-			for i = 1, LocalGameHeroCount() do
-				local t = LocalGameHero(i)
-				if t and t.isEnemy and self:IsInRange(t.pos, pPos, t.boundingRadius) then
-					if (not checkCollision or not self:CheckMinionCollision(source, pPos, delay, speed, radius)) then
-						target = t
-						aimPosition = pPos
-						return target,aimPosition
-					end
-				end
+			if t and t.isEnemy and (not checkCollision or not self:CheckMinionCollision(source, pPos, delay, speed, radius)) then
+				target = t
+				aimPosition = pPos
+				return target,aimPosition
 			end
-		end
+		end		
 	end
 end
 
@@ -3890,15 +3913,15 @@ function HPred:CacheTeleports()
 	end	
 	
 	--Get enemies who are teleporting to wards	
-	--for i = 1, LocalGameWardCount() do
-	--	local ward = LocalGameWard(i);
-	--	if ward and ward.isEnemy and not _cachedTeleports[ward.networkID] then
-	--		local hasBuff, expiresAt = self:HasBuff(ward, "teleport_target")
-	--		if hasBuff then
-	--			self:RecordTeleport(ward, self:GetTeleportOffset(ward.pos,100.01),expiresAt)
-	--		end
-	--	end
-	--end
+	for i = 1, LocalGameWardCount() do
+		local ward = LocalGameWard(i);
+		if ward and ward.isEnemy and not _cachedTeleports[ward.networkID] then
+			local hasBuff, expiresAt = self:HasBuff(ward, "teleport_target")
+			if hasBuff then
+				self:RecordTeleport(ward, self:GetTeleportOffset(ward.pos,100.01),expiresAt)
+			end
+		end
+	end
 	
 	--Get enemies who are teleporting to minions
 	for i = 1, LocalGameMinionCount() do
@@ -4216,13 +4239,13 @@ function HPred:GetObjectByHandle(handle)
 		end
 	end
 	
-	--for i = 1, LocalGameWardCount() do
-	--	local ward = LocalGameWard(i);
-	--	if ward and ward.handle == handle then
-	--		target = ward
-	--		return target
-	--	end
-	--end
+	for i = 1, LocalGameWardCount() do
+		local ward = LocalGameWard(i);
+		if ward and ward.handle == handle then
+			target = ward
+			return target
+		end
+	end
 	
 	for i = 1, LocalGameTurretCount() do 
 		local turret = LocalGameTurret(i)
@@ -4270,13 +4293,13 @@ function HPred:GetObjectByPosition(position)
 		end
 	end
 	
-	--for i = 1, LocalGameWardCount() do
-	--	local enemy = LocalGameWard(i);
-	--	if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
-	--		target = enemy
-	--		return target
-	--	end
-	--end
+	for i = 1, LocalGameWardCount() do
+		local enemy = LocalGameWard(i);
+		if enemy and enemy.pos.x == position.x and enemy.pos.y == position.y and enemy.pos.z == position.z then
+			target = enemy
+			return target
+		end
+	end
 	
 	for i = 1, LocalGameParticleCount() do 
 		local enemy = LocalGameParticle(i)
