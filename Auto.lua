@@ -2111,6 +2111,7 @@ function MissFortune:LoadSpells()
 end
 
 function MissFortune:Draw()
+	Draw.Text("Last ran: " .. Game.Timer(), 14, 500, 25)
 end
 
 function MissFortune:GetLineSide(A, B, C)
@@ -2182,6 +2183,14 @@ function MissFortune:AutoQ()
 			end
 		end
 	end
+	
+	--If we aren't using IC Orb then we can just spam Q for shits and giggles
+	if not _usePostAttack and Menu.Skills.Combo:Value() then	
+		local target = CurrentTarget(Q.Range)
+		if target then
+			SpecialCast(HK_Q, target.pos)
+		end
+	end	
 end
 
 --Only cast on immobile targets, we dont want to waste it if not.
@@ -2213,7 +2222,7 @@ function MissFortune:GetQDamage(target)
 	local qDamage= myHero:GetSpellData(_Q).level * 20  + myHero.ap * 0.35+ myHero.totalDamage
 	
 	--Boost if they dont have love tap on them
-	if target ~= _passiveTarget then
+	if target ~= _passiveTarget and myHero.levelData then
 		local bonusDamage = myHero.totalDamage * _passiveDamagePctByLevel[myHero.levelData.lvl]
 		--Passive damage is half to minion
 		if not _find(target.type, "Hero") then
@@ -2227,23 +2236,32 @@ end
 
 function MissFortune:GetQBounce(target)
 	local targets = {}
-	local angleTargetingWeight = 5
 	local bounceTargetingDelay = Q.Delay + HPred:GetDistance(myHero.pos, target.pos) / Q.Speed
+	local targetOrigin = HPred:PredictUnitPosition(target, bounceTargetingDelay)
+	local topVector = targetOrigin +(targetOrigin - myHero.pos):Perpendicular():Normalized()* 500
+	local bottomVector = targetOrigin +(targetOrigin - myHero.pos):Perpendicular2():Normalized()* 500	
+			
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
-		if t then
+		if t and t ~= target and HPred:CanTarget(t) then
 			local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
-			if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475+ t.boundingRadius) then
-				_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+			if HPred:IsInRange(targetOrigin, predictedPosition, 500) and not
+				HPred:IsInRange(topVector, predictedPosition, 450) and not
+				HPred:IsInRange(bottomVector, predictedPosition, 450) and
+				HPred:GetDistanceSqr(myHero.pos, t.pos) > HPred:GetDistanceSqr(myHero.pos, target.pos) then
+				_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition)})
 			end
 		end
 	end		
 	for i = 1, LocalGameMinionCount() do
 		local t = LocalGameMinion(i)
-		if t then
+		if t and t ~= target and HPred:CanTarget(t) then
 			local predictedPosition = HPred:PredictUnitPosition(t, bounceTargetingDelay)
-			if HPred:CanTarget(t) and t ~= target and HPred:IsPointInArc(myHero.pos, target.pos, predictedPosition, 40, 475 + t.boundingRadius) then
-				_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition) + angleTargetingWeight * _abs(HPred:Angle(target.pos, predictedPosition) - HPred:Angle(myHero.pos, target.pos))})
+			if HPred:IsInRange(targetOrigin, predictedPosition, 500) and not
+				HPred:IsInRange(topVector, predictedPosition, 450) and not
+				HPred:IsInRange(bottomVector, predictedPosition, 450) and
+				HPred:GetDistanceSqr(myHero.pos, t.pos) > HPred:GetDistanceSqr(myHero.pos, target.pos) then
+				_insert(targets, {t, HPred:GetDistance(target.pos, predictedPosition)})
 			end
 		end
 	end
@@ -3354,7 +3372,7 @@ end
 
 class "HPred"
 
-Callback.Add("Tick", function() HPred:Tick() end)
+--Callback.Add("Tick", function() HPred:Tick() end)
 
 local _atan = math.atan2
 local _pi = math.pi
@@ -3424,6 +3442,9 @@ local _incomingDamage = {}
 local _windwall
 local _windwallStartPos
 local _windwallWidth
+
+function HPred:Draw()	
+end
 
 function HPred:Tick()
 	--Update missile cache
@@ -3946,7 +3967,11 @@ function HPred:CacheParticles()
 					_windwallStartPos = Vector(particle.pos.x, particle.pos.y, particle.pos.z)				
 					
 					local index = _len(particle.name) - 5
-					local spellLevel = _sub(particle.name, index, index) -1 
+					local spellLevel = _sub(particle.name, index, index) -1
+					--Simple fix
+					if type(spellLevel) ~= "number" then
+						spellLevel = 1
+					end
 					_windwallWidth = 150 + spellLevel * 25					
 				end
 			end
