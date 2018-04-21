@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir", "Thresh"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir", "Thresh", "AurelionSol"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -93,9 +93,15 @@ function()
 	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end)
 
-function CurrentTarget(range)
+function CurrentTarget(range, physicalDamage)
+	if forcedTarget and HPred:IsInRange(myHero.pos, forcedTarget.pos, range) then return forcedTarget end
+	
 	if _G.SDK then
-		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
+		if physicalDamage then
+			return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
+		else
+			return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
+		end
 	elseif _G.EOW then
 		return _G.EOW:GetTarget(range)
 	else
@@ -223,6 +229,14 @@ function SpecialCast(key, pos, bypassTiming)
 	
 	if not bypassTiming then
 		NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
+	end
+end
+
+function ImmediateCast(key, pos)
+	if _G.SDK and _G.Control then
+		_G.Control.CastSpell(key, pos)
+	else
+		Control.CastSpell(key, pos)
 	end
 end
  	
@@ -2088,7 +2102,7 @@ end
 
 function MissFortune:OnPostAttack()	
 	if Ready(_Q) and Menu.Skills.Combo:Value() then	
-		local target = CurrentTarget(Q.Range)
+		local target = CurrentTarget(Q.Range, true)
 		if target then
 			SpecialCast(HK_Q, target.pos)
 		end
@@ -2138,7 +2152,7 @@ function MissFortune:AutoQ()
 	
 	--If we aren't using IC Orb then we can just spam Q for shits and giggles
 	if not _usePostAttack and Menu.Skills.Combo:Value() then	
-		local target = CurrentTarget(Q.Range)
+		local target = CurrentTarget(Q.Range, true)
 		if target then
 			SpecialCast(HK_Q, target.pos)
 		end
@@ -3322,7 +3336,197 @@ end
 
 
 
+class "Ryze"
+function Ryze:__init()
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	BotTick = self.Tick;
+	Callback.Add("Draw", function() self:Draw() end)
+end
 
+function Ryze:CreateMenu()
+	
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})		
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Overload", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "LastHit", name = "Use for Last Hit", value = true })
+	Menu.Skills.Q:MenuElement({id = "HarassMana", name = "Harass Mana Limit", value = 30, min = 1, max = 100, step = 5 })	
+	Menu.Skills.Q:MenuElement({id = "HitChance", name = "Combo Hit Chance", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.Q:MenuElement({id = "MinimumCooldown", name = "Minimum Reset Cooldown", value = 1, min = .25, max = 5, step =.25 })
+	
+	Menu.Skills:MenuElement({id = "W", name = "[W] Rune Prison", type = MENU})
+	Menu.Skills.W:MenuElement({id = "AutoPeel", name = "Auto Peel", value = true })
+	Menu.Skills.W:MenuElement({id = "PeelRadius", name = "Peel Radius", value = 300, min = 100, max = 500, step = 25 })
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Peel Mana Limit", value = 15, min = 1, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Spell Flux", type = MENU})
+	Menu.Skills:MenuElement({id = "Mode", name = "Shield Combo", value = false, toggle = true, key = 0x72})
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+end
+
+function Ryze:LoadSpells()
+	Q = {	Range = 1000,	Delay = 0.25,	Speed = 1700,	Width = 50,	Collision = "true"	}
+	W = {	Range = 615,	Delay =	0.25,	Speed = _huge										}
+	E = {	Range = 615,	Delay = 0.25,	Speed = 2000										}
+end
+
+function Ryze:GetQDamage(target)
+	if myHero:GetSpellData(_Q).level < 1 then
+		return 0
+	end
+	local damage = 60 + myHero:GetSpellData(_Q).level * 25 + myHero.ap * .45
+	return damage
+end
+function Ryze:GetWDamage(target)
+	if myHero:GetSpellData(_W).level < 1 then
+		return 0
+	end
+	local damage = 80 + myHero:GetSpellData(_W).level * 20 + myHero.ap * .6
+	return damage
+end
+
+function Ryze:GetEDamage(target)
+	if myHero:GetSpellData(_E).level < 1 then
+		return 0
+	end
+	local damage = 70 + myHero:GetSpellData(_E).level * 20 + myHero.ap * .3
+	return damage
+end
+
+function Ryze:Draw()
+	if forcedTarget then	
+		for i = 1, forcedTarget.buffCount do 
+			local buff = forcedTarget:GetBuff(i)
+			if buff.duration > 0 then
+				print(buff.name)
+			end
+		end
+	end
+end
+
+function Ryze:Tick()
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
+	if NextSpellCast > Game.Timer() then return end
+	
+	--We need to decide if we're in combo mode or harass mode
+	if Menu.Skills.Combo:Value() then
+		Ryze:Combo()
+	else
+		Ryze:Harass()
+	end
+	--Harass = machine gun combo to deal as much dmg as possible
+	--Combo = go for secured kills with EWQ snare shield setup	
+end
+
+function Ryze:Combo()
+	--Check what combo mode we're in
+	if Ready(_Q) then
+		
+	end
+end
+
+function Ryze:Harass()
+	--Check for minions we can harass though. it's wave clear time!
+	for i = 1, LocalGameMinionCount() do
+		local minion = LocalGameMinion(i);
+		if minion and HPred:CanTarget(minion) and AutoUtil:NearestEnemy(minion) < 400 then
+			if HPred:HasBuff(minion, "RyzeE") then	
+				print("start")
+				local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, minion, Q.Range, Q.Delay, Q.Speed, Q.Width)
+				print(hitChance)
+				if hitChance >= Menu.Skills.Q.HitChance:Value() then
+					SpecialCast(HK_Q, aimPosition)
+					break
+				end				
+			end
+			--if Ready(_E) and self:GetEDamage(minion) >= minion.health then
+			--	SpecialCast(HK_E, minion.pos)
+			--	break				
+			--end
+		end
+	end
+end
+
+class "AurelionSol"
+function AurelionSol:__init()
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	BotTick = self.Tick;
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function AurelionSol:CreateMenu()
+	
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})		
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Starsurge", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Detonate", name = "Auto Detonate", value = true })
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] Voice of Light", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Peel", value = true })
+	Menu.Skills.R:MenuElement({id = "Radius", name = "Auto Peel Radius", value = 300, min = 100, max = 500, step = 25 })
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+end
+
+function AurelionSol:LoadSpells()
+	Q = {	Range = 600,	Delay = 0.25,	Speed = 1075,	Width = 210	}
+	R = {	Range = 1500,	Delay = 0.35,	Speed = 4285,	Width = 120	}
+end
+
+function AurelionSol:Draw()
+end
+
+local qMissile
+function AurelionSol:Tick()
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
+	if NextSpellCast > Game.Timer() then return end
+	
+	AurelionSol:FindQ()
+	
+	if Ready(_R) and Menu.Skills.R.Auto:Value() then
+		local distance, enemy = AutoUtil:NearestEnemy(myHero)		
+		if enemy and distance < Menu.Skills.R.Radius:Value() then
+			local castPosition = HPred:PredictUnitPosition(enemy, R.Delay)
+			--Check if we can cast Q in that direction first
+			if Ready(_Q) then
+				SpecialCast(HK_Q, castPosition)
+				DelayAction(function()SpecialCast(HK_R, castPosition, true) end,.15)
+			else
+				SpecialCast(HK_R, castPosition)
+			end	
+		end
+	end
+	
+	if qMissile then		
+		local distance, enemy = AutoUtil:NearestEnemy(qMissile)
+		if enemy and distance < 200 then
+			SpecialCast(HK_Q)
+		end
+	end
+	
+end
+
+
+function AurelionSol:FindQ()
+	
+	if qMissile and qMissile.name ~= "AurelionSolQMissile" then
+		qMissile = nil
+	end
+	local qData = myHero:GetSpellData(_Q)
+	if qData.toggleState == 2 and not qMissile then
+		for i = 1, LocalGameMissileCount() do
+			local missile = LocalGameMissile(i)
+			if missile and missile.name == "AurelionSolQMissile" and HPred:IsInRange(missile.pos, myHero.pos, 400) then
+				qMissile = missile
+				break
+			end
+		end
+	end
+end
 --[[
 		GENERAL API
 	
