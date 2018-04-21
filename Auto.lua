@@ -147,7 +147,6 @@ function CoreDraw()
 		return
 	end
 	
-	Draw.Text("Last ran: " .. Game.Timer(), 14, 500, 25)
 	
 	--Disabled for now
 	if Menu.General.Delay:Value() then return end
