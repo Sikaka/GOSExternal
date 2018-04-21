@@ -3463,7 +3463,6 @@ function AurelionSol:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Starsurge", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Detonate", name = "Auto Detonate", value = true })
-	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Voice of Light", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Peel", value = true })
@@ -3501,7 +3500,7 @@ function AurelionSol:Tick()
 		end
 	end
 	
-	if qMissile then		
+	if qMissile and Menu.Skills.Q.Detonate:Value() then		
 		local distance, enemy = AutoUtil:NearestEnemy(qMissile)
 		if enemy and distance < 200 then
 			SpecialCast(HK_Q)
