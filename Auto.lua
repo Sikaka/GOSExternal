@@ -3689,6 +3689,14 @@ function Xerath:LoadSpells()
 	R = {	Range = 3520,	Delay = 0.5,	Speed = _huge,	Width = 200	}
 end
 
+function Xerath:GetQChargeTime()
+	local charge = 0
+	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "XerathArcanopulseChargeUp" then
+		charge = Game.Timer() -  myHero.activeSpell.startTime
+	end
+	return charge
+end
+
 function Xerath:GetQRange()
 	local range = 700
 	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "XerathArcanopulseChargeUp" then
@@ -3764,7 +3772,7 @@ function Xerath:AutoQ()
 		else		
 			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, qRange , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.AccuracyMin:Value())
 			if hitRate and aimPosition then
-				if qRange > 1200 or (hitRate >= Menu.Skills.Q.Accuracy:Value() and HPred:IsInRange(myHero.pos, aimPosition, qRange - 200)) then
+				if self:GetQChargeTime() > 2 or (hitRate >= Menu.Skills.Q.Accuracy:Value()  and HPred:IsInRange(myHero.pos, aimPosition, qRange - 250)) then
 					ReleaseSpell(HK_Q, aimPosition, qRange)
 				end
 			end
