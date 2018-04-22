@@ -4066,7 +4066,7 @@ function HPred:Tick()
 			if t.isEnemy then
 				HPred:OnVision(t)
 			end
-			HPred:UpdateMovementHistory(t)
+			--HPred:UpdateMovementHistory(t)
 		end
 	end
 	
