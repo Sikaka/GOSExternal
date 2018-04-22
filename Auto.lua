@@ -109,6 +109,15 @@ function CurrentTarget(range, physicalDamage)
 	end
 end
 
+function IsFarming()
+	if _G.SDK and _G.SDK.Orbwalker then		
+		if _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LASTHIT] or _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LANECLEAR] then
+			return true
+		end
+	end
+	return false
+end
+
 function WndMsg(msg,key)
 	if msg == 513 then
 		local starget = nil
@@ -2242,6 +2251,8 @@ end
 class "Karthus" 
 local _canUltCount = 0
 local _targetUltData = {}
+local _cachedQs = {}
+
 function Karthus:__init()
 
 	print("Loaded [Auto] ".. myHero.charName)
@@ -2259,6 +2270,7 @@ function Karthus:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 4, min = 1, max = 5, step = 1})
 	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	Menu.Skills.Q:MenuElement({id = "FarmMana", name = "Farm Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Wall of Pain", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
@@ -2289,12 +2301,17 @@ function Karthus:Draw()
 		local drawPos = myHero.pos:To2D()
 		LocalDrawText("[R] Can Kill " .. _canUltCount .. " Enemies!", 24, 100, 200)
 	end
+	for _, q in pairs(_cachedQs) do
+		Draw.Circle(q.data.pos, 15, 15)
+	end
 end
 
 function Karthus:Tick()
 	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
+	
+	Karthus:CacheQs()
 	
 	if Ready(_E) then
 		Karthus:AutoE()
@@ -2310,12 +2327,61 @@ function Karthus:Tick()
 	
 	if Ready(_Q) then
 		Karthus:AutoQ()
+		if IsFarming() and CurrentPctMana(myHero) >= Menu.Skills.Q.FarmMana:Value() then
+			Karthus:FarmQ()
+		end
+	end
+end
+
+function Karthus:CacheQs()
+	local currentTime = Game.Timer()
+	for i = 1, LocalGameParticleCount() do 
+		local particle = LocalGameParticle(i)
+		if particle and not _cachedQs[particle.networkID] and _find(particle.name,"Karthus_Base_Q_Ring") then
+			_cachedQs[particle.networkID] = {}			
+			_cachedQs[particle.networkID].data = particle
+			_cachedQs[particle.networkID].expires = currentTime + .8
+		end
+	end
+	for _, q in pairs(_cachedQs) do
+		if not q or currentTime > q.expires then
+			_cachedQs[_] = nil
+		end
 	end
 end
 
 
-function Karthus:AutoQ()
+function Karthus:GetQDamage(target)
+	if myHero:GetSpellData(_Q).level < 1 then
+		return 0
+	end
+	local damage = 30 + myHero:GetSpellData(_Q).level * 20 + myHero.ap * .3
+	return damage
+end
 
+function Karthus:FarmQ()
+	for i = 1, LocalGameMinionCount() do
+		local minion = LocalGameMinion(i);
+		if minion and HPred:CanTarget(minion) and HPred:IsInRange(myHero.pos, minion.pos, Q.Range) then
+			local predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, Q.Delay)			
+			local qDamage = self:GetQDamage(target)
+			if predictedHealth > qDamage / 5 and predictedHealth < qDamage then
+				local aimPosition = HPred:PredictUnitPosition(minion, Q.Delay)
+				local valid = true
+				for _, q in pairs(_cachedQs) do
+					if HPred:IsInRange(q.data.pos, aimPosition, Q.Width) then
+						valid = false
+					end
+				end
+				if valid then					
+					SpecialCast(HK_Q, aimPosition)
+				end
+			end			
+		end
+	end
+end
+
+function Karthus:AutoQ()
 	local hasCast = false
 	if Menu.Skills.Q.Auto:Value() then
 		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
@@ -3011,23 +3077,24 @@ function Azir:__init()
 	self:LoadSpells()
 	self:CreateMenu()
 	BotTick = self.Tick;
-	Callback.Add("Draw", function() self:Draw() end)
+	Callback.Add("Draw", function() self:Draw() end)	
 end
 
 function Azir:CreateMenu()
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Conquering Sands", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "Combo", name = "Combo Reposition Soldiers [Combo]", value = true})
+	Menu.Skills.Q:MenuElement({id = "Combo", name = "Combo Reposition Soldiers", value = true})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Arise!", type = MENU})
-	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
+	Menu.Skills.W:MenuElement({id = "Combo", name = "Combo Cast", value = true})
+	Menu.Skills.W:MenuElement({id = "Save", name = "Save Stacks", value = true})
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Shifting Sands", type = MENU})
-	Menu.Skills.W:MenuElement({id = "Mana", name = "~~COMING SOON~~", value = 15, min = 5, max = 100, step = 5 })
+	Menu.Skills.E:MenuElement({id = "Mana", name = "~~COMING SOON~~", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Emperor's Divide", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Count", name = "Ult Count", value = 2, min = 1, max = 5, step = 1 })
@@ -3036,20 +3103,16 @@ function Azir:CreateMenu()
 end
 
 function Azir:LoadSpells()
-	Q = {Range = 740, Width = 70,Delay = 0.25, Speed = 3000}
-	W = {Range = 500, Width = 375 ,Delay = 0.25, Speed = _huge}
+	Q = {Range = 750, Width = 70,Delay = 0.25, Speed = 3000}
+	W = {Range = 525, Width = 375 ,Delay = 0.25, Speed = _huge}
+	E = {Range = 1100, Width = 70 ,Delay = 0.25, Speed = 3000}
+	R = {Range = 250, Width = 200 ,Delay = 0.25, Speed = 3000}
 end
 
 local _cachedSoldiers = {}
+local _soldierCount = 0
 
 function Azir:Draw()
-	if forcedTarget then		
-		for _, soldier in pairs(_cachedSoldiers) do
-			local drawPos = soldier.data.pos:To2D()
-			local distance = HPred:GetDistance(soldier.data.pos, myHero.pos)
-			LocalDrawText(distance, 12, drawPos)
-		end		
-	end
 end
 
 function Azir:CanExtendAuto(target)
@@ -3064,17 +3127,19 @@ end
 
 function Azir:CacheSoldiers()
 	local currentTime = Game.Timer()
-	for _, soldier in pairs(_cachedSoldiers) do
-		if not soldier or currentTime > soldier.expires then
-			_cachedSoldiers[_] = nil
-		end
-	end
 	for i = 1, LocalGameParticleCount() do 
 		local particle = LocalGameParticle(i)
 		if particle and not _cachedSoldiers[particle.networkID] and _find(particle.name,"P_Soldier_Ring") then
 			_cachedSoldiers[particle.networkID] = {}			
 			_cachedSoldiers[particle.networkID].data = particle
-			_cachedSoldiers[particle.networkID].expires = currentTime + 10.25
+			_cachedSoldiers[particle.networkID].expires = currentTime + 11
+			_soldierCount = _soldierCount + 1
+		end
+	end
+	for _, soldier in pairs(_cachedSoldiers) do
+		if not soldier or currentTime > soldier.expires then
+			_cachedSoldiers[_] = nil
+			_soldierCount = _soldierCount - 1
 		end
 	end
 end
@@ -3082,53 +3147,83 @@ end
 local _lastAutoAttackOrder = Game.Timer()
 local _mousePos
 function Azir:Tick()	
-	Azir:CacheSoldiers()
-	
+	Azir:CacheSoldiers()	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
+		
+	if Ready(_Q) and _soldierCount > 0 then
+		Azir:AutoQ()
+	end	
 	
+	if Ready(_R) then
+		Azir:AutoR()
+	end
+		
+	if Menu.Skills.Combo:Value() then
+		if Ready(_W) then
+			Azir:AutoW()
+		end
+		Azir:AA()
+	end
+end
 
-	--Spawn soldiers on immobile
-	if Ready(_W) and Menu.Skills.W.Auto:Value() then
-		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, W.Range, W.Delay, W.Speed,W.Width, Menu.General.ReactionTime:Value(), W.Collision)
-		if target and HPred:IsInRange(myHero.pos, aimPosition, W.Range) then	
-			SpecialCast(HK_W, aimPosition)
+function Azir:AA()
+	if myHero.attackData.state ~= STATE_WINDUP and myHero.attackData.state ~= STATE_WINDDOWN and Game.Timer() - _lastAutoAttackOrder > .25 then			
+		local aaUsed = false
+		for i = 1, LocalGameHeroCount() do
+			local t = LocalGameHero(i)
+			if t and HPred:CanTarget(t) and Azir:CanExtendAuto(t) then
+				_lastAutoAttackOrder = Game.Timer()
+				_G.Control.Attack(t)
+				aaUsed = true
+				return true
+			end
 		end
 	end
-	
+	return false
+end
+
+function Azir:AutoQ()
 	--Q soldiers onto immobile
-	if Ready(_Q) and Menu.Skills.Q.Auto:Value() then
+	if Menu.Skills.Q.Auto:Value() then
 		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 		if target and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then	
 			SpecialCast(HK_Q, aimPosition)
 		end
 	end
 	
-	--If we're in combo mode, not windup or wind down and havent recently right clicked an enemy then we should try to auto attack someone. TODO: Priorities bitch.
-	if Menu.Skills.Combo:Value() then		
-		if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
-			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, W.Range * 1.5, W.Delay, W.Speed, W.Width, W.Collision, 2)	
-			if hitRate then
-				--Extend it from us to the target
-				local toAim = myHero.pos + (aimPosition - myHero.pos):Normalized() * 500
-				if HPred:IsInRange(toAim, aimPosition, 475) then
-					SpecialCast(HK_W, aimPosition)
-				end
+	--Q soldiers to get them back in AA range
+	if Menu.Skills.Combo:Value() and Menu.Skills.Q.Combo:Value() and CurrentPctMana(myHero) > Menu.Skills.Q.Mana:Value() then
+		local target = CurrentTarget(Q.Range)
+		if target and not Azir:CanExtendAuto(target) then			
+			local aimPosition = HPred:PredictUnitPosition(target, .35)
+			if HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+				SpecialCast(HK_Q, target.pos)
 			end
 		end
-		if myHero.attackData.state ~= STATE_WINDUP and myHero.attackData.state ~= STATE_WINDDOWN and Game.Timer() - _lastAutoAttackOrder > .25 then			
-			local aaUsed = false
-			for i = 1, LocalGameHeroCount() do
-				local t = LocalGameHero(i)
-				if t and HPred:CanTarget(t) and Azir:CanExtendAuto(t) then
-					_lastAutoAttackOrder = Game.Timer()
-					_G.Control.Attack(t)
-					aaUsed = true
-					break
-				end
+	end	
+	
+end
+
+function Azir:AutoW()
+	local target = CurrentTarget(Q.Range)
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() and target and HPred:CanTarget(target) and (not Azir:CanExtendAuto(target) or not Menu.Skills.W.Save:Value()) then			
+		local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, target,W.Range, W.Delay, W.Speed, W.Width)
+		if hitChance and hitChance >= 2 then
+			SpecialCast(HK_W, aimPosition)
+		end
+	end
+end
+
+function Azir:AutoR()	
+	if Menu.Skills.Combo:Value() then
+		local distance, target = AutoUtil:NearestEnemy(myHero)
+		if target and distance < R.Range then
+			local aimPos = HPred:PredictUnitPosition(target, R.Delay)
+			local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPos, R.Delay, R.Speed, R.Width)
+			if targetCount >= Menu.Skills.R.Count:Value() then
+				SpecialCast(HK_R, aimPos)
 			end
-			
-			--If no AA used then we want to see if we can Q a soldier to get into range AND hit the enemy with it (pull the soldier towards our side of the target)
 		end
 	end
 end
@@ -3315,7 +3410,7 @@ function Thresh:AutoE()
 	
 	--pull enemies towards us
 	if Menu.Skills.Combo:Value() then		
-		--GetHitchance(source, t, range, delay, speed, radius, checkCollision)
+		
 		for i = 1, LocalGameHeroCount() do
 			local enemy = LocalGameHero(i)
 			if enemy and HPred:CanTarget(enemy) and HPred:IsInRange(myHero.pos, enemy.pos, E.Range) then
@@ -3461,7 +3556,13 @@ function AurelionSol:CreateMenu()
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})		
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Starsurge", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })
 	Menu.Skills.Q:MenuElement({id = "Detonate", name = "Auto Detonate", value = true })
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 5, step =1 })
+	
+	Menu.Skills:MenuElement({id = "W", name = "[W] Celestial Expansion", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Toggle", value = true })
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Voice of Light", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Peel", value = true })
@@ -3472,6 +3573,7 @@ end
 
 function AurelionSol:LoadSpells()
 	Q = {	Range = 600,	Delay = 0.25,	Speed = 1075,	Width = 210	}
+	W = {	Range = 650	}
 	R = {	Range = 1500,	Delay = 0.35,	Speed = 4285,	Width = 120	}
 end
 
@@ -3483,7 +3585,17 @@ function AurelionSol:Tick()
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
+	AurelionSol:SetAA()
 	AurelionSol:FindQ()
+	
+	if Ready(_W) then
+		AurelionSol:AutoW()
+	end
+	
+	if Ready(_Q) then
+		AurelionSol:AutoQ()
+	end
+		
 	
 	if Ready(_R) and Menu.Skills.R.Auto:Value() then
 		local distance, enemy = AutoUtil:NearestEnemy(myHero)		
@@ -3509,6 +3621,57 @@ function AurelionSol:Tick()
 end
 
 
+function AurelionSol:SetAA()
+	local allowAA = true	
+	if Menu.Skills.Combo:Value() and self:IsWActive() then
+		local target = CurrentTarget(W.Range)
+		if target then
+			local distance = HPred:GetDistance(myHero.pos, target.pos)
+			if distance > 400 and distance < 800 then
+				allowAA = false
+			end
+		end
+	end	
+	SetAttack(allowAA)
+end
+
+
+function AurelionSol:IsWActive()	
+	local wData = myHero:GetSpellData(_W)
+	return wData.toggleState ~= 0
+end
+
+local _wActivationTime = 0
+function AurelionSol:AutoW()
+	local wData = myHero:GetSpellData(_W)
+	local distance, target = AutoUtil:NearestEnemy(myHero)
+	if distance < 800 and distance > 400 and Menu.Skills.W.Auto:Value() then
+		if wData.toggleState ==0 and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+			_wActivationTime = Game.Timer()
+			Control.CastSpell(HK_W)
+		elseif wData.toggleState == 2 and _wActivationTime > 0 and CurrentPctMana(myHero) < Menu.Skills.W.Mana:Value() then
+			Control.CastSpell(HK_W)
+			_wActivationTime = 0		
+		end
+		
+	--Don't deactivate W if we are the ones who turned it on!
+	elseif wData.toggleState == 2 and _wActivationTime > 0 then
+		_wActivationTime = 0
+		Control.CastSpell(HK_W)
+	end
+end
+
+function AurelionSol:AutoQ()
+	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+	if target and HPred:IsInRange(myHero.pos, aimPosition, 800) then
+		SpecialCast(HK_Q, aimPosition)
+	end
+	local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.Accuracy:Value())
+	if hitRate then
+		SpecialCast(HK_Q, aimPosition)
+	end
+end
+
 function AurelionSol:FindQ()
 	
 	if qMissile and qMissile.name ~= "AurelionSolQMissile" then
@@ -3525,6 +3688,9 @@ function AurelionSol:FindQ()
 		end
 	end
 end
+
+
+
 --[[
 		GENERAL API
 	
