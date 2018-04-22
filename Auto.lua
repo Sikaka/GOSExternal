@@ -3770,8 +3770,6 @@ function Xerath:AutoQ()
 			end
 		end
 	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
-		
-		
 		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, 1400, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 		if target then
 			if Control.IsKeyDown(HK_Q) == true then
@@ -3798,7 +3796,7 @@ function Xerath:AutoW()
 		end
 	end
 	
-	if Menu.Skills.Combo:Value() then
+	if Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, W.Range , W.Delay, W.Speed,W.Width,W.Collision, Menu.Skills.W.Accuracy:Value())
 		if hitRate and aimPosition then
 			SpecialCast(HK_W, aimPosition)
@@ -3814,7 +3812,7 @@ function Xerath:AutoE()
 		end
 	end
 	
-	if Menu.Skills.Combo:Value() then
+	if Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, E.Range , E.Delay, E.Speed,E.Width,E.Collision, Menu.Skills.E.Accuracy:Value())
 		if hitRate and aimPosition then
 			SpecialCast(HK_E, aimPosition)
@@ -4272,11 +4270,9 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	if visionData.state == false then
 		pathTime = pathTime  + visionData.tick -Game.Timer()
 		if pathTime < -5 then
-			hitChance = 0
+			hitChance = -1
 		elseif pathTime < -1 then
-			hitChance = 1
-		elseif hitChance > 1 then
-			hitChance = 2
+			hitChance = _min(hitChance, 2)
 		end
 	end
 	
@@ -4743,8 +4739,8 @@ end
 --Checks if a target can be targeted by abilities or auto attacks currently.
 --CanTarget(target)
 	--target : gameObject we are trying to hit
-function HPred:CanTarget(target, requireVisible)
-	return target.isEnemy and target.alive and (requireVisible or target.visible) and target.isTargetable
+function HPred:CanTarget(target, allowInvisible)
+	return target.isEnemy and target.alive and (allowInvisible or target.visible) and target.isTargetable
 end
 
 --Derp: dont want to fuck with the isEnemy checks elsewhere. This will just let us know if the target can actually be hit by something even if its an ally
