@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir", "Thresh", "AurelionSol"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir", "Thresh", "AurelionSol", "Xerath"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -62,6 +62,7 @@ function VectorCast(startPos, endPos, hotkey)
 	DelayAction(function()Control.SetCursorPos(endPos) end,.1)
 	DelayAction(function()Control.KeyUp(hotkey) end,.15) 
 end
+
 
 Callback.Add("Tick", function()
 	if BotTick then
@@ -145,7 +146,7 @@ function TryLoad()
 	AutoUtil()
 	
 	--Can re-enable this later to turn on teleport/revive/blink tracking
-	--HPredTick = HPred.Tick
+	HPredTick = HPred.Tick
 end
 
 --Global draw function to be called from scripts to handle drawing spells and dashes - reduces duplicate code
@@ -237,6 +238,72 @@ function SpecialCast(key, pos, bypassTiming)
 	
 	if not bypassTiming then
 		NextSpellCast = Menu.General.SkillFrequency:Value() + Game.Timer()
+	end
+end
+
+--Full credit ofc to LazyXerath
+local castSpell = {state = 0, tick = GetTickCount(), casting = GetTickCount() - 1000, mouse = mousePos}
+local function CastSpellMM(spell,pos,range,delay)
+	local range = range or math.huge
+	local delay = delay or 250
+	local ticker = GetTickCount()
+	if castSpell.state == 0 and HPred:GetDistance(myHero.pos,pos) < range and ticker - castSpell.casting > delay + Game.Latency() then
+		castSpell.state = 1
+		castSpell.mouse = mousePos
+		castSpell.tick = ticker
+	end
+	if castSpell.state == 1 then
+		if ticker - castSpell.tick < Game.Latency() then
+			local castPosMM = pos:ToMM()
+			Control.SetCursorPos(castPosMM.x,castPosMM.y)
+			Control.KeyDown(spell)
+			Control.KeyUp(spell)
+			castSpell.casting = ticker + delay
+			DelayAction(function()
+				if castSpell.state == 1 then
+					Control.SetCursorPos(castSpell.mouse)
+					castSpell.state = 0
+				end
+			end,Game.Latency()/1000)
+		end
+		if ticker - castSpell.casting > Game.Latency() then
+			Control.SetCursorPos(castSpell.mouse)
+			castSpell.state = 0
+		end
+	end
+end
+
+
+local function ReleaseSpell(spell,pos,range,delay)
+	local delay = delay or 250
+	local ticker = GetTickCount()
+	if castSpell.state == 0 and HPred:GetDistance(myHero.pos,pos) < range and ticker - castSpell.casting > delay + Game.Latency() then
+		castSpell.state = 1
+		castSpell.mouse = mousePos
+		castSpell.tick = ticker
+	end
+	if castSpell.state == 1 then
+		if ticker - castSpell.tick < Game.Latency() then
+			if not pos:ToScreen().onScreen then
+				pos = myHero.pos + Vector(myHero.pos,pos):Normalized() * math.random(530,760)
+				Control.SetCursorPos(pos)
+				Control.KeyUp(spell)
+			else
+				Control.SetCursorPos(pos)
+				Control.KeyUp(spell)
+			end
+			castSpell.casting = ticker + delay
+			DelayAction(function()
+				if castSpell.state == 1 then
+					Control.SetCursorPos(castSpell.mouse)
+					castSpell.state = 0
+				end
+			end,Game.Latency()/1000)
+		end
+		if ticker - castSpell.casting > Game.Latency() then
+			Control.SetCursorPos(castSpell.mouse)
+			castSpell.state = 0
+		end
 	end
 end
 
@@ -521,7 +588,7 @@ function AutoUtil:CastItemMiniMap(pos, id)
 	local keyIndex = self:GetItemSlot(id) - 5
 	local key = self.itemKey[keyIndex]
 	if key then
-		Control.CastSpell(key, pos:ToMM())
+		CastSpellMM(key, pos)
 	end
 end
 
@@ -3429,119 +3496,6 @@ function Thresh:AutoE()
 end
 
 
-
-class "Ryze"
-function Ryze:__init()
-	print("Loaded [Auto] ".. myHero.charName)
-	self:LoadSpells()
-	self:CreateMenu()
-	BotTick = self.Tick;
-	Callback.Add("Draw", function() self:Draw() end)
-end
-
-function Ryze:CreateMenu()
-	
-	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})		
-	
-	Menu.Skills:MenuElement({id = "Q", name = "[Q] Overload", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "LastHit", name = "Use for Last Hit", value = true })
-	Menu.Skills.Q:MenuElement({id = "HarassMana", name = "Harass Mana Limit", value = 30, min = 1, max = 100, step = 5 })	
-	Menu.Skills.Q:MenuElement({id = "HitChance", name = "Combo Hit Chance", value = 3, min = 1, max = 5, step =1 })
-	Menu.Skills.Q:MenuElement({id = "MinimumCooldown", name = "Minimum Reset Cooldown", value = 1, min = .25, max = 5, step =.25 })
-	
-	Menu.Skills:MenuElement({id = "W", name = "[W] Rune Prison", type = MENU})
-	Menu.Skills.W:MenuElement({id = "AutoPeel", name = "Auto Peel", value = true })
-	Menu.Skills.W:MenuElement({id = "PeelRadius", name = "Peel Radius", value = 300, min = 100, max = 500, step = 25 })
-	Menu.Skills.W:MenuElement({id = "Mana", name = "Peel Mana Limit", value = 15, min = 1, max = 100, step = 5 })
-	
-	Menu.Skills:MenuElement({id = "E", name = "[E] Spell Flux", type = MENU})
-	Menu.Skills:MenuElement({id = "Mode", name = "Shield Combo", value = false, toggle = true, key = 0x72})
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
-end
-
-function Ryze:LoadSpells()
-	Q = {	Range = 1000,	Delay = 0.25,	Speed = 1700,	Width = 50,	Collision = "true"	}
-	W = {	Range = 615,	Delay =	0.25,	Speed = _huge										}
-	E = {	Range = 615,	Delay = 0.25,	Speed = 2000										}
-end
-
-function Ryze:GetQDamage(target)
-	if myHero:GetSpellData(_Q).level < 1 then
-		return 0
-	end
-	local damage = 60 + myHero:GetSpellData(_Q).level * 25 + myHero.ap * .45
-	return damage
-end
-function Ryze:GetWDamage(target)
-	if myHero:GetSpellData(_W).level < 1 then
-		return 0
-	end
-	local damage = 80 + myHero:GetSpellData(_W).level * 20 + myHero.ap * .6
-	return damage
-end
-
-function Ryze:GetEDamage(target)
-	if myHero:GetSpellData(_E).level < 1 then
-		return 0
-	end
-	local damage = 70 + myHero:GetSpellData(_E).level * 20 + myHero.ap * .3
-	return damage
-end
-
-function Ryze:Draw()
-	if forcedTarget then	
-		for i = 1, forcedTarget.buffCount do 
-			local buff = forcedTarget:GetBuff(i)
-			if buff.duration > 0 then
-				print(buff.name)
-			end
-		end
-	end
-end
-
-function Ryze:Tick()
-	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
-	if NextSpellCast > Game.Timer() then return end
-	
-	--We need to decide if we're in combo mode or harass mode
-	if Menu.Skills.Combo:Value() then
-		Ryze:Combo()
-	else
-		Ryze:Harass()
-	end
-	--Harass = machine gun combo to deal as much dmg as possible
-	--Combo = go for secured kills with EWQ snare shield setup	
-end
-
-function Ryze:Combo()
-	--Check what combo mode we're in
-	if Ready(_Q) then
-		
-	end
-end
-
-function Ryze:Harass()
-	--Check for minions we can harass though. it's wave clear time!
-	for i = 1, LocalGameMinionCount() do
-		local minion = LocalGameMinion(i);
-		if minion and HPred:CanTarget(minion) and AutoUtil:NearestEnemy(minion) < 400 then
-			if HPred:HasBuff(minion, "RyzeE") then	
-				print("start")
-				local hitChance, aimPosition = HPred:GetHitchance(myHero.pos, minion, Q.Range, Q.Delay, Q.Speed, Q.Width)
-				print(hitChance)
-				if hitChance >= Menu.Skills.Q.HitChance:Value() then
-					SpecialCast(HK_Q, aimPosition)
-					break
-				end				
-			end
-			--if Ready(_E) and self:GetEDamage(minion) >= minion.health then
-			--	SpecialCast(HK_E, minion.pos)
-			--	break				
-			--end
-		end
-	end
-end
-
 class "AurelionSol"
 function AurelionSol:__init()
 	print("Loaded [Auto] ".. myHero.charName)
@@ -3689,6 +3643,213 @@ function AurelionSol:FindQ()
 	end
 end
 
+class "Xerath"
+function Xerath:__init()
+	print("Loaded [Auto] ".. myHero.charName)
+	self:LoadSpells()
+	self:CreateMenu()
+	BotTick = self.Tick;
+	Callback.Add("Draw", function() self:Draw() end)
+end
+
+function Xerath:CreateMenu()
+	
+	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})		
+	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Arcanopulse", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "AutoRelease", name = "Auto Release", value = true })
+	Menu.Skills.Q:MenuElement({id = "AccuracyMin", name = "Release Accuracy", value = 3, min = 1, max = 5, step =1 })	
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "W", name = "[W] Eye of Destruction", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })
+	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "E", name = "[E] Shocking Orb", type = MENU})
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })	
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 4, min = 1, max = 5, step =1 })
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
+	
+	Menu.Skills:MenuElement({id = "R", name = "[R] Rite of the Arcane", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Target Immobile", value = true })
+	Menu.Skills.R:MenuElement({id = "Forced", name = "Force Target", value = true })
+	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.R:MenuElement({id = "Speed", name = "Cast Speed", value = 1, min = .1, max = 3, step =.1 })
+	Menu.Skills.R:MenuElement({id = "Time", name = "Retarget Time", value = 1, min = .1, max = 3, step =.1 })
+	
+	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+end
+
+function Xerath:LoadSpells()
+	Q = {	Range = 750,	Delay = 0.35,	Speed = _huge,	Width = 145	}
+	W = {	Range = 1050,	Delay = 0.5,	Speed = _huge,	Width = 200	}
+	E = {	Range = 1050,	Delay = 0.25,	Speed = 2100,	Width = 80, Collision = true	}
+	R = {	Range = 3520,	Delay = 0.5,	Speed = _huge,	Width = 200	}
+end
+
+function Xerath:GetQRange()
+	local range = 700
+	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "XerathArcanopulseChargeUp" then
+		local chargeTime = _min(Game.Timer() -  myHero.activeSpell.startTime, 1)
+		range = range + chargeTime * 600
+	end	
+	return range
+end
+
+function Xerath:Draw()	
+end
+
+function Xerath:IsRActive()	
+	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "XerathLocusOfPower2" then
+		return true
+	end
+end
+
+function Xerath:IsQCharging()
+	return myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.name == "XerathArcanopulseChargeUp"
+end
+
+function Xerath:Tick()
+	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
+	if NextSpellCast > Game.Timer() then return end	
+	
+	
+	if Ready(_R) and Xerath:IsRActive() then
+		Xerath:AutoR()
+	end
+	
+	if Xerath:IsRActive() then return end
+	
+	if Ready(_Q) then
+		Xerath:AutoQ()
+	end	
+	
+	if Ready(_E) then
+		Xerath:AutoE()
+	end
+	
+	if Ready(_W) then
+		Xerath:AutoW()
+	end
+	
+end
+
+local _isQReleasing = false
+function Xerath:ReleaseQ(aimPosition)
+	if not self:IsQCharging() or _isQReleasing then return end
+	
+	if not aimPosition:To2D().onScreen then
+		aimPosition = myHero.pos + (aimPosition - myHero.pos):Normalized() * 250
+	end
+	
+	--If still not on screen then lets just wait
+	if not aimPosition:To2D().onScreen then	return end
+	
+	_isQReleasing = true
+	SetMovement(false)
+	SetAttack(false)
+	SpecialCast(HK_Q, aimPosition)
+	DelayAction(function() SetMovement(true) SetAttack(true) end,.25)
+	DelayAction(function() _isQReleasing = false end,Q.Delay + .25)
+end
+
+function Xerath:AutoQ()
+	if self:IsQCharging() and (Menu.Skills.Combo:Value() or Menu.Skills.Q.AutoRelease:Value()) then		
+		local qRange = self:GetQRange()
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, qRange, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+		if target then
+			ReleaseSpell(HK_Q, aimPosition, qRange)
+		else		
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, qRange , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.AccuracyMin:Value())
+			if hitRate and aimPosition then
+				if qRange > 1200 or (hitRate >= Menu.Skills.Q.Accuracy:Value() and HPred:IsInRange(myHero.pos, aimPosition, qRange - 200)) then
+					ReleaseSpell(HK_Q, aimPosition, qRange)
+				end
+			end
+		end
+	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, 1400, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
+		if target then
+			Control.KeyDown(HK_Q)
+		else	
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, 1400 , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.Accuracy:Value())
+			if hitRate and aimPosition then
+				Control.KeyDown(HK_Q)
+			end			
+		end
+	end
+end
+
+function Xerath:AutoW()
+	if Menu.Skills.E.Auto:Value() then
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, W.Range, W.Delay, W.Speed,W.Width, Menu.General.ReactionTime:Value(), W.Collision)
+		if target then
+			SpecialCast(HK_W, aimPosition)
+		end
+	end
+	
+	if Menu.Skills.Combo:Value() then
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, W.Range , W.Delay, W.Speed,W.Width,W.Collision, Menu.Skills.W.Accuracy:Value())
+		if hitRate and aimPosition then
+			SpecialCast(HK_W, aimPosition)
+		end
+	end
+end
+
+function Xerath:AutoE()
+	if Menu.Skills.E.Auto:Value() then
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, E.Range, E.Delay, E.Speed,E.Width, Menu.General.ReactionTime:Value(), E.Collision)
+		if target then
+			SpecialCast(HK_E, aimPosition)
+		end
+	end
+	
+	if Menu.Skills.Combo:Value() then
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, E.Range , E.Delay, E.Speed,E.Width,E.Collision, Menu.Skills.E.Accuracy:Value())
+		if hitRate and aimPosition then
+			SpecialCast(HK_E, aimPosition)
+		end
+	end
+end
+
+local _lastTarget = Game.Timer()
+local _lastRCast = Game.Timer()
+
+function Xerath:AdjustRAimPosition(aimPosition)	
+	if not aimPosition:To2D().onScreen then
+		CastSpellMM(HK_R, aimPosition)
+	else
+		SpecialCast(HK_R, aimPosition)
+	end
+end
+
+function Xerath:AutoR()
+	if Game.Timer() - _lastRCast < Menu.Skills.R.Speed:Value() then return end
+	if forcedTarget == nil or not HPred:CanTarget(forcedTarget) then
+		forcedTarget = CurrentTarget(R.Range)
+		_lastTarget = Game.Timer()
+	end
+	if Game.Timer() - _lastTarget > Menu.Skills.R.Time:Value() and Menu.Skills.R.Auto:Value() then
+		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
+		if target then
+			self:AdjustRAimPosition(aimPosition)
+			forcedTarget = target
+			_lastTarget = Game.Timer()
+		end
+	end
+	
+	if forcedTarget == nil then return end	
+	local hitRate, aimPosition = HPred:GetHitchance(myHero.pos, forcedTarget, R.Range , R.Delay, R.Speed,R.Width,R.Collision)
+	if hitRate and aimPosition and hitRate >= Menu.Skills.R.Accuracy:Value() then
+		self:AdjustRAimPosition(aimPosition)
+		_lastRCast = Game.Timer()
+	elseif not Menu.Skills.R.Forced:Value() and Game.Timer() - _lastTarget > Menu.Skills.R.Time:Value() then
+		forcedTarget = CurrentTarget(R.Range)			
+	end	
+end
 
 
 --[[
@@ -3825,8 +3986,18 @@ local _windwallStartPos
 local _windwallWidth
 
 
+local _OnVision = {}
+function HPred:OnVision(unit)
+	if _OnVision[unit.networkID] == nil then _OnVision[unit.networkID] = {state = unit.visible , tick = Game.Timer(), path =HPred:GetPathNodes(unit) } end
+	if _OnVision[unit.networkID].state == true and not unit.visible then _OnVision[unit.networkID].state = false _OnVision[unit.networkID].tick = Game.Timer() end
+	if _OnVision[unit.networkID].state == false and unit.visible then _OnVision[unit.networkID].state = true _OnVision[unit.networkID].tick = Game.Timer() _OnVision[unit.networkID].path = HPred:GetPathNodes(unit) end
+	return _OnVision[unit.networkID]
+end
+
 --This must be called manually - It's not on by default because we've tracked down most of the freeze issues to this.
 function HPred:Tick()
+	
+	
 	--Update missile cache
 	--DISABLED UNTIL LATER.
 	--self:CacheMissiles()
@@ -3834,6 +4005,30 @@ function HPred:Tick()
 	--Limit how often tick logic runs
 	if _nextTick > Game.Timer() then return end
 	_nextTick = Game.Timer() + _tickFrequency
+	
+	--Update hero movement history	
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t then
+			if t.isEnemy then
+				HPred:OnVision(t)
+			end
+			HPred:UpdateMovementHistory(t)
+		end
+	end
+	
+	--Remove old cached teleports	
+	for _, teleport in pairs(_cachedTeleports) do
+		if teleport and Game.Timer() > teleport.expireTime + .5 then
+			_cachedTeleports[_] = nil
+		end
+	end	
+	
+	--Update teleport cache
+	HPred:CacheTeleports()	
+	
+	--Do not run rest of logic until freeze issues are fully tracked down
+	if true then return end
 	
 	--Record windwall
 	HPred:CacheParticles()
@@ -3879,23 +4074,6 @@ function HPred:Tick()
 		end
 	end
 	
-	--Update hero movement history	
-	for i = 1, LocalGameHeroCount() do
-		local t = LocalGameHero(i)
-		if t then
-			HPred:UpdateMovementHistory(t)
-		end
-	end
-	
-	--Remove old cached teleports	
-	for _, teleport in pairs(_cachedTeleports) do
-		if teleport and Game.Timer() > teleport.expireTime + .5 then
-			_cachedTeleports[_] = nil
-		end
-	end	
-	
-	--Update teleport cache
-	HPred:CacheTeleports()	
 end
 
 function HPred:GetEnemyNexusPosition()
@@ -3991,6 +4169,7 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
 		if t and self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
+			
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
 			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) * (t.boundingRadius + width)) then
@@ -4005,8 +4184,8 @@ end
 function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist)
 	local _validTargets = {}
 	for i = 1, LocalGameHeroCount() do
-		local t = LocalGameHero(i)
-		if t and self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
+		local t = LocalGameHero(i)		
+		if t and self:CanTarget(t, true) and (not whitelist or whitelist[t.charName]) then
 			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
 			if hitChance >= minimumHitChance then
 				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
@@ -4030,11 +4209,26 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 end
 
 function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision)	
-	local hitChance = 1	
+	local hitChance = 1			
+	local visionData = HPred:OnVision(target)	
+	local pathNodes = self:GetPathNodes(target)
+	if visionData.state == false then
+		pathNodes = visionData.path
+	end
 	
-	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed)	
+	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed, pathNodes)	
 	local interceptTime = self:GetSpellInterceptTime(source, aimPosition, delay, speed)
 	local reactionTime = self:PredictReactionTime(target, .1)
+	
+	local pathLength = HPred:GetPathLength(pathNodes)
+	--Determine if the path will be finished before our spell even lands.
+	local targetMs = self:GetTargetMS(target)
+	local pathTime = interceptTime
+	if targetMs > 0 then
+		pathTime = pathLength / targetMs
+	end	
+	
+	
 	
 	--If they just now changed their path then assume they will keep it for at least a short while... slightly higher chance
 	if _movementHistory and _movementHistory[target.charName] and Game.Timer() - _movementHistory[target.charName]["ChangedAt"] < .25 then
@@ -4065,6 +4259,17 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 			hitChance = 5
 		else			
 			hitChance = 3
+		end
+	end
+	
+	if visionData.state == false then
+		pathTime = pathTime  + visionData.tick -Game.Timer()
+		if pathTime < -5 then
+			hitChance = 0
+		elseif pathTime < -1 then
+			hitChance = 1
+		elseif hitChance > 1 then
+			hitChance = 2
 		end
 	end
 	
@@ -4473,10 +4678,12 @@ function HPred:UpdateMovementHistory(unit)
 end
 
 --Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
-function HPred:PredictUnitPosition(unit, delay)
+function HPred:PredictUnitPosition(unit, delay, pathNodes)
 	local predictedPosition = unit.pos
 	local timeRemaining = delay
-	local pathNodes = self:GetPathNodes(unit)
+	if not pathNodes then
+		pathNodes = self:GetPathNodes(unit)
+	end
 	for i = 1, #pathNodes -1 do
 		local nodeDistance = self:GetDistance(pathNodes[i], pathNodes[i +1])
 		local nodeTraversalTime = nodeDistance / self:GetTargetMS(unit)
@@ -4529,8 +4736,8 @@ end
 --Checks if a target can be targeted by abilities or auto attacks currently.
 --CanTarget(target)
 	--target : gameObject we are trying to hit
-function HPred:CanTarget(target)
-	return target.isEnemy and target.alive and target.visible and target.isTargetable
+function HPred:CanTarget(target, requireVisible)
+	return target.isEnemy and target.alive and (requireVisible or target.visible) and target.isTargetable
 end
 
 --Derp: dont want to fuck with the isEnemy checks elsewhere. This will just let us know if the target can actually be hit by something even if its an ally
