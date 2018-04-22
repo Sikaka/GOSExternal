@@ -88,7 +88,6 @@ function()
 	Menu.General:MenuElement({id = "AutoInTurret", name = "Auto Cast While In Enemy Turret Range", value = true})
 	Menu.General:MenuElement({id = "SkillFrequency", name = "Skill Frequency", value = .3, min = .1, max = 1, step = .1})
 	Menu.General:MenuElement({id = "ReactionTime", name = "Reaction Time", value = .5, min = .1, max = 1, step = .1})
-	Menu.General:MenuElement({id = "AltCast", name = "Alternate Cast Mode", value = false})
 	Menu.General:MenuElement({id = "Delay", name = "Throttle Processing", value = false})
 	Callback.Add("Draw", function() CoreDraw() end)
 	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
@@ -1679,6 +1678,8 @@ function Lux:AutoR()
 	local rDamage= 300 + (myHero:GetSpellData(_R).level -1) * 100 + myHero.ap * 0.75
 	--Check if the target has passive on them because that will deal extra damage
 	--If the target is a near guarenteed hit then count how many targets it will hit: If enough targets are likely then cast regardless of health	
+	
+	--Unreliable ult killsteal. use line calculation to improve the accuracy significantly.
 	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
 	if target and HPred:IsInRange(myHero.pos, aimPosition, R.Range) then
@@ -3673,11 +3674,14 @@ function Xerath:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Rite of the Arcane", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Target Immobile", value = true })
 	Menu.Skills.R:MenuElement({id = "Forced", name = "Force Target", value = true })
 	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 5, step =1 })
 	Menu.Skills.R:MenuElement({id = "Speed", name = "Cast Speed", value = 1, min = .1, max = 3, step =.1 })
 	Menu.Skills.R:MenuElement({id = "Time", name = "Retarget Time", value = 1, min = .1, max = 3, step =.1 })
+	
+	Menu.Skills.R:MenuElement({id = "Manual", name = "Manual Cast Only", value = false })
+	Menu.Skills.R:MenuElement({id = "Radius", name = "Manual Cast Radius", value = 500, min = 100, max = 1200, step =50 })	
+	Menu.Skills.R:MenuElement({id = "Key", name = "Manual Key",value = false,  key = 0x71})
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
@@ -3723,9 +3727,16 @@ function Xerath:Tick()
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end	
 	
+	if not _isQReleasing then
+		SetAttack(not Xerath:IsQCharging())
+	end
 	
 	if Ready(_R) and Xerath:IsRActive() then
-		Xerath:AutoR()
+		if Menu.Skills.R.Key:Value() then
+			Xerath:ManualR()
+		elseif not Menu.Skills.R.Manual:Value() then
+			Xerath:AutoR()
+		end
 	end
 	
 	if Xerath:IsRActive() then return end
@@ -3763,14 +3774,14 @@ function Xerath:ReleaseQ(aimPosition)
 	DelayAction(function() _isQReleasing = false end,Q.Delay + .25)
 end
 
-function Xerath:AutoQ()
+function Xerath:AutoQ()			
 	if self:IsQCharging() and (Menu.Skills.Combo:Value() or Menu.Skills.Q.AutoRelease:Value()) then		
 		local qRange = self:GetQRange()
 		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, qRange, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 		if target then
 			ReleaseSpell(HK_Q, aimPosition, qRange)
-		else		
-			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, qRange , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.AccuracyMin:Value())
+		else
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, qRange , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.AccuracyMin:Value(), nil, true)
 			if hitRate and aimPosition then
 				if self:GetQChargeTime() > 2 or (hitRate >= Menu.Skills.Q.Accuracy:Value()  and HPred:IsInRange(myHero.pos, aimPosition, qRange - 250)) then
 					ReleaseSpell(HK_Q, aimPosition, qRange)
@@ -3786,7 +3797,7 @@ function Xerath:AutoQ()
 			Control.KeyDown(HK_Q)
 			NextSpellCast = Game.Timer() + .5
 		else	
-			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, 1400 , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.Accuracy:Value())
+			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, 1400 , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.Accuracy:Value(), nil, true)
 			if hitRate and aimPosition then
 				if Control.IsKeyDown(HK_Q) == true then
 					Control.KeyUp(HK_Q)
@@ -3840,6 +3851,32 @@ function Xerath:AdjustRAimPosition(aimPosition)
 		SpecialCast(HK_R, aimPosition)
 	end
 end
+
+function Xerath:ManualR()
+	local targets = {}
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t and HPred:CanTarget(t) and HPred:IsInRange(mousePos, t.pos, Menu.Skills.R.Radius:Value()) then
+			local hitRate, aimPosition = HPred:GetHitchance(myHero.pos, t, R.Range, R.Delay, R.Speed, R.Width, R.Collision)
+			if hitRate and hitRate > 0 and HPred:IsInRange(myHero.pos, aimPosition, R.Range) then
+				_insert(targets, {aimPosition, hitRate * 100 + AutoUtil:CalculateMagicDamage(t, 500)})
+			end
+		end
+	end
+	
+	_sort(targets, function( a, b ) return a[2] >b[2] end)	
+	if #targets > 0 then
+		local qTarget =targets[1][1]
+		targets = nil
+		SpecialCast(HK_R, qTarget)
+	elseif forcedTarget and HPred:CanTarget(forcedTarget) then
+		local aimPosition = HPred:PredictUnitPosition(forcedTarget, R.Delay)
+		if HPred:IsInRange(myHero.pos, aimPosition, R.Range) then
+			self:AdjustRAimPosition(aimPosition)
+		end
+	end
+end
+
 
 function Xerath:AutoR()
 	if Game.Timer() - _lastRCast < Menu.Skills.R.Speed:Value() then return end
@@ -4033,6 +4070,10 @@ function HPred:Tick()
 		end
 	end
 	
+	--Do not run rest of logic until freeze issues are fully tracked down
+	if true then return end
+	
+	
 	--Remove old cached teleports	
 	for _, teleport in pairs(_cachedTeleports) do
 		if teleport and Game.Timer() > teleport.expireTime + .5 then
@@ -4043,8 +4084,6 @@ function HPred:Tick()
 	--Update teleport cache
 	HPred:CacheTeleports()	
 	
-	--Do not run rest of logic until freeze issues are fully tracked down
-	if true then return end
 	
 	--Record windwall
 	HPred:CacheParticles()
@@ -4197,12 +4236,12 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 end
 
 --Will return the valid target who has the highest hit chance and meets all conditions (minHitChance, whitelist check, etc)
-function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist)
+function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist, isLine)
 	local _validTargets = {}
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)		
 		if t and self:CanTarget(t, true) and (not whitelist or whitelist[t.charName]) then
-			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
+			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision, isLine)		
 			if hitChance >= minimumHitChance then
 				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
 			end
@@ -4224,8 +4263,13 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 	end	
 end
 
-function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision)	
-	local hitChance = 1			
+function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision, isLine)
+
+	if isLine == nil and checkCollision then
+		isLine = true
+	end
+	
+	local hitChance = 1
 	local visionData = HPred:OnVision(target)	
 	local pathNodes = self:GetPathNodes(target)
 	if visionData.state == false then
@@ -4234,8 +4278,20 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	
 	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed, pathNodes)	
 	local interceptTime = self:GetSpellInterceptTime(source, aimPosition, delay, speed)
-	local reactionTime = self:PredictReactionTime(target, .1)
+	local reactionTime = self:PredictReactionTime(target, .1, isLine)
 	
+	--Check if they are walking the same path as the line or very close to it
+	if isLine then
+		local pathVector = aimPosition - target.pos
+		local castVector = (aimPosition - myHero.pos):Normalized()
+		if pathVector.x + pathVector.z ~= 0 then
+			pathVector = pathVector:Normalized()
+			if pathVector:DotProduct(castVector) < -.85 or pathVector:DotProduct(castVector) > .85 then
+				reactionTime = reactionTime + .2
+			end
+		end
+	end	
+		
 	local pathLength = HPred:GetPathLength(pathNodes)
 	--Determine if the path will be finished before our spell even lands.
 	local targetMs = self:GetTargetMS(target)
@@ -4243,8 +4299,7 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	if targetMs > 0 then
 		pathTime = pathLength / targetMs
 	end	
-	
-	
+		
 	
 	--If they just now changed their path then assume they will keep it for at least a short while... slightly higher chance
 	if _movementHistory and _movementHistory[target.charName] and Game.Timer() - _movementHistory[target.charName]["ChangedAt"] < .25 then
@@ -4313,8 +4368,7 @@ function HPred:PredictReactionTime(unit, minimumReactionTime)
 		if windupRemaining > 0 then
 			reactionTime = windupRemaining
 		end
-	end
-	
+	end	
 	return reactionTime
 end
 
