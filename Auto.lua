@@ -3784,6 +3784,7 @@ function Xerath:AutoQ()
 				Control.KeyUp(HK_Q)
 			end
 			Control.KeyDown(HK_Q)
+			NextSpellCast = Game.Timer() + .5
 		else	
 			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, 1400 , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.Accuracy:Value())
 			if hitRate and aimPosition then
@@ -3791,6 +3792,7 @@ function Xerath:AutoQ()
 					Control.KeyUp(HK_Q)
 				end
 				Control.KeyDown(HK_Q)
+				NextSpellCast = Game.Timer() + .5
 			end			
 		end
 	end
@@ -3841,7 +3843,7 @@ end
 
 function Xerath:AutoR()
 	if Game.Timer() - _lastRCast < Menu.Skills.R.Speed:Value() then return end
-	if forcedTarget == nil or not HPred:CanTarget(forcedTarget) then
+	if (forcedTarget == nil or not HPred:CanTarget(forcedTarget)) and Game.Timer() - _lastTarget > Menu.Skills.R.Time:Value() then
 		forcedTarget = CurrentTarget(R.Range)
 		_lastTarget = Game.Timer()
 	end
@@ -3859,6 +3861,7 @@ function Xerath:AutoR()
 	if hitRate and aimPosition and hitRate >= Menu.Skills.R.Accuracy:Value() then
 		self:AdjustRAimPosition(aimPosition)
 		_lastRCast = Game.Timer()
+		_lastTarget = Game.Timer()
 	elseif not Menu.Skills.R.Forced:Value() and Game.Timer() - _lastTarget > Menu.Skills.R.Time:Value() then
 		forcedTarget = CurrentTarget(R.Range)			
 	end	
