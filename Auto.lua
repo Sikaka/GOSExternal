@@ -3771,12 +3771,19 @@ function Xerath:AutoQ()
 		end
 	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		
+		
 		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, 1400, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 		if target then
+			if Control.IsKeyDown(HK_Q) == true then
+				Control.KeyUp(HK_Q)
+			end
 			Control.KeyDown(HK_Q)
 		else	
 			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, 1400 , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.Accuracy:Value())
 			if hitRate and aimPosition then
+				if Control.IsKeyDown(HK_Q) == true then
+					Control.KeyUp(HK_Q)
+				end
 				Control.KeyDown(HK_Q)
 			end			
 		end
