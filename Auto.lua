@@ -253,6 +253,10 @@ function SpecialCast(key, pos, bypassTiming, isLine)
 		return
 	end
 	
+	if type(pos) ~= "userdata" and pos.pos then
+		pos = pos.pos
+	end
+	
 	if not pos:ToScreen().onScreen and isLine then			
 		pos = myHero.pos + (pos - myHero.pos):Normalized() * 250
 	end
@@ -2306,7 +2310,7 @@ function MissFortune:AutoQ()
 end
 
 function MissFortune:AutoW()
-	if Menu.Skills.W.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+	if Menu.Skills.Combo:Value() and Menu.Skills.W.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 		Control.CastSpell(HK_W)
 	end
 end
