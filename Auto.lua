@@ -3069,7 +3069,9 @@ function Cassiopeia:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Farm Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Petrifying Gaze", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Count", name = "Ult Count", value = 2, min = 1, max = 5, step = 1 })
+	Menu.Skills.R:MenuElement({id = "Assist", name = "Manual Ult Key",value = false,  key = 0x73})
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Ult", value = false})	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Ult on # of enemies", value = 2, min = 1, max = 5, step = 1 })
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
 end
@@ -3213,7 +3215,12 @@ end
 
 function Cassiopeia:AutoR()
 
-	if Menu.Skills.Combo:Value() then
+	if Menu.Skills.R.Assist:Value() then		
+		self:ManualR()
+		return
+	end
+	
+	if Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value() then
 		local distance, target = AutoUtil:NearestEnemy(myHero)
 		if target and distance < R.Range then
 			local aimPos = HPred:PredictUnitPosition(target, R.Delay)
@@ -3232,6 +3239,16 @@ function Cassiopeia:AutoR()
 			if rCount >= Menu.Skills.R.Count:Value() then
 				SpecialCast(HK_R, aimPos)
 			end
+		end
+	end
+end
+
+function Cassiopeia:ManualR()
+	local target = CurrentTarget(R.Range)
+	if target and HPred:CanTarget(target) then
+		local aimPos = HPred:PredictUnitPosition(target, R.Delay)
+		if HPred:IsInRange(myHero.pos, aimPos, R.Range) then
+			SpecialCast(HK_R, aimPos)
 		end
 	end
 end
