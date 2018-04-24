@@ -2518,7 +2518,7 @@ function Karthus:FarmQ()
 				predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, Q.Delay)
 			end
 			local qDamage = self:GetQDamage(minion)
-			local predictedHealth = minion.health - predictedHealth
+			local predictedDamage = minion.health - predictedHealth
 			
 			if predictedHealth > 0 and (predictedDamage < 25 or predictedHealth > 25) and qDamage > predictedHealth + 5 then
 				local aimPosition = HPred:PredictUnitPosition(minion, Q.Delay)
