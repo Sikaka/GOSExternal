@@ -2205,6 +2205,10 @@ function MissFortune:CreateMenu()
 	Menu.Skills.Q:MenuElement({id = "Killsteal", name = "Killsteal", value = true})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
+	Menu.Skills:MenuElement({id = "W", name = "[W] Strut", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Use in Combo", value = false})
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 25, min = 5, max = 100, step = 5 })
+	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Make it Rain", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Cast on Immobile Targets", value = true})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 20, min = 5, max = 100, step = 5 })
@@ -2231,6 +2235,10 @@ function MissFortune:Tick()
 	
 	if Ready(_Q) then
 		MissFortune:AutoQ()
+	end
+	
+	if Ready(_W) then
+		MissFortune:AutoW()
 	end
 	
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
@@ -2295,6 +2303,12 @@ function MissFortune:AutoQ()
 			SpecialCast(HK_Q, target.pos)
 		end
 	end	
+end
+
+function MissFortune:AutoW()
+	if Menu.Skills.W.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		Control.CastSpell(HK_W)
+	end
 end
 
 --Only cast on immobile targets, we dont want to waste it if not.
@@ -2620,11 +2634,10 @@ function Karthus:AutoR()
 				_targetUltData[t.charName] = nil
 			end
 		end
-	end
-	
+	end	
 	
 	for _, target in pairs(_targetUltData) do
-		if Game.Timer() - target.LastVisible < 5 and target.Damage > target.Life then
+		if Game.Timer() - target.LastVisible < 5 and target.Damage > target.Life + target.hpRegen * 2 then
 			_canUltCount = _canUltCount + 1		
 		end
 	end	
@@ -3601,8 +3614,10 @@ function AurelionSol:CreateMenu()
 	Menu.Skills:MenuElement({id = "W", name = "[W] Celestial Expansion", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Toggle", value = true })
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
+	Menu.Skills.W:MenuElement({id = "Duration", name = "Minimum Time Enabled", value = 3, min = .5, max = 10, step = .5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Voice of Light", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Killsteal", name = "Killsteal", value = true })
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Peel", value = true })
 	Menu.Skills.R:MenuElement({id = "Radius", name = "Auto Peel Radius", value = 300, min = 100, max = 500, step = 25 })
 	
@@ -3633,7 +3648,10 @@ function AurelionSol:Tick()
 	if Ready(_Q) then
 		AurelionSol:AutoQ()
 	end
-		
+
+	if Ready(_R) and Menu.Skills.R.Killsteal:Value() then
+		AurelionSol:Killsteal()
+	end
 	
 	if Ready(_R) and Menu.Skills.R.Auto:Value() then
 		local distance, enemy = AutoUtil:NearestEnemy(myHero)		
@@ -3658,6 +3676,20 @@ function AurelionSol:Tick()
 	
 end
 
+function AurelionSol:Killsteal()
+	local rDamage= 50 + myHero:GetSpellData(_R).level * 100 + myHero.ap * 0.7
+	for i  = 1,LocalGameHeroCount(i) do
+		local enemy = LocalGameHero(i)
+		if enemy and HPred:CanTarget(enemy) and HPred:IsInRange(myHero.pos, enemy.pos, R.Range) then
+			local castPosition = HPred:PredictUnitPosition(enemy, R.Delay)			
+			local damage = AutoUtil:CalculateMagicDamage(enemy, rDamage)
+			if damage >= enemy.health and HPred:IsInRange(myHero.pos, castPosition, R.Range) then
+				SpecialCast(HK_R, castPosition)
+				return
+			end
+		end
+	end
+end
 
 function AurelionSol:SetAA()
 	local allowAA = true	
@@ -3693,7 +3725,7 @@ function AurelionSol:AutoW()
 		end
 		
 	--Don't deactivate W if we are the ones who turned it on!
-	elseif wData.toggleState == 2 and _wActivationTime > 0 then
+	elseif wData.toggleState == 2 and _wActivationTime > 0 and Game.Timer() - _wActivationTime > Menu.Skills.W.Duration:Value() then
 		_wActivationTime = 0
 		Control.CastSpell(HK_W)
 	end
