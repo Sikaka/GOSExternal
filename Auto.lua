@@ -1,7 +1,7 @@
 local NextSpellCast = Game.Timer()
 local _allyHealthPercentage = {}
 local _allyHealthUpdateRate = 1
-local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir", "Thresh", "AurelionSol", "Xerath"}
+local Heroes = {"Nami","Brand", "Zilean", "Soraka", "Lux", "Blitzcrank","Lulu", "MissFortune","Karthus", "Illaoi", "Taliyah", "Kalista", "Cassiopeia", "Azir", "Thresh", "AurelionSol", "Xerath", "TwistedFate"}
 local _adcHeroes = { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jhin", "Jinx", "Kalista", "KogMaw", "Lucian", "MissFortune", "Quinn", "Sivir", "Teemo", "Tristana", "Twitch", "Varus", "Vayne", "Xayah"}
 if not table.contains(Heroes, myHero.charName) then print("Hero not supported: " .. myHero.charName) return end
 
@@ -157,8 +157,6 @@ function WndMsg(msg,key)
 		end
 		if starget then
 			forcedTarget = starget
-		else
-			forcedTarget = nil
 		end
 	end	
 end
@@ -2502,7 +2500,7 @@ function Karthus:FarmQ()
 			if _G.SDK and _G.SDK.HealthPrediction then
 				predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, Q.Delay)
 			end
-			local qDamage = self:GetQDamage(target)
+			local qDamage = self:GetQDamage(minion)
 			local predictedHealth = minion.health - predictedHealth
 			
 			if predictedHealth > 0 and (predictedDamage < 25 or predictedHealth > 25) and qDamage > predictedHealth + 5 then
@@ -2543,6 +2541,14 @@ function Karthus:AutoQ()
 			if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
 				SpecialCast(HK_Q, aimPosition)
 			end
+		end
+	end	
+	
+	local hasBuff, timeRemaining = HPred:HasBuff(myHero, "KarthusDeathDefiedBuff")
+	if not hasCast and hasBuff then
+		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, 1, nil)	
+		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
+			SpecialCast(HK_Q, aimPosition)
 		end
 	end
 end
@@ -3120,11 +3126,11 @@ end
 
 function Cassiopeia:AutoW()	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, W.Range, W.Delay, W.Speed,W.Width, Menu.General.ReactionTime:Value(), W.Collision)
-	if Menu.Skills.W.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,W.Range) then
+	if Menu.Skills.W.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,W.Range) and not HPred:IsInRange(myHero.pos, aimPosition, 400) then
 		SpecialCast(HK_W, aimPosition)
 	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, W.Range, W.Delay, W.Speed, W.Width, W.Collision, Menu.Skills.W.Accuracy:Value())	
-		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, W.Range) then
+		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, W.Range) and not HPred:IsInRange(myHero.pos, aimPosition, 400) then
 			SpecialCast(HK_W, aimPosition)
 		end
 	end
@@ -3169,7 +3175,7 @@ function Cassiopeia:ComboE(requirePoison)
 	local eTargets = {}
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
-		if t and HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, Q.Range) then
+		if t and HPred:CanTarget(t) and HPred:IsInRange(myHero.pos, t.pos, E.Range) then
 			local eDamage = self:GetEDamage(t)
 			if eDamage >= t.health then
 				eDamage = _huge
@@ -3730,11 +3736,17 @@ function Xerath:__init()
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
-function Xerath:CreateMenu()
+function Xerath:CreateMenu()		
 	
-			
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Arcanopulse", type = MENU})	
+	Menu.Skills.Q:MenuElement({id = "Targets", name = "Early Detonation Targets", type = MENU})
+	for i = 1, LocalGameHeroCount() do
+		local hero = LocalGameHero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.Q.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = true, toggle = true})
+		end
+	end
 	
-	Menu.Skills:MenuElement({id = "Q", name = "[Q] Arcanopulse", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "AutoRelease", name = "Auto Release", value = true })
 	Menu.Skills.Q:MenuElement({id = "AccuracyMin", name = "Release Accuracy", value = 3, min = 1, max = 5, step =1 })	
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step =1 })
@@ -3755,12 +3767,12 @@ function Xerath:CreateMenu()
 	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 5, step =1 })
 	Menu.Skills.R:MenuElement({id = "Speed", name = "Cast Speed", value = 1, min = .1, max = 3, step =.1 })
 	Menu.Skills.R:MenuElement({id = "Spread", name = "Cast Randomization", value = .25, min = .05, max = 1, step =.05 })
-	Menu.Skills.R:MenuElement({id = "Time", name = "Retarget Time", value = 1, min = .1, max = 3, step =.1 })
 	
 	Menu.Skills.R:MenuElement({id = "Manual", name = "Manual Cast Only", value = false })
 	Menu.Skills.R:MenuElement({id = "Radius", name = "Manual Cast Radius", value = 500, min = 100, max = 1200, step =50 })	
 	Menu.Skills.R:MenuElement({id = "Key", name = "Manual Key",value = false,  key = 0x71})
 	
+	Menu.Skills:MenuElement({id = "Time", name = "Retarget Time", value = 1, min = .1, max = 3, step =.1 })
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
 
@@ -3865,16 +3877,24 @@ function Xerath:AutoQ()
 	local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.AccuracyMin:Value(), nil, true)	
 	if self:IsQCharging() and (Menu.Skills.Combo:Value() or Menu.Skills.Q.AutoRelease:Value()) then		
 		local qRange = self:GetQRange()
-		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, qRange, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
-		if target then
-			ReleaseSpell(HK_Q, aimPosition, qRange)
-		else
-			local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, qRange , Q.Delay, Q.Speed,Q.Width,Q.Collision, Menu.Skills.Q.AccuracyMin:Value(), nil, true)
-			if hitRate and aimPosition then
-				if self:GetQChargeTime() > 2 or (hitRate >= Menu.Skills.Q.Accuracy:Value()  and HPred:IsInRange(myHero.pos, aimPosition, qRange - 250)) then
-					ReleaseSpell(HK_Q, aimPosition, qRange)
+		local targets = {}
+		for i = 1, LocalGameHeroCount() do
+			local t = LocalGameHero(i)
+			if t and HPred:CanTarget(t, true) and HPred:IsInRange(myHero.pos, t.pos, qRange) then
+				local hitRate, aimPosition = HPred:GetHitchance(myHero.pos, t, qRange, Q.Delay, Q.Speed, Q.Width, Q.Collision)
+				if hitRate and hitRate > Menu.Skills.Q.AccuracyMin:Value() then
+					if self:GetQChargeTime() > 2 or (hitRate >= Menu.Skills.Q.Accuracy:Value() and HPred:IsInRange(myHero.pos, aimPosition, qRange - 250) and Menu.Skills.Q.Targets[t.networkID] and Menu.Skills.Q.Targets[t.networkID]:Value()) then
+						_insert(targets, {aimPosition, hitRate * 100 + AutoUtil:CalculateMagicDamage(t, 400)})
+					end
 				end
 			end
+		end
+		
+		_sort(targets, function( a, b ) return a[2] >b[2] end)	
+		if #targets > 0 then
+			local qTarget =targets[1][1]
+			targets = nil
+			ReleaseSpell(HK_Q, qTarget, qRange)
 		end
 	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, 1400, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
@@ -3957,7 +3977,7 @@ function Xerath:ManualR()
 		local qTarget =targets[1][1]
 		targets = nil
 		SpecialCast(HK_R, qTarget)
-	elseif forcedTarget and HPred:CanTarget(forcedTarget) then
+	elseif forcedTarget and HPred:CanTarget(forcedTarget,true) then
 		local aimPosition = HPred:PredictUnitPosition(forcedTarget, R.Delay)
 		if HPred:IsInRange(myHero.pos, aimPosition, R.Range) then
 			self:AdjustRAimPosition(aimPosition)
@@ -3968,7 +3988,7 @@ end
 
 function Xerath:AutoR()
 	if _nextRCast > GetTickCount() then return end
-	if (forcedTarget == nil or not HPred:CanTarget(forcedTarget)) and GetTickCount() - _lastTarget > Menu.Skills.R.Time:Value()*1000 then
+	if (forcedTarget == nil or not HPred:CanTarget(forcedTarget, true)) and GetTickCount() - _lastTarget > Menu.Skills.Time:Value()*1000 then
 		forcedTarget = CurrentTarget(R.Range)
 		_lastTarget =GetTickCount()
 	end
@@ -3984,6 +4004,7 @@ function Xerath:AutoR()
 		forcedTarget = CurrentTarget(R.Range)			
 	end
 end
+
 
 
 --[[
@@ -4262,10 +4283,10 @@ function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccu
 	end
 	
 	--Get channeling enemies
-	local target, aimPosition =self:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
-		if target and aimPosition then
-		return target, aimPosition
-	end
+	--local target, aimPosition =self:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	--	if target and aimPosition then
+	--	return target, aimPosition
+	--end
 	
 	--Get teleporting enemies
 	local target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
@@ -4323,24 +4344,14 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 		if t and self:CanTarget(t, true) and (not whitelist or whitelist[t.charName]) then
 			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision, isLine)		
 			if hitChance >= minimumHitChance then
-				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
+				_insert(_validTargets, {aimPosition,hitChance, hitChance * 100 + AutoUtil:CalculateMagicDamage(t, 400)})
 			end
 		end
-	end
-	
-	local rHitChance = 0
-	local rAimPosition
-	for targetName, targetData in pairs(_validTargets) do
-		if targetData.hitChance > rHitChance then
-			rHitChance = targetData.hitChance
-			rAimPosition = targetData.aimPosition
-		end		
-	end
-	
-	_validTargets = nil
-	if rHitChance >= minimumHitChance then
-		return rHitChance, rAimPosition
 	end	
+	_sort(_validTargets, function( a, b ) return a[3] >b[3] end)	
+	if #_validTargets > 0 then	
+		return _validTargets[1][2], _validTargets[1][1]
+	end
 end
 
 function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision, isLine)
@@ -4854,12 +4865,12 @@ end
 --CanTarget(target)
 	--target : gameObject we are trying to hit
 function HPred:CanTarget(target, allowInvisible)
-	return target.isEnemy and target.alive and (allowInvisible or target.visible) and target.isTargetable
+	return target.isEnemy and target.alive and target.health > 0  and (allowInvisible or target.visible) and target.isTargetable
 end
 
 --Derp: dont want to fuck with the isEnemy checks elsewhere. This will just let us know if the target can actually be hit by something even if its an ally
 function HPred:CanTargetALL(target)
-	return target.alive and target.visible and target.isTargetable
+	return target.alive and target.health > 0 and target.visible and target.isTargetable
 end
 
 --Returns a position and radius in which the target could potentially move before the delay ends. ReactionTime defines how quick we expect the target to be able to change their current path
