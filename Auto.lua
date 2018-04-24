@@ -2632,7 +2632,7 @@ function Karthus:AutoR()
 				_targetUltData[t.charName] = {}
 				_targetUltData[t.charName]["LastVisible"] = Game.Timer()
 				_targetUltData[t.charName]["Damage"] = AutoUtil:CalculateMagicDamage(t, rDamage)
-				_targetUltData[t.charName]["Life"] = t.health
+				_targetUltData[t.charName]["Life"] = t.health + t.hpRegen * 2
 			elseif not t.alive and _targetUltData[t.charName] then
 				_targetUltData[t.charName] = nil
 			end
@@ -2640,7 +2640,7 @@ function Karthus:AutoR()
 	end	
 	
 	for _, target in pairs(_targetUltData) do
-		if Game.Timer() - target.LastVisible < 5 and target.Damage > target.Life + target.hpRegen * 2 then
+		if Game.Timer() - target.LastVisible < 5 and target.Damage > target.Life then
 			_canUltCount = _canUltCount + 1		
 		end
 	end	
@@ -3068,8 +3068,14 @@ function Cassiopeia:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Farm Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Petrifying Gaze", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Assist", name = "Manual Ult Key",value = false,  key = 0x73})
-	Menu.Skills.R:MenuElement({id = "Stun", name = "Manual Ult Force Stun",value = true})
+	Menu.Skills.R:MenuElement({id = "Assist", name = "Manual Ult Key",value = false,  key = 0x73})	
+	Menu.Skills.R:MenuElement({id = "Targets", name = "Stun Targets", type = MENU})	
+	for i = 1, LocalGameHeroCount() do
+		local hero = LocalGameHero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.R.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = false })
+		end
+	end	
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Ult", value = false})	
 	Menu.Skills.R:MenuElement({id = "Count", name = "Ult on # of enemies", value = 2, min = 1, max = 5, step = 1 })	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
@@ -3095,15 +3101,6 @@ function Cassiopeia:GetEnemyAngles()
 end
 
 function Cassiopeia:Draw()
-	for i = 1, LocalGameHeroCount() do
-		local t = LocalGameHero(i)
-		if t and t.alive and t.visible and t.isEnemy and _enemyAngles[t.networkID] then
-			local relativePosition = (myHero.pos - t.pos):Normalized()
-			local dot = _enemyAngles[t.networkID].dir:DotProduct(relativePosition)
-			local drawPos = t.pos:To2D()
-			LocalDrawText(dot, 14, drawPos.x, drawPos.y)
-		end
-	end
 end
 
 function Cassiopeia:Tick()
@@ -3139,10 +3136,13 @@ function Cassiopeia:Tick()
 	
 end
 
-function Cassiopeia:IsTargetPoisoned(target)
+function Cassiopeia:IsTargetPoisoned(target, duration)
+	if not duration then
+		duration = 0
+	end
 	for i = 1, target.buffCount do 
 		local buff = target:GetBuff(i)
-		if buff.duration > 0 and( buff.name == "cassiopeiaqdebuff" or buff.name == "cassiopeiawpoison")then
+		if buff.duration > duration and buff.type == 23 then
 			return true
 		end
 	end
@@ -3179,7 +3179,7 @@ end
 
 function Cassiopeia:GetEDamage(target)
     local level = myHero:GetSpellData(_E).level
-    local damage = 48 + 4 * myHero.levelData.lvl + 0.1 * myHero.ap + (self:IsTargetPoisoned(target) and ({10, 30, 50, 70, 90})[level] + 0.60 * myHero.ap or 0)	
+    local damage = 48 + 4 * myHero.levelData.lvl + 0.1 * myHero.ap + (self:IsTargetPoisoned(target, E.Delay) and ({10, 30, 50, 70, 90})[level] + 0.60 * myHero.ap or 0)	
 	damage = HPred:CalculateMagicDamage(target, damage)		
 	return damage
 end
@@ -3243,21 +3243,31 @@ function Cassiopeia:AutoR()
 	end
 	
 	if Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value() then
-		local distance, target = AutoUtil:NearestEnemy(myHero)
-		if target and distance < R.Range then
+		local target = CurrentTarget(R.Range)
+		if target and HPred:IsInRange(myHero.pos, target.pos, R.Range) then
 			local aimPos = HPred:PredictUnitPosition(target, R.Delay)
 			local rCount = 0
 			local castAngle = HPred:Angle(myHero.pos,aimPos)
 			for i = 1, LocalGameHeroCount() do
 				local t = LocalGameHero(i)
-				if t and HPred:CanTarget(t) then			
+				if t and HPred:CanTarget(t) then				
 					local predictedPosition = HPred:PredictUnitPosition(t, R.Delay)
-					local deltaAngle = _abs(HPred:Angle(myHero.pos, predictedPosition) - castAngle)
-					if deltaAngle <= 40 and HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
+					local deltaAngle = _abs(HPred:Angle(myHero.pos, predictedPosition) - castAngle)					
+					if deltaAngle <= 37 and HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
+						local willStun = false
+						if Menu.Skills.Combo:Value() and _enemyAngles[t.networkID] and Menu.Skills.R.Targets[t.networkID] and Menu.Skills.R.Targets[t.networkID]:Value() then			
+							local relativePosition = (myHero.pos - t.pos):Normalized()
+							local dot = _enemyAngles[t.networkID].dir:DotProduct(relativePosition)
+							if dot > .7 then
+								willStun = true
+							end
+						end
 						rCount = rCount + 1
+						--If it will stun a priority target then we can stop looking and use this target
+						if willStun then rCount = 5 break end
 					end
 				end
-			end		
+			end
 			if rCount >= Menu.Skills.R.Count:Value() then
 				SpecialCast(HK_R, aimPos)
 			end
@@ -3269,19 +3279,8 @@ function Cassiopeia:ManualR()
 	local target = CurrentTarget(R.Range)
 	if target and HPred:CanTarget(target) then
 		local aimPos = HPred:PredictUnitPosition(target, R.Delay)
-		if HPred:IsInRange(myHero.pos, aimPos, R.Range) then		
-			--Get target facing			
-			local willStun = false
-			if _enemyAngles[target.networkID] then			
-				local relativePosition = (myHero.pos - target.pos):Normalized()
-				local dot = _enemyAngles[target.networkID].dir:DotProduct(relativePosition)
-				if dot > .7 then
-					willStun = true
-				end
-			end
-			if not Menu.Skills.R.Stun:Value() or willStun then
-				SpecialCast(HK_R, aimPos)
-			end
+		if HPred:IsInRange(myHero.pos, aimPos, R.Range) then
+			SpecialCast(HK_R, aimPos)
 		end
 	end
 end
