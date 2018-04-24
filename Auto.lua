@@ -3063,15 +3063,15 @@ function Cassiopeia:CreateMenu()
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Twin Fang", type = MENU})
-	Menu.Skills.E:MenuElement({id = "Poison", name = "Only cast on poisoned enemies", value = true})
+	Menu.Skills.E:MenuElement({id = "Poison", name = "Only cast on poisoned enemies", value = false})
 	Menu.Skills.E:MenuElement({id = "FarmPoison", name = "Only cast on poisoned minions", value = false, toggle = true})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Farm Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Petrifying Gaze", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Assist", name = "Manual Ult Key",value = false,  key = 0x73})
+	Menu.Skills.R:MenuElement({id = "Stun", name = "Manual Ult Force Stun",value = true})
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Ult", value = false})	
-	Menu.Skills.R:MenuElement({id = "Count", name = "Ult on # of enemies", value = 2, min = 1, max = 5, step = 1 })
-	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Ult on # of enemies", value = 2, min = 1, max = 5, step = 1 })	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
 end
 
@@ -3082,7 +3082,28 @@ function Cassiopeia:LoadSpells()
 	R = {Range = 825,Delay = 0.5, Angle = 80}
 end
 
+
+local _enemyAngles = {}
+function Cassiopeia:GetEnemyAngles()
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t and t.alive and t.visible and t.isEnemy and t.pathing.hasMovePath then
+			if _enemyAngles[t.networkID] == nil then _enemyAngles[t.networkID] = {dir = (t.posTo - t.pos):Normalized(), time = GetTickCount()}
+			else _enemyAngles[t.networkID].dir = (t.posTo - t.pos):Normalized() _enemyAngles[t.networkID].time = GetTickCount() end
+		end
+	end
+end
+
 function Cassiopeia:Draw()
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t and t.alive and t.visible and t.isEnemy and _enemyAngles[t.networkID] then
+			local relativePosition = (myHero.pos - t.pos):Normalized()
+			local dot = _enemyAngles[t.networkID].dir:DotProduct(relativePosition)
+			local drawPos = t.pos:To2D()
+			LocalDrawText(dot, 14, drawPos.x, drawPos.y)
+		end
+	end
 end
 
 function Cassiopeia:Tick()
@@ -3093,6 +3114,8 @@ function Cassiopeia:Tick()
 	--If we're in combo mode, disable auto attacks entirely for the orbwalker
 	SetAttack(not Menu.Skills.Combo:Value())
 	
+	--Record what direction enemies are moving in so we can try for auto ult
+	Cassiopeia:GetEnemyAngles()
 	
 	if Ready(_R) then
 		Cassiopeia:AutoR()
@@ -3102,11 +3125,11 @@ function Cassiopeia:Tick()
 		Cassiopeia:AutoE()
 	end
 	
-	if Ready(_Q) then
+	if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		Cassiopeia:AutoQ()
 	end
 	
-	if Ready(_W) then
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		Cassiopeia:AutoW()
 	end
 	
@@ -3129,7 +3152,7 @@ function Cassiopeia:AutoQ()
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 	if Menu.Skills.Q.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,Q.Range) then
 		SpecialCast(HK_Q, aimPosition)
-	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+	elseif Menu.Skills.Combo:Value() then
 		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed, Q.Width, Q.Collision, Menu.Skills.Q.Accuracy:Value())	
 		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
 			SpecialCast(HK_Q, aimPosition)
@@ -3146,7 +3169,7 @@ function Cassiopeia:AutoW()
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, W.Range, W.Delay, W.Speed,W.Width, Menu.General.ReactionTime:Value(), W.Collision)
 	if Menu.Skills.W.Auto:Value() and target and HPred:IsInRange(myHero.pos, aimPosition,W.Range) and not HPred:IsInRange(myHero.pos, aimPosition, 400) then
 		SpecialCast(HK_W, aimPosition)
-	elseif Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+	elseif Menu.Skills.Combo:Value() then
 		local hitRate, aimPosition = HPred:GetUnreliableTarget(myHero.pos, W.Range, W.Delay, W.Speed, W.Width, W.Collision, Menu.Skills.W.Accuracy:Value())	
 		if hitRate and HPred:IsInRange(myHero.pos, aimPosition, W.Range) and not HPred:IsInRange(myHero.pos, aimPosition, 400) then
 			SpecialCast(HK_W, aimPosition)
@@ -3232,7 +3255,7 @@ function Cassiopeia:AutoR()
 					local deltaAngle = _abs(HPred:Angle(myHero.pos, predictedPosition) - castAngle)
 					if deltaAngle <= 40 and HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
 						rCount = rCount + 1
-					end				
+					end
 				end
 			end		
 			if rCount >= Menu.Skills.R.Count:Value() then
@@ -3246,8 +3269,19 @@ function Cassiopeia:ManualR()
 	local target = CurrentTarget(R.Range)
 	if target and HPred:CanTarget(target) then
 		local aimPos = HPred:PredictUnitPosition(target, R.Delay)
-		if HPred:IsInRange(myHero.pos, aimPos, R.Range) then
-			SpecialCast(HK_R, aimPos)
+		if HPred:IsInRange(myHero.pos, aimPos, R.Range) then		
+			--Get target facing			
+			local willStun = false
+			if _enemyAngles[target.networkID] then			
+				local relativePosition = (myHero.pos - target.pos):Normalized()
+				local dot = _enemyAngles[target.networkID].dir:DotProduct(relativePosition)
+				if dot > .7 then
+					willStun = true
+				end
+			end
+			if not Menu.Skills.R.Stun:Value() or willStun then
+				SpecialCast(HK_R, aimPos)
+			end
 		end
 	end
 end
