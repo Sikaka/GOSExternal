@@ -246,14 +246,14 @@ function IsDelaying()
 end
 
 function SpecialCast(key, pos, bypassTiming, isLine)
-	if not Menu.Skills.Combo:Value() and not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end	
-	if not bypassTiming and NextSpellCast > Game.Timer() then return end		
+	if not Menu.Skills.Combo:Value() and not Menu.General.AutoInTurret:Value() and InsideEnemyTurretRange() then return end
+	if not bypassTiming and NextSpellCast > Game.Timer() then return end
 	if not pos then
 		Control.CastSpell(key)
 		return
 	end
 	
-	if type(pos) ~= "userdata" and pos.pos then
+	if type(pos) == "userdata" and pos.pos then
 		pos = pos.pos
 	end
 	
@@ -261,7 +261,7 @@ function SpecialCast(key, pos, bypassTiming, isLine)
 		pos = myHero.pos + (pos - myHero.pos):Normalized() * 250
 	end
 	
-	if not pos:ToScreen().onScreen then			
+	if not pos:ToScreen().onScreen then
 		return
 	end
 	
@@ -1810,7 +1810,6 @@ function Blitzcrank:LoadSpells()
 end
 
 function Blitzcrank:Draw()	
-	
 	if Ready(_Q) and Menu.General.DrawQAim:Value() and forcedTarget and forcedTarget.alive and forcedTarget.visible then	
 		local targetOrigin = HPred:PredictUnitPosition(forcedTarget, Q.Delay)
 		local interceptTime = HPred:GetSpellInterceptTime(myHero.pos, targetOrigin, Q.Delay, Q.Speed)			
@@ -4191,7 +4190,6 @@ local _incomingDamage = {}
 local _windwall
 local _windwallStartPos
 local _windwallWidth
-
 
 local _OnVision = {}
 function HPred:OnVision(unit)
