@@ -113,6 +113,7 @@ function()
 		Menu.Skills.Cleanse.CC:MenuElement({id = "Poison", name = "Poison", value = false, toggle = true})
 		Menu.Skills.Cleanse:MenuElement({id = "CleanseTime", name = "Cleanse CC If Duration Over X Seconds", value = .5, min = .1, max = 2, step = .1 })
 		Menu.Skills.Cleanse:MenuElement({id="Enabled", name="Enabled", value = true})
+		Menu.Skills.Cleanse:MenuElement({id="Combo", name="Require Combo", value = true})
 		CleanseTick = AutoUtil.AutoCleanse
 	end
 	Callback.Add("Draw", function() CoreDraw() end)
@@ -506,7 +507,7 @@ function AutoUtil:SupportMenu(Menu)
 			Menu.Items.Redemption.Targets:MenuElement({id = hero.charName, name = hero.charName,  tooltip = "How low must this target's HP be to cast redemption", value = 60, min = 10, max = 90, step = 10 })
 		end
 	end
-	Menu.Items.Redemption:MenuElement({id="Duration", name="Prediction Duration", tooltip = "allies must be immobile for at least this long for redemption to cast", value = .5, min = .25, max = 2, step = .25})
+	Menu.Items.Redemption:MenuElement({id="Duration", name="Prediction Duration", tooltip = "allies must be immobile for at least this long for redemption to cast", value = .5, min = 0, max = 2, step = .25})
 	Menu.Items.Redemption:MenuElement({id="Count", name = "Target Count", tooltip = "The total number of allies+enemies that may be hit with redemption in order to cast it.", value = 3, min = 1, max = 10, step = 1})
 end
 
@@ -767,7 +768,8 @@ end
 function AutoUtil:AutoCleanse()
 	local cleanseHotkey = AutoUtil:GetCleanse()	
 	if not cleanseHotkey or not Menu.Skills.Cleanse then return end
-	if Menu.Skills.Cleanse.Enabled:Value() then
+	if not Menu.Skills.Combo then return end
+	if Menu.Skills.Cleanse.Enabled:Value() and (Menu.Skills.Combo:Value() or not Menu.Skills.Cleanse.Combo:Value()) then
 		for ccName, ccType in pairs(_ccNames) do
 			if Menu.Skills.Cleanse.CC[ccName] and Menu.Skills.Cleanse.CC[ccName]:Value() and AutoUtil:HasBuffType(myHero, ccType, Menu.Skills.Cleanse.CleanseTime:Value()) then
 				Control.CastSpell(cleanseHotkey)
@@ -1412,9 +1414,9 @@ function Nami:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Ebb and Flow", type = MENU})
 	Menu.Skills.W:MenuElement({id = "ManaBounce", name = "Minimum Mana [Bounce]", value = 25, min = 1, max = 100, step = 5 })
-	Menu.Skills.W:MenuElement({id = "HealthBounce", name = "Minimum Mana [Bounce]", value = 60, min = 1, max = 100, step = 5 })	
+	Menu.Skills.W:MenuElement({id = "HealthBounce", name = "Minimum Health [Bounce]", value = 60, min = 1, max = 100, step = 5 })	
 	Menu.Skills.W:MenuElement({id = "ManaEmergency", name = "Minimum Mana [No Bounce]", value = 25, min = 1, max = 100, step = 5 })
-	Menu.Skills.W:MenuElement({id = "HealthEmergency", name = "Minimum Mana [No Bounce]", value = 25, min = 1, max = 100, step = 5 })
+	Menu.Skills.W:MenuElement({id = "HealthEmergency", name = "Minimum Health [No Bounce]", value = 25, min = 1, max = 100, step = 5 })
 	
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Tidecaller's Blessing", type = MENU})
@@ -2447,10 +2449,7 @@ function Karthus:Draw()
 	if Ready(_R) and _canUltCount > 0 and Menu.Skills.R.Draw:Value() then
 		local drawPos = myHero.pos:To2D()
 		LocalDrawText("[R] Can Kill " .. _canUltCount .. " Enemies!", 24, 100, 200)
-	end
-	for _, q in pairs(_cachedQs) do
-		Draw.Circle(q.data.pos, 15, 15)
-	end
+	end	
 end
 
 function Karthus:Tick()
@@ -2460,7 +2459,13 @@ function Karthus:Tick()
 	
 	Karthus:CacheQs()
 	
-	SetAttack(not Menu.Skills.Combo:Value())
+	--Re-enable auto attacks if we're basically out of mana...
+	if Menu.Skills.Combo:Value() and CurrentPctMana(myHero) > 15 then
+		SetAttack(false)
+	else
+		SetAttack(true)
+	end
+	
 	
 	if Ready(_E) then
 		Karthus:AutoE()
@@ -3085,7 +3090,7 @@ function Cassiopeia:LoadSpells()
 	Q = {Range = 850, Width = 150,Delay = 0.4, Speed = _huge}
 	W = {Range = 800, Width = 160,Delay = 0.25, Speed = _huge}
 	E = {Range = 690, Delay = 0.125, Speed = 2500}
-	R = {Range = 825,Delay = 0.5, Angle = 80}
+	R = {Range = 750,Delay = 0.5, Angle = 80}
 end
 
 
@@ -3094,8 +3099,8 @@ function Cassiopeia:GetEnemyAngles()
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
 		if t and t.alive and t.visible and t.isEnemy and t.pathing.hasMovePath then
-			if _enemyAngles[t.networkID] == nil then _enemyAngles[t.networkID] = {dir = (t.posTo - t.pos):Normalized(), time = GetTickCount()}
-			else _enemyAngles[t.networkID].dir = (t.posTo - t.pos):Normalized() _enemyAngles[t.networkID].time = GetTickCount() end
+			if _enemyAngles[t.networkID] == nil then _enemyAngles[t.networkID] = {dir = (t.posTo - t.pos):Normalized(), updateTick = GetTickCount()}
+			else _enemyAngles[t.networkID].dir = (t.posTo - t.pos):Normalized() _enemyAngles[t.networkID].updateTick = GetTickCount() end
 		end
 	end
 end
@@ -3105,14 +3110,18 @@ end
 
 function Cassiopeia:Tick()
 	
+	Cassiopeia:GetEnemyAngles()
+	
 	if myHero.dead or  IsRecalling()  or IsEvading() or IsAttacking() or IsDelaying() then return end
 	if NextSpellCast > Game.Timer() then return end
 	
-	--If we're in combo mode, disable auto attacks entirely for the orbwalker
-	SetAttack(not Menu.Skills.Combo:Value())
-	
+	--Re-enable auto attacks if we're basically out of mana...
+	if Menu.Skills.Combo:Value() and CurrentPctMana(myHero) > 15 then
+		SetAttack(false)
+	else
+		SetAttack(true)
+	end	
 	--Record what direction enemies are moving in so we can try for auto ult
-	Cassiopeia:GetEnemyAngles()
 	
 	if Ready(_R) then
 		Cassiopeia:AutoR()
@@ -3129,11 +3138,6 @@ function Cassiopeia:Tick()
 	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		Cassiopeia:AutoW()
 	end
-	
-	if not Ready(_E) and not Menu.Skills.Combo:Value() then
-		SetAttack(true)
-	end
-	
 end
 
 function Cassiopeia:IsTargetPoisoned(target, duration)
@@ -3194,7 +3198,6 @@ function Cassiopeia:AutoE()
 end
 
 function Cassiopeia:FarmE()
-	SetAttack(false)
 	for i = 1, LocalGameMinionCount() do
 		local minion = LocalGameMinion(i);
 		if minion and HPred:CanTarget(minion) and HPred:IsInRange(myHero.pos, minion.pos, E.Range) and (self:IsTargetPoisoned(minion) or not Menu.Skills.E.FarmPoison:Value()) then			
@@ -3212,7 +3215,7 @@ function Cassiopeia:FarmE()
 	end
 end
 
-function Cassiopeia:ComboE(requirePoison)
+function Cassiopeia:ComboE(requirePoison)	
 	local eTargets = {}
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
@@ -3220,7 +3223,7 @@ function Cassiopeia:ComboE(requirePoison)
 			local eDamage = self:GetEDamage(t)
 			if eDamage >= t.health then
 				eDamage = _huge
-			--If the E wont kill them and they aren't poisoned and we have it set to ONLY E poisoned enemies then exclude them as a target...			
+			--If the E wont kill them and they aren't poisoned and we have it set to ONLY E poisoned enemies then exclude them as a target...	
 			elseif requirePoison and not self:IsTargetPoisoned(t) then
 				eDamage = 0
 			end
@@ -3259,6 +3262,8 @@ function Cassiopeia:AutoR()
 							local relativePosition = (myHero.pos - t.pos):Normalized()
 							local dot = _enemyAngles[t.networkID].dir:DotProduct(relativePosition)
 							if dot > .7 then
+								local tickTime = GetTickCount() - _enemyAngles[t.networkID].updateTick
+								print("Dot: " .. dot .. " Tick Time: " .. tickTime .. " Target: " .. t.charName)
 								willStun = true
 							end
 						end
@@ -3456,6 +3461,7 @@ end
 function Thresh:CreateMenu()
 	Menu.General:MenuElement({id = "DrawQAim", name = "Draw Q Aim", value = true})
 	
+	AutoUtil:SupportMenu(Menu)	
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Death Sentence", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Targets", name = "Targets", type = MENU})	
@@ -3564,6 +3570,8 @@ function Thresh:Tick()
 			NextSpellCast = .35 + Game.Timer()
 		end
 	end
+	
+	AutoUtil:UseSupportItems()
 end
 
 function Thresh:AutoQ()
