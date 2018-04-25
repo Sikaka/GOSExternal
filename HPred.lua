@@ -59,6 +59,7 @@
 ]]
 
 
+
 class "HPred"
 
 local _atan = math.atan2
@@ -120,7 +121,6 @@ local _blinkLookupTable =
 local _cachedBlinks = {}
 local _cachedRevives = {}
 local _cachedTeleports = {}
-local _movementHistory = {}
 
 --Cache of all TARGETED missiles currently running
 local _cachedMissiles = {}
@@ -131,9 +131,19 @@ local _windwall
 local _windwallStartPos
 local _windwallWidth
 
+local _OnVision = {}
+function HPred:OnVision(unit)
+	if unit == nil or type(unit) ~= "userdata" then return end
+	if _OnVision[unit.networkID] == nil then _OnVision[unit.networkID] = {visible = unit.visible , tick = GetTickCount(), pos = unit.pos } end
+	if _OnVision[unit.networkID].visible == true and not unit.visible then _OnVision[unit.networkID].visible = false _OnVision[unit.networkID].tick = GetTickCount() end
+	if _OnVision[unit.networkID].visible == false and unit.visible then _OnVision[unit.networkID].visible = true _OnVision[unit.networkID].tick = GetTickCount() _OnVision[unit.networkID].pos = unit.pos end
+	return _OnVision[unit.networkID]
+end
 
 --This must be called manually - It's not on by default because we've tracked down most of the freeze issues to this.
 function HPred:Tick()
+	
+	
 	--Update missile cache
 	--DISABLED UNTIL LATER.
 	--self:CacheMissiles()
@@ -141,6 +151,31 @@ function HPred:Tick()
 	--Limit how often tick logic runs
 	if _nextTick > Game.Timer() then return end
 	_nextTick = Game.Timer() + _tickFrequency
+	
+	--Update hero movement history	
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t then
+			if t.isEnemy then
+				HPred:OnVision(t)
+			end
+		end
+	end
+	
+	--Do not run rest of logic until freeze issues are fully tracked down
+	if true then return end
+	
+	
+	--Remove old cached teleports	
+	for _, teleport in pairs(_cachedTeleports) do
+		if teleport and Game.Timer() > teleport.expireTime + .5 then
+			_cachedTeleports[_] = nil
+		end
+	end	
+	
+	--Update teleport cache
+	HPred:CacheTeleports()	
+	
 	
 	--Record windwall
 	HPred:CacheParticles()
@@ -186,23 +221,6 @@ function HPred:Tick()
 		end
 	end
 	
-	--Update hero movement history	
-	for i = 1, LocalGameHeroCount() do
-		local t = LocalGameHero(i)
-		if t then
-			HPred:UpdateMovementHistory(t)
-		end
-	end
-	
-	--Remove old cached teleports	
-	for _, teleport in pairs(_cachedTeleports) do
-		if teleport and Game.Timer() > teleport.expireTime + .5 then
-			_cachedTeleports[_] = nil
-		end
-	end	
-	
-	--Update teleport cache
-	HPred:CacheTeleports()	
 end
 
 function HPred:GetEnemyNexusPosition()
@@ -256,10 +274,10 @@ function HPred:GetReliableTarget(source, range, delay, speed, radius, timingAccu
 	end
 	
 	--Get channeling enemies
-	local target, aimPosition =self:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
-		if target and aimPosition then
-		return target, aimPosition
-	end
+	--local target, aimPosition =self:GetChannelingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)
+	--	if target and aimPosition then
+	--	return target, aimPosition
+	--end
 	
 	--Get teleporting enemies
 	local target, aimPosition =self:GetTeleportingTarget(source, range, delay, speed, timingAccuracy, checkCollision, radius)	
@@ -298,6 +316,7 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
 		if t and self:CanTargetALL(t) and ( targetAllies or t.isEnemy) then
+			
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
 			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) * (t.boundingRadius + width)) then
@@ -309,48 +328,53 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 end
 
 --Will return the valid target who has the highest hit chance and meets all conditions (minHitChance, whitelist check, etc)
-function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist)
+function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCollision, minimumHitChance, whitelist, isLine)
 	local _validTargets = {}
 	for i = 1, LocalGameHeroCount() do
-		local t = LocalGameHero(i)
-		if t and self:CanTarget(t) and (not whitelist or whitelist[t.charName]) then			
-			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision)		
+		local t = LocalGameHero(i)		
+		if t and self:CanTarget(t, true) and (not whitelist or whitelist[t.charName]) then
+			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision, isLine)		
 			if hitChance >= minimumHitChance then
-				_validTargets[t.charName] = {["hitChance"] = hitChance, ["aimPosition"] = aimPosition}
+				_insert(_validTargets, {aimPosition,hitChance, hitChance * 100 + AutoUtil:CalculateMagicDamage(t, 400)})
 			end
 		end
-	end
-	
-	local rHitChance = 0
-	local rAimPosition
-	for targetName, targetData in pairs(_validTargets) do
-		if targetData.hitChance > rHitChance then
-			rHitChance = targetData.hitChance
-			rAimPosition = targetData.aimPosition
-		end		
-	end
-	
-	_validTargets = nil
-	if rHitChance >= minimumHitChance then
-		return rHitChance, rAimPosition
 	end	
+	_sort(_validTargets, function( a, b ) return a[3] >b[3] end)	
+	if #_validTargets > 0 then	
+		return _validTargets[1][2], _validTargets[1][1]
+	end
 end
 
-function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision)	
-	local hitChance = 1	
+function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCollision, isLine)
+
+	if isLine == nil and checkCollision then
+		isLine = true
+	end
 	
+	local hitChance = 1
 	local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source, target.pos) / speed)	
 	local interceptTime = self:GetSpellInterceptTime(source, aimPosition, delay, speed)
-	local reactionTime = self:PredictReactionTime(target, .1)
+	local reactionTime = self:PredictReactionTime(target, .1, isLine)
 	
-	--If they just now changed their path then assume they will keep it for at least a short while... slightly higher chance
-	if _movementHistory and _movementHistory[target.charName] and Game.Timer() - _movementHistory[target.charName]["ChangedAt"] < .25 then
-		hitChance = 2
-	end
+	--Check if they are walking the same path as the line or very close to it
+	if isLine then
+		local pathVector = aimPosition - target.pos
+		local castVector = (aimPosition - myHero.pos):Normalized()
+		if pathVector.x + pathVector.z ~= 0 then
+			pathVector = pathVector:Normalized()
+			if pathVector:DotProduct(castVector) < -.85 or pathVector:DotProduct(castVector) > .85 then
+				if speed > 3000 then
+					reactionTime = reactionTime + .25
+				else
+					reactionTime = reactionTime + .15
+				end
+			end
+		end
+	end			
 
 	--If they are standing still give a higher accuracy because they have to take actions to react to it
 	if not target.pathing or not target.pathing.hasMovePath then
-		hitChance = 2
+		hitChancevisionData = 2
 	end	
 	
 	
@@ -372,6 +396,20 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 			hitChance = 5
 		else			
 			hitChance = 3
+		end
+	end
+	
+	local visionData = HPred:OnVision(target)
+	if visionData and visionData.visible == false then
+		local hiddenTime = visionData.tick -GetTickCount()
+		if hiddenTime < -1000 then
+			hitChance = -1
+		else
+			local targetSpeed = self:GetTargetMS(target)
+			local unitPos = target.pos + Vector(target.pos,target.posTo):Normalized() * ((GetTickCount() - visionData.tick)/1000 * targetSpeed)
+			local aimPosition = unitPos + Vector(target.pos,target.posTo):Normalized() * (targetSpeed * (delay + (self:GetDistance(myHero.pos,unitPos)/speed)))
+			if self:GetDistance(target.pos,aimPosition) > self:GetDistance(target.pos,target.posTo) then aimPosition = target.posTo end
+			hitChance = _min(hitChance, 2)
 		end
 	end
 	
@@ -401,8 +439,7 @@ function HPred:PredictReactionTime(unit, minimumReactionTime)
 		if windupRemaining > 0 then
 			reactionTime = windupRemaining
 		end
-	end
-	
+	end	
 	return reactionTime
 end
 
@@ -761,24 +798,6 @@ function HPred:Angle(A, B)
 	return angle
 end
 
-function HPred:UpdateMovementHistory(unit)
-	if not _movementHistory[unit.charName] then
-		_movementHistory[unit.charName] = {}
-		_movementHistory[unit.charName]["EndPos"] = unit.pathing.endPos
-		_movementHistory[unit.charName]["StartPos"] = unit.pathing.endPos
-		_movementHistory[unit.charName]["PreviousAngle"] = 0
-		_movementHistory[unit.charName]["ChangedAt"] = Game.Timer()
-	end
-	
-	if _movementHistory[unit.charName]["EndPos"].x ~=unit.pathing.endPos.x or _movementHistory[unit.charName]["EndPos"].y ~=unit.pathing.endPos.y or _movementHistory[unit.charName]["EndPos"].z ~=unit.pathing.endPos.z then				
-		_movementHistory[unit.charName]["PreviousAngle"] = self:Angle(Vector(_movementHistory[unit.charName]["StartPos"].x, _movementHistory[unit.charName]["StartPos"].y, _movementHistory[unit.charName]["StartPos"].z), Vector(_movementHistory[unit.charName]["EndPos"].x, _movementHistory[unit.charName]["EndPos"].y, _movementHistory[unit.charName]["EndPos"].z))
-		_movementHistory[unit.charName]["EndPos"] = unit.pathing.endPos
-		_movementHistory[unit.charName]["StartPos"] = unit.pos
-		_movementHistory[unit.charName]["ChangedAt"] = Game.Timer()
-	end
-	
-end
-
 --Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
 function HPred:PredictUnitPosition(unit, delay)
 	local predictedPosition = unit.pos
@@ -836,13 +855,13 @@ end
 --Checks if a target can be targeted by abilities or auto attacks currently.
 --CanTarget(target)
 	--target : gameObject we are trying to hit
-function HPred:CanTarget(target)
-	return target.isEnemy and target.alive and target.visible and target.isTargetable
+function HPred:CanTarget(target, allowInvisible)
+	return target.isEnemy and target.alive and target.health > 0  and (allowInvisible or target.visible) and target.isTargetable
 end
 
 --Derp: dont want to fuck with the isEnemy checks elsewhere. This will just let us know if the target can actually be hit by something even if its an ally
 function HPred:CanTargetALL(target)
-	return target.alive and target.visible and target.isTargetable
+	return target.alive and target.health > 0 and target.visible and target.isTargetable
 end
 
 --Returns a position and radius in which the target could potentially move before the delay ends. ReactionTime defines how quick we expect the target to be able to change their current path
