@@ -368,7 +368,6 @@ function __DamageManager:__init()
 			SpellName = "Rocket Grab",
 			SpellSlot = _Q,
 			Danger = 5,
-			Sort = 
 			CC = BUFF_STUN,
 			Sort = TARGET_TYPE_LINE,
 		},
