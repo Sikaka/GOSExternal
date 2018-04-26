@@ -56,6 +56,11 @@ local BUFF_KNOCKUP					= 29
 local BUFF_KNOCKBACK				= 30
 local BUFF_DISARM					= 31
 
+local TARGET_TYPE_SINGLE			= 0
+local TARGET_TYPE_LINE				= 1
+local TARGET_TYPE_CIRCLE			= 2
+local TARGET_TYPE_ARC				= 3
+
 
 local Geometry = nil
 local ObjectManager = nil
@@ -337,6 +342,7 @@ function __DamageManager:__init()
 			SpellSlot = _Q,
 			Danger = 3,
 			CC = BUFF_SNARE,
+			Sort = TARGET_TYPE_LINE,
 		},
 		["ThreshQMissile"] = 
 		{
@@ -345,6 +351,7 @@ function __DamageManager:__init()
 			SpellSlot = _Q,
 			Danger = 5,
 			CC = BUFF_STUN,
+			Sort = TARGET_TYPE_LINE,
 		},
 		["ThreshEMissile1"] = 
 		{
@@ -353,6 +360,7 @@ function __DamageManager:__init()
 			SpellSlot = _E,
 			Danger = 2,
 			CC = BUFF_SLOW,
+			Sort = TARGET_TYPE_LINE,
 		},
 		["RocketGrabMissile"] = 
 		{
@@ -360,7 +368,9 @@ function __DamageManager:__init()
 			SpellName = "Rocket Grab",
 			SpellSlot = _Q,
 			Danger = 5,
+			Sort = 
 			CC = BUFF_STUN,
+			Sort = TARGET_TYPE_LINE,
 		},
 	}
 	
