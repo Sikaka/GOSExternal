@@ -1879,16 +1879,13 @@ function Blitzcrank:Tick()
 end
 
 function Blitzcrank:AutoE()
-	--check if we are middle of an auto attack
-	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then
-		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)
-		if target and target.isEnemy then		
-			local windupRemaining = myHero.attackData.endTime - Game.Timer() - myHero.attackData.windDownTime
-			if windupRemaining < .15 then
-				DelayAction(function()Control.CastSpell(HK_E) end,.10)
-			end
+	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.target and _find(myHero.activeSpell.name, "Attack") then
+		local target = HPred:GetEnemyHeroByHandle(myHero.activeSpell.target)
+		local windupRemaining = myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer()
+		if target and windupRemaining > 0 and windupRemaining < .15 then
+			Control.CastSpell(HK_E)
 		end
-	end
+	end	
 end
 
 
@@ -2788,13 +2785,11 @@ end
 
 function Illaoi:AutoW()
 	--check if we are middle of an auto attack
-	if myHero.attackData and myHero.attackData.target and myHero.attackData.state == STATE_WINDUP then		
-		local target = HPred:GetEnemyHeroByHandle(myHero.attackData.target)		
-		if target and target.isEnemy or (_spirit and HPred:IsInRange(myHero.pos, _spirit.pos, 200)) then		
-			local windupRemaining = myHero.attackData.endTime - Game.Timer() - myHero.attackData.windDownTime
-			if windupRemaining < .15 then
-				DelayAction(function()Control.CastSpell(HK_W) end,.10)
-			end
+	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.target and _find(myHero.activeSpell.name, "Attack") then
+		local target = HPred:GetEnemyHeroByHandle(myHero.activeSpell.target)
+		local windupRemaining = myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer()
+		if (target or _spirit and HPred:IsInRange(myHero.pos, _spirit.pos, 200)) and windupRemaining > 0 and windupRemaining < .15 then
+			Control.CastSpell(HK_W)
 		end
 	end
 end
