@@ -21,6 +21,9 @@ local LocalGameMissileCount 		= Game.MissileCount;
 local LocalGameMissile				= Game.Missile;
 local LocalPairs 					= pairs;
 local LocalType						= type;
+
+local LocalStringFind				= string.find
+
 local LocalInsert					= table.insert
 local LocalSort						= table.sort
 
@@ -124,10 +127,6 @@ function __ObjectManager:__init()
 		"LeBlanc_Base_W_return_activation.troy",
 		"Zed_Base_CloneSwap",
 	}
-	
-	--Test callbacks to work with
-	--self:OnParticleCreate(function(args) print("Particle: " .. args.name .. " Created") end)
-	--self:OnParticleDestroy(function(args) print("Particle: " .. args.name .. " Destroyed") end)
 end
 
 --Register Missile Create Event
@@ -180,6 +179,7 @@ end
 
 --RegisterOn Blink Event
 function __ObjectManager:OnBlink(cb)
+	--If there are no on particle callbacks we need to add one or it might never run!
 	if #self.OnBlinkCallbacks == 0 then		
 		self:OnParticleCreate(function(particle) self:CheckIfBlinkParticle(particle) end)
 	end
@@ -298,7 +298,7 @@ function __DamageManager:__init()
 	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
 	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)
 	
-	self.OnIncomingCCCallbacks = {}	
+	self.OnIncomingCCCallbacks = {}
 	
 	self.SiegeMinionList = {"Red_Minion_MechCannon", "Blue_Minion_MechCannon"}
 	self.NormalMinionList = {"Red_Minion_Wizard", "Blue_Minion_Wizard", "Red_Minion_Basic", "Blue_Minion_Basic"}
@@ -324,6 +324,45 @@ function __DamageManager:__init()
 			self.EnemyHeroes[target.handle] = {}
 		end
 	end
+	
+	self.EnemySkillshots = {}
+	self.AlliedSkillshots = {}
+	
+	self.UntargetedMissileTable = 
+	{
+		["LuxLightBindingMis"] = 
+		{
+			HeroName = "Lux",
+			SpellName = "Light Binding",
+			SpellSlot = _Q,
+			Danger = 3,
+			CC = BUFF_SNARE,
+		},
+		["ThreshQMissile"] = 
+		{
+			HeroName = "Thresh",
+			SpellName = "Death Sentence",
+			SpellSlot = _Q,
+			Danger = 5,
+			CC = BUFF_STUN,
+		},
+		["ThreshEMissile1"] = 
+		{
+			HeroName = "Thresh",
+			SpellName = "Flay",
+			SpellSlot = _E,
+			Danger = 2,
+			CC = BUFF_SLOW,
+		},
+		["RocketGrabMissile"] = 
+		{
+			HeroName = "Blitzcrank",
+			SpellName = "Rocket Grab",
+			SpellSlot = _Q,
+			Danger = 5,
+			CC = BUFF_STUN,
+		},
+	}
 	
 	
 	self.TargetedMissileTable = 
@@ -445,12 +484,19 @@ function __DamageManager:__init()
 end
 
 function __DamageManager:MissileCreated(missile)
-	--Handle targeted missiles only
-	if missile.data.missileData.target and self.TargetedMissileTable[missile.name] then
+	--Handle Targeted Missiles
+	if missile.data.missileData.target > 0 then
 		if self.TargetedMissileTable[missile.name] then
 			self:OnTargetedMissileTable(missile)
 		elseif LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack") then
 			self:OnAutoAttackMissile(missile)			
+		end
+	--Handle Untargeted missiles
+	else
+		if self.UntargetedMissileTable[missile.name] then
+			self:OnUntargetedMissileTable(missile)			
+		else
+			print(missile.name .. ": ".. missile.data.missileData.width)
 		end
 	end
 end
@@ -459,6 +505,10 @@ function __DamageManager:OnAutoAttackMissile(missile)
 	local owner = ObjectManager:GetObjectByHandle(missile.data.missileData.owner)
 	local target = ObjectManager:GetObjectByHandle(missile.data.missileData.target)
 	if owner and target then
+		local targetCollection = self.EnemyHeroes
+		if target.isAlly then
+			targetCollection = self.AlliedHeroes
+		end
 		--This should not be happening. it's a sign the script isn't populating the enemy/ally collections (delayed load needed IMO)
 		if not targetCollection[target.handle] then print("Targeted missile cannot find target... " ..  target.charName) return end
 		
@@ -527,10 +577,22 @@ function __DamageManager:OnTargetedMissileTable(missile)
 		}
 		targetCollection[target.handle][missile.networkID] = damageRecord
 		
-		print(damage)
 		--Trigger any registered OnCC callbacks. Send them the target, damage and type of cc so we can choose our actions
 		if damageRecord.CC and #self.OnIncomingCCCallbacks then
 			IncomingCC(target, damage, damageRecord.CC)
+		end
+	end
+end
+
+function __DamageManager:OnUntargetedMissileTable(missile)
+	local owner = ObjectManager:GetObjectByHandle(missile.data.missileData.owner)
+	if owner then
+		if owner.isEnemy then
+			if self.EnemySkillshots[missile.networkID] then return end
+			self.EnemySkillshots[missile.networkID] = missile
+		else
+			if self.AlliedSkillshots[missile.networkID] then return end
+			self.AlliedSkillshots[missile.networkID] = missile
 		end
 	end
 end
@@ -547,17 +609,32 @@ function __DamageManager:IncomingCC(target, damage, ccType)
 	end
 end
 
+--Remove from local collections on destroy
 function __DamageManager:MissileDestroyed(missile)
 	for _, dmgCollection in LocalPairs(self.AlliedHeroes) do
 		if dmgCollection[missile.networkID] then
 			dmgCollection[missile.networkID] = nil
 		end
 	end
+	
 	for _, dmgCollection in LocalPairs(self.EnemyHeroes) do
 		if dmgCollection[missile.networkID] then
 			dmgCollection[missile.networkID] = nil
 		end
 	end
+	
+	for _, skillshot in LocalPairs(self.EnemySkillshots) do
+		if self.EnemySkillshots[missile.networkID] then
+			self.EnemySkillshots[missile.networkID] = nil
+		end
+	end
+	
+	for _, skillshot in LocalPairs(self.AlliedSkillshots) do
+		if self.AlliedSkillshots[missile.networkID] then
+			self.AlliedSkillshots[missile.networkID] = nil
+		end
+	end
+	
 end
 
 function __DamageManager:CalculatePhysicalDamage(source, target, damage)	
