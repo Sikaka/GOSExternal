@@ -343,6 +343,7 @@ function __DamageManager:__init()
 			Danger = 3,
 			CC = BUFF_SNARE,
 			Sort = TARGET_TYPE_LINE,
+			Collision = 2
 		},
 		["ThreshQMissile"] = 
 		{
@@ -352,6 +353,7 @@ function __DamageManager:__init()
 			Danger = 5,
 			CC = BUFF_STUN,
 			Sort = TARGET_TYPE_LINE,
+			Collision = 1
 		},
 		["ThreshEMissile1"] = 
 		{
@@ -370,6 +372,16 @@ function __DamageManager:__init()
 			Danger = 5,
 			CC = BUFF_STUN,
 			Sort = TARGET_TYPE_LINE,
+			Collision = 1
+		},
+		["EzrealMysticShotMissile"] = 
+		{
+			HeroName = "Ezreal",
+			SpellName = "Mystic Shot",
+			SpellSlot = _Q,
+			Danger = 1,
+			Sort = TARGET_TYPE_LINE,
+			Collision = 1
 		},
 	}
 	
