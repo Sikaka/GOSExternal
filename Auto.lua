@@ -17,7 +17,6 @@ local _insert = table.insert
 local _sort = table.sort
 local _find = string.find
 
-
 local LocalDrawLine					= Draw.Line;
 local LocalDrawColor				= Draw.Color;
 local LocalDrawCircle				= Draw.Circle;
@@ -3045,7 +3044,6 @@ end
 
 class "Cassiopeia"
 function Cassiopeia:__init()
-
 	print("Loaded [Auto] ".. myHero.charName)
 	self:LoadSpells()
 	self:CreateMenu()
@@ -3053,8 +3051,7 @@ function Cassiopeia:__init()
 	Callback.Add("Draw", function() self:Draw() end)
 end
 
-function Cassiopeia:CreateMenu()
-	
+function Cassiopeia:CreateMenu()	
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Noxious Blast", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile", value = true})	
@@ -3244,6 +3241,10 @@ function Cassiopeia:AutoR()
 		self:ManualR()
 		return
 	end
+	
+	--TODO
+	--Ideally we should loop angles around us to find the one that will have the highest score (target count + priorityStunCount*5)
+	--Sort by score, cast towards the highest one if it reaches target count limit
 	
 	if Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value() then
 		local target = CurrentTarget(R.Range)
@@ -4201,10 +4202,10 @@ local _blinkSpellLookupTable =
 		["AlphaStrike"] = 0,
 		
 		--Katarina E ends on the side of her target closest to where her mouse was... 
-		["KatarinaE"] = -255,
+		--["KatarinaE"] = -255,
 		
 		--Katarina can target a dagger to teleport directly to it: Each skin has a different particle name. This should cover all of them.
-		["KatarinaEDagger"] = { "Katarina_Base_Dagger_Ground_Indicator","Katarina_Skin01_Dagger_Ground_Indicator","Katarina_Skin02_Dagger_Ground_Indicator","Katarina_Skin03_Dagger_Ground_Indicator","Katarina_Skin04_Dagger_Ground_Indicator","Katarina_Skin05_Dagger_Ground_Indicator","Katarina_Skin06_Dagger_Ground_Indicator","Katarina_Skin07_Dagger_Ground_Indicator" ,"Katarina_Skin08_Dagger_Ground_Indicator","Katarina_Skin09_Dagger_Ground_Indicator"  }, 
+		--["KatarinaEDagger"] = { "Katarina_Base_Dagger_Ground_Indicator","Katarina_Skin01_Dagger_Ground_Indicator","Katarina_Skin02_Dagger_Ground_Indicator","Katarina_Skin03_Dagger_Ground_Indicator","Katarina_Skin04_Dagger_Ground_Indicator","Katarina_Skin05_Dagger_Ground_Indicator","Katarina_Skin06_Dagger_Ground_Indicator","Katarina_Skin07_Dagger_Ground_Indicator" ,"Katarina_Skin08_Dagger_Ground_Indicator","Katarina_Skin09_Dagger_Ground_Indicator"  }, 
 	}
 
 local _blinkLookupTable = 
