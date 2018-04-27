@@ -14,7 +14,7 @@ local LocalCallbackDel				= Callback.Del;
 local LocalGameHeroCount 			= Game.HeroCount;
 local LocalGameHero					= Game.Hero;
 local LocalGameMinionCount 			= Game.MinionCount;
-local LocalGameMinion					= Game.Minion;
+local LocalGameMinion				= Game.Minion;
 local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
 local LocalGameMissileCount 		= Game.MissileCount;
@@ -60,6 +60,7 @@ local TARGET_TYPE_SINGLE			= 0
 local TARGET_TYPE_LINE				= 1
 local TARGET_TYPE_CIRCLE			= 2
 local TARGET_TYPE_ARC				= 3
+local TARGET_TYPE_BOX				= 4
 
 
 local Geometry = nil
@@ -69,6 +70,18 @@ local ItemManager = nil
 local BuffManager = nil
 
 class "__Geometry"
+
+function __Geometry:VectorPointProjectionOnLineSegment(v1, v2, v)
+	assert(v1 and v2 and v, "VectorPointProjectionOnLineSegment: wrong argument types (3 <Vector> expected)")
+	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
+	local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+	local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
+	local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
+	local isOnSegment = rS == rL
+	local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
+	return pointSegment, pointLine, isOnSegment
+end
+
 function __Geometry:GetDistanceSqr(p1, p2)
 	if not p1 or not p2 then
 		local dInfo = debug.getinfo(2)
@@ -252,6 +265,10 @@ function __ObjectManager:Tick()
 					{ 
 						valid = true,
 						name = missile.name,
+						forward = Vector(
+							missile.missileData.endPos.x -missile.missileData.startPos.x,
+							missile.missileData.endPos.y -missile.missileData.startPos.y,
+							missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
 						networkID = missile.networkID,
 						data = missile
 					}
@@ -383,6 +400,34 @@ function __DamageManager:__init()
 			Sort = TARGET_TYPE_LINE,
 			Collision = 1
 		},
+		["ZyraQ"] = 
+		{
+			HeroName = "Zyra",
+			SpellName = "Deadly Spines",
+			SpellSlot = _Q,
+			Danger = 1,
+			Sort = TARGET_TYPE_BOX,
+		},
+		["ZyraE"] = 
+		{
+			HeroName = "Zyra",
+			SpellName = "Grasping Roots",
+			SpellSlot = _E,
+			Danger = 3,
+			CC = BUFF_SNARE,
+			Sort = TARGET_TYPE_LINE,
+			Collision = 1
+		},
+		["DarkBindingMissile"] = 
+		{
+			HeroName = "Morgana",
+			SpellName = "Dark Binding",
+			SpellSlot = _Q,
+			Danger = 4,
+			CC = BUFF_SNARE,
+			Sort = TARGET_TYPE_LINE,
+			Collision = 1
+		},
 	}
 	
 	
@@ -502,6 +547,21 @@ function __DamageManager:__init()
 	
 	--Missile changes names after bounce. Just reference the existing one as it doesn't change in damage
 	self.TargetedMissileTable["FiddleSticksDarkWindMissile"] = self.TargetedMissileTable["FiddlesticksDarkWind"]
+	
+	
+	
+	LocalCallbackAdd('Tick',  function() self:Tick() end)
+end
+
+function __DamageManager:Tick()
+	for _, skillshot in LocalPairs(self.EnemySkillshots) do
+		local nextPosition = skillshot.data.pos + skillshot.forward* skillshot.data.missileData.speed * (Game.Latency() * 0.001 + .25)
+		
+		local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(skillshot.data.pos, nextPosition, myHero.pos)
+		if isOnSegment and Geometry:IsInRange(myHero.pos, pointLine, skillshot.data.missileData.width + myHero.boundingRadius) then
+			print("You are about to be hit by: " .. skillshot.name)
+		end
+	end
 end
 
 function __DamageManager:MissileCreated(missile)
@@ -517,7 +577,7 @@ function __DamageManager:MissileCreated(missile)
 		if self.UntargetedMissileTable[missile.name] then
 			self:OnUntargetedMissileTable(missile)			
 		else
-			print(missile.name .. ": ".. missile.data.missileData.width)
+			--print(missile.name .. ": ".. missile.data.missileData.width)
 		end
 	end
 end
@@ -530,8 +590,7 @@ function __DamageManager:OnAutoAttackMissile(missile)
 		if target.isAlly then
 			targetCollection = self.AlliedHeroes
 		end
-		--This should not be happening. it's a sign the script isn't populating the enemy/ally collections (delayed load needed IMO)
-		if not targetCollection[target.handle] then print("Targeted missile cannot find target... " ..  target.charName) return end
+		if not targetCollection[target.handle] then  return end
 		
 		--This missile is already added - ignore it cause something went wrong. 
 		if targetCollection[target.handle][missile.networkID] then print("Duplicate targeted missile creation: " .. missile.name) return end
@@ -562,7 +621,7 @@ function __DamageManager:OnTargetedMissileTable(missile)
 		end
 					
 		--This should not be happening. it's a sign the script isn't populating the enemy/ally collections (delayed load needed IMO)
-		if not targetCollection[target.handle] then print("Targeted missile cannot find target... " ..  target.charName) return end
+		if not targetCollection[target.handle] then return end
 		
 		--This missile is already added - ignore it cause something went wrong. 
 		if targetCollection[target.handle][missile.networkID] then print("Duplicate targeted missile creation: " .. missile.name) return end
@@ -829,6 +888,46 @@ _G.Alpha.ItemManager = ItemManager
 BuffManager = __BuffManager()
 _G.Alpha.BuffManager = BuffManager
 
+
+local _ballPosition = nil
+
+LocalCallbackAdd('Draw', function()
+	if _ballPosition then
+		Draw.Circle(_ballPosition,200, 15)
+	end
+	
+    for i = 0, myHero.buffCount do
+      if myHero:GetBuff(i).count > 0 then	  
+        local buff = myHero:GetBuff(i)
+		if buff.duration > 0 then
+			print(buff.name)
+		end
+	end
+	end
+	
+end)
 ObjectManager:OnBlink(function(args) print(args.charName .. " used a blink!") end)
---_G.Alpha.ObjectManager:OnMissileCreate(function(args) print("Missile: " .. args.data.name .. " Created") end)
---_G.Alpha.ObjectManager:OnMissileDestroy(function(args) print("Missile: " .. args.data.name .. " Destroyed") end)
+
+
+local BallNames = 
+{
+	--Ball name on ground: Add to list if it changes with skins. Requires testing :D
+	"Orianna_Base_Q_yomu_ring_green",
+}
+
+--Sanity check: 
+	--If buff orianaghostself is on us, the ball is on us
+
+
+local _groundBallName = 
+_G.Alpha.ObjectManager:OnParticleCreate(function(args)
+	print(args.name .. " Created")
+	if table.contains(BallNames, args.name) then
+		_ballPosition = args.pos 
+	end
+end)
+_G.Alpha.ObjectManager:OnParticleDestroy(function(args)
+	if table.contains(BallNames, args.name) then
+		_ballPosition = nil
+	end
+end)
