@@ -1,51 +1,3 @@
-ObjectManager = __ObjectManager()
-
---Sanity check: 
-	--If buff orianaghostself is on us, the ball is on us
-	--If buff xxxx??xxxx is on ally then its attached to them (look it up!)
-
-local BallNames = 
-{
-	--Ball name on ground: Add to list if it changes with skins. Requires testing :D
-	"Orianna_Base_Q_yomu_ring_green",
-}
-
-local BallPosition = nil
-
-
---This will trigger every time a particle is created
-ObjectManager:OnParticleCreate(function(args)
-	--Match up the name: NOTE IT MAY CHANGE WITH SKIN USED... 
-	if table.contains(BallNames, args.name) then
-		BallPosition = args.pos 
-	end
-end)
-
---This will trigger every time a particle in the game is destroyed
-ObjectManager:OnParticleDestroy(function(args)	
-	if table.contains(BallNames, args.name) then
-		BallPosition = nil
-	end
-end)
-
-Callback.Add('Draw', function()
-	if _ballPosition then
-		Draw.Circle(_ballPosition,200, 15)
-	end
-	
-    for i = 0, myHero.buffCount do
-      if myHero:GetBuff(i).count > 0 then	  
-        local buff = myHero:GetBuff(i)
-		if buff.duration > 0 then
-			print(buff.name)
-		end
-	end
-	end
-	
-end)
-
-
-
 --This is all just begining of the manager code, you should move to the official library once it's done and released for best reliability.
 --Feel free to test out the OnBlink callback to find enemies who are using flashes and stuff ;)
 
@@ -257,3 +209,42 @@ function __ObjectManager:GetObjectByHandle(handle)
 		end
 	end
 end
+
+
+
+--This is the ori script
+ObjectManager = __ObjectManager()
+
+--Sanity check: 
+	--If buff orianaghostself is on us, the ball is on us
+	--If buff xxxx??xxxx is on ally then its attached to them (look it up!)
+
+local BallNames = 
+{
+	--Ball name on ground: Add to list if it changes with skins. Requires testing :D
+	"Orianna_Base_Q_yomu_ring_green",
+}
+
+local BallPosition = nil
+
+
+--This will trigger every time a particle is created
+ObjectManager:OnParticleCreate(function(args)
+	--Match up the name: NOTE IT MAY CHANGE WITH SKIN USED... 
+	if table.contains(BallNames, args.name) then
+		BallPosition = args.pos 
+	end
+end)
+
+--This will trigger every time a particle in the game is destroyed
+ObjectManager:OnParticleDestroy(function(args)	
+	if table.contains(BallNames, args.name) then
+		BallPosition = nil
+	end
+end)
+
+Callback.Add('Draw', function()
+	if BallPosition then
+		Draw.Circle(BallPosition,200, 15)
+	end	
+end)
