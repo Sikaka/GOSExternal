@@ -61,16 +61,46 @@
 
 
 class "HPred"
-
 local _atan = math.atan2
 local _pi = math.pi
-local _max = math.max
 local _min = math.min
 local _abs = math.abs
 local _sqrt = math.sqrt
+local _huge = math.huge
+local _insert = table.insert
+local _sort = table.sort
 local _find = string.find
 local _sub = string.sub
 local _len = string.len
+
+local LocalDrawLine					= Draw.Line;
+local LocalDrawColor				= Draw.Color;
+local LocalDrawCircle				= Draw.Circle;
+local LocalDrawText					= Draw.Text;
+local LocalControlIsKeyDown			= Control.IsKeyDown;
+local LocalControlMouseEvent		= Control.mouse_event;
+local LocalControlSetCursorPos		= Control.SetCursorPos;
+local LocalControlKeyUp				= Control.KeyUp;
+local LocalControlKeyDown			= Control.KeyDown;
+local LocalGameCanUseSpell			= Game.CanUseSpell;
+local LocalGameLatency				= Game.Latency;
+local LocalGameTimer				= Game.Timer;
+local LocalGameHeroCount 			= Game.HeroCount;
+local LocalGameHero 				= Game.Hero;
+local LocalGameMinionCount 			= Game.MinionCount;
+local LocalGameMinion 				= Game.Minion;
+local LocalGameTurretCount 			= Game.TurretCount;
+local LocalGameTurret 				= Game.Turret;
+local LocalGameWardCount 			= Game.WardCount;
+local LocalGameWard 				= Game.Ward;
+local LocalGameObjectCount 			= Game.ObjectCount;
+local LocalGameObject				= Game.Object;
+local LocalGameMissileCount 		= Game.MissileCount;
+local LocalGameMissile				= Game.Missile;
+local LocalGameParticleCount 		= Game.ParticleCount;
+local LocalGameParticle				= Game.Particle;
+local LocalGameIsChatOpen			= Game.IsChatOpen;
+local LocalGameIsOnTop				= Game.IsOnTop;
 	
 local _tickFrequency = .2
 local _nextTick = Game.Timer()
