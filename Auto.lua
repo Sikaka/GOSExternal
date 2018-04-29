@@ -467,7 +467,7 @@ function AutoUtil:SupportMenu(Menu)
 	---[LOCKET SETTINGS]---
 	Menu.Items:MenuElement({id = "Locket", name = "Locket", type = MENU})
 	Menu.Items.Locket:MenuElement({id = "Threshold", tooltip = "How much damage allies received in last second", name = "Ally Damage Threshold", value = 15, min = 1, max = 80, step = 1 })
-	Menu.Items.Locket:MenuElement({id="Count", tooltip = "How many allies must have been injured in last second to cast", name = "Ally Count", value = 3, min = 1, max = 5, step = 1 })
+	Menu.Items.Locket:MenuElement({id="Count", tooltip = "How many allies must have been injured in last second to cast", name = "Ally Count", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Items.Locket:MenuElement({id="Enabled", name="Enabled", value = true})
 	
 	---[CRUCIBLE SETTINGS]---
@@ -800,12 +800,12 @@ function Brand:CreateMenu()
 	
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Sear", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })
-	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 3, min = 1, max = 6, step = 1 })
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Pillar of Flame", type = MENU})
-	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })
-	Menu.Skills.W:MenuElement({id = "AccuracyAuto", name = "Auto Cast Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })
+	Menu.Skills.W:MenuElement({id = "AccuracyAuto", name = "Auto Cast Accuracy", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Auto Cast Mana", value = 30, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Conflagration", type = MENU})
@@ -819,7 +819,7 @@ function Brand:CreateMenu()
 	end
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Pyroclasm", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Count", name = "Auto Cast On Enemy Count", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Auto Cast On Enemy Count", value = 3, min = 1, max = 6, step = 1 })	
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
@@ -995,8 +995,8 @@ function Soraka:CreateMenu()
 	
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Starcall", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })
-	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Auto Cast Mana", value = 30, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Astral Infusion", type = MENU})
@@ -1029,8 +1029,8 @@ function Soraka:CreateMenu()
 		end
 	end
 	
-	Menu.Skills.R:MenuElement({id = "EmergencyCount", tooltip = "How many allies must be below 40pct for ultimate to cast", name = "Ally count below 40% HP", value = 2, min = 1, max = 5, step = 1 })
-	Menu.Skills.R:MenuElement({id = "DamageCount", tooltip = "How many allies must have been injured in last second to cast", name = "Ally count Damaged X%", value = 3, min = 1, max = 5, step = 1 })
+	Menu.Skills.R:MenuElement({id = "EmergencyCount", tooltip = "How many allies must be below 40pct for ultimate to cast", name = "Ally count below 40% HP", value = 2, min = 1, max = 6, step = 1 })
+	Menu.Skills.R:MenuElement({id = "DamageCount", tooltip = "How many allies must have been injured in last second to cast", name = "Ally count Damaged X%", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Skills.R:MenuElement({id = "DamagePercent", tooltip = "How much damage allies received in last second", name = "Ally Damage Threshold", value = 40, min = 1, max = 80, step = 1 })
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
@@ -1211,8 +1211,8 @@ function Zilean:CreateMenu()
 	end
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Timb Bomb", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })
-	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 3, min = 1, max = 5, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Auto Cast Mana", value = 30, min = 1, max = 100, step = 5 })
 	Menu.Skills.Q:MenuElement({id = "Targets", name = "Targets", type = MENU})
 	for i = 1, LocalGameHeroCount() do
@@ -1408,7 +1408,7 @@ function Nami:CreateMenu()
 	end
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Aqua Prison", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Bubble Immobile Targets", value = true, toggle = true })	
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Ebb and Flow", type = MENU})
@@ -1549,20 +1549,20 @@ function Lux:CreateMenu()
 		
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Light Binding", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })	
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Prismatic Barrier", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
-	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 50, step = 5 })
-	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 1, min = 1, max = 5, step = 1 })
+	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 60, step = 5 })
+	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 1, min = 1, max = 6, step = 1 })
 		
 	Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1 })	
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 		
 	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})	
-	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", tooltip = "How many targets we need to be able to hit to auto cast", value = 2, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", tooltip = "How many targets we need to be able to hit to auto cast", value = 2, min = 1, max = 6, step = 1 })	
 	Menu.Skills.R:MenuElement({id = "Killsteal", name = "Auto Killsteal", value = true, toggle = true })
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast On Target Count", value = true, toggle = true })	
 	Menu.Skills.R:MenuElement({id = "Targets", name = "Auto Targets", type = MENU})	
@@ -1791,7 +1791,7 @@ function Blitzcrank:CreateMenu()
 	end
 	Menu.Skills.Q:MenuElement({id = "Immobile", name = "Auto Hook Immobile", value = true})
 	Menu.Skills.Q:MenuElement({id = "Range", name = "Minimum Auto Hook Range", value = 300, min = 900, max = 100, step = 50})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "E", name = "[E] Power Fist", type = MENU})
@@ -1799,7 +1799,7 @@ function Blitzcrank:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Static Field", type = MENU})
 	Menu.Skills.R:MenuElement({id = "KS", name = "Secure Kills", value = true})
-	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.R:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })	
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
@@ -1937,7 +1937,7 @@ function Lulu:CreateMenu()
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Glitterlance", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Immobile", name = "Cast On Immobile", value = true})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 		
 	Menu.Skills:MenuElement({id = "W", name = "[E] Whimsy", type = MENU})
 	
@@ -1985,7 +1985,7 @@ function Lulu:CreateMenu()
 		end
 	end
 	Menu.Skills.R:MenuElement({id = "Life", name = "Current Percent Life", value = 25, min = 0, max = 100, step = 5 })
-	Menu.Skills.R:MenuElement({id = "Damage", name = "Recent Damage Received", value = 25, min = 5, max = 50, step = 5 })
+	Menu.Skills.R:MenuElement({id = "Damage", name = "Recent Damage Received", value = 25, min = 5, max = 60, step = 5 })
 	
 	
 	Menu.Skills.R:MenuElement({id = "KnockupTargets", name = "Ally Knockup List", type = MENU})
@@ -1995,7 +1995,7 @@ function Lulu:CreateMenu()
 			Menu.Skills.R.KnockupTargets:MenuElement({id = hero.charName, name = hero.charName, value = true, toggle = true})
 		end
 	end
-	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 2, min = 1, max = 5, step = 1 })		
+	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 2, min = 1, max = 6, step = 1 })		
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
 end
@@ -2412,8 +2412,8 @@ function Karthus:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Lay Waste", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
-	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 4, min = 1, max = 5, step = 1})
-	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 4, min = 1, max = 6, step = 1})
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	Menu.Skills.Q:MenuElement({id = "FarmMana", name = "Farm Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
@@ -2668,7 +2668,7 @@ function Illaoi:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Tentacle Smash", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Harsh Lesson", type = MENU})
@@ -2678,11 +2678,11 @@ function Illaoi:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Test of Spirit", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })	
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Leap of Faith", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.R:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
@@ -2813,17 +2813,17 @@ function Taliyah:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Threaded Volley", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Seismic Shove", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
-	Menu.Skills.W:MenuElement({id = "PeelRange", name = "Push Range", value = 300, min = 100, max = 500, step = 50 })
-	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Peel Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.W:MenuElement({id = "PeelRange", name = "Push Range", value = 300, min = 100, max = 600, step = 50 })
+	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Peel Accuracy", value = 3, min = 1, max = 6, step = 1})
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Unraveled Earth", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })		
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
@@ -2958,7 +2958,7 @@ function Kalista:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Pierce", type = MENU})
 	--Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Harass Through Minions", value = true})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "E", name = "[E] Rend", type = MENU})
@@ -3050,13 +3050,13 @@ function Cassiopeia:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Noxious Blast", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile", value = true})	
-	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 4, min = 1, max = 5, step = 1})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto Accuracy", value = 4, min = 1, max = 6, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Miasma", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast On Immobile", value = true})
-	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Twin Fang", type = MENU})
@@ -3074,7 +3074,7 @@ function Cassiopeia:CreateMenu()
 		end
 	end	
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Ult", value = false})	
-	Menu.Skills.R:MenuElement({id = "Count", name = "Ult on # of enemies", value = 2, min = 1, max = 5, step = 1 })	
+	Menu.Skills.R:MenuElement({id = "Count", name = "Ult on # of enemies", value = 2, min = 1, max = 6, step = 1 })	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
 end
 
@@ -3314,7 +3314,7 @@ function Azir:CreateMenu()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "~~COMING SOON~~", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Emperor's Divide", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Count", name = "Ult Count", value = 2, min = 1, max = 5, step = 1 })
+	Menu.Skills.R:MenuElement({id = "Count", name = "Ult Count", value = 2, min = 1, max = 6, step = 1 })
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
 end
@@ -3468,7 +3468,7 @@ function Thresh:CreateMenu()
 		end
 	end
 	Menu.Skills.Q:MenuElement({id = "Immobile", name = "Auto Hook Immobile", value = true})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Dark Passage", type = MENU})
@@ -3484,12 +3484,12 @@ function Thresh:CreateMenu()
 			Menu.Skills.E.Targets:MenuElement({id = hero.charName, name = hero.charName, value = true })
 		end
 	end
-	Menu.Skills.E:MenuElement({id = "PeelRange", name = "Auto Peel Range", value = 300, min = 100, max = 500, step = 50 })	
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 5, step = 1})
+	Menu.Skills.E:MenuElement({id = "PeelRange", name = "Auto Peel Range", value = 300, min = 100, max = 600, step = 50 })	
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 6, step = 1})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] The Box", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 5, step = 1})
+	Menu.Skills.R:MenuElement({id = "Count", name = "Target Count", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.R:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })	
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
@@ -3666,7 +3666,7 @@ function AurelionSol:CreateMenu()
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Starsurge", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })
 	Menu.Skills.Q:MenuElement({id = "Detonate", name = "Auto Detonate", value = true })
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 6, step =1 })
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Celestial Expansion", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Toggle", value = true })
@@ -3676,7 +3676,7 @@ function AurelionSol:CreateMenu()
 	Menu.Skills:MenuElement({id = "R", name = "[R] Voice of Light", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Killsteal", name = "Killsteal", value = true })
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Peel", value = true })
-	Menu.Skills.R:MenuElement({id = "Radius", name = "Auto Peel Radius", value = 300, min = 100, max = 500, step = 25 })
+	Menu.Skills.R:MenuElement({id = "Radius", name = "Auto Peel Radius", value = 300, min = 100, max = 600, step = 25 })
 	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
@@ -3837,23 +3837,23 @@ function Xerath:CreateMenu()
 	end
 	
 	Menu.Skills.Q:MenuElement({id = "AutoRelease", name = "Auto Release", value = true })
-	Menu.Skills.Q:MenuElement({id = "AccuracyMin", name = "Release Accuracy", value = 3, min = 1, max = 5, step =1 })	
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyMin", name = "Release Accuracy", value = 3, min = 1, max = 6, step =1 })	
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step =1 })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "W", name = "[W] Eye of Destruction", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })
-	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step =1 })
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Shocking Orb", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true })	
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 4, min = 1, max = 5, step =1 })
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 4, min = 1, max = 6, step =1 })
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Rite of the Arcane", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Forced", name = "Sticky Targeting", value = true })
-	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 5, step =1 })
+	Menu.Skills.R:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 6, step =1 })
 	Menu.Skills.R:MenuElement({id = "Speed", name = "Cast Speed", value = 1, min = .1, max = 3, step =.1 })
 	Menu.Skills.R:MenuElement({id = "Spread", name = "Cast Randomization", value = .25, min = .05, max = 1, step =.05 })
 	
@@ -4461,9 +4461,9 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 			pathVector = pathVector:Normalized()
 			if pathVector:DotProduct(castVector) < -.85 or pathVector:DotProduct(castVector) > .85 then
 				if speed > 3000 then
-					reactionTime = reactionTime + .25
+					reactionTime = reactionTime + .2
 				else
-					reactionTime = reactionTime + .15
+					reactionTime = reactionTime + .10
 				end
 			end
 		end
@@ -4471,9 +4471,8 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 
 	--If they are standing still give a higher accuracy because they have to take actions to react to it
 	if not target.pathing or not target.pathing.hasMovePath then
-		hitChancevisionData = 2
-	end	
-	
+		hitChance = 2
+	end
 	
 	local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
 	--Our spell is so wide or the target so slow or their reaction time is such that the spell will be nearly impossible to avoid
@@ -4490,7 +4489,7 @@ function HPred:GetHitchance(source, target, range, delay, speed, radius, checkCo
 	--Ideally we would predict where they will go AFTER the spell finishes but that's beyond the scope of this prediction
 	if target.activeSpell and target.activeSpell.valid then
 		if target.activeSpell.startTime + target.activeSpell.windup - Game.Timer() >= delay then
-			hitChance = 5
+			hitChance = 4
 		else			
 			hitChance = 3
 		end

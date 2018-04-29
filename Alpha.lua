@@ -132,12 +132,12 @@ function __ObjectManager:__init()
 	self.CachedMissiles = {}	
 	self.OnMissileCreateCallbacks = {}
 	self.OnMissileDestroyCallbacks = {}
-	self.OnBlinkCallbacks = {}
 	
 	self.CachedParticles = {}
 	self.OnParticleCreateCallbacks = {}
 	self.OnParticleDestroyCallbacks = {}
 	
+	self.OnBlinkCallbacks = {}	
 	self.BlinkParticleLookupTable = 
 	{
 		"global_ss_flash_02.troy",
@@ -145,6 +145,9 @@ function __ObjectManager:__init()
 		"LeBlanc_Base_W_return_activation.troy",
 		"Zed_Base_CloneSwap",
 	}
+	
+	self.CachedSpells = {}
+	self.OnSpellCastCallbacks = {}
 end
 
 --Register Missile Create Event
@@ -195,7 +198,7 @@ function __ObjectManager:ParticleDestroyed(particle)
 	end
 end
 
---RegisterOn Blink Event
+--Register On Blink Event
 function __ObjectManager:OnBlink(cb)
 	--If there are no on particle callbacks we need to add one or it might never run!
 	if #self.OnBlinkCallbacks == 0 then		
@@ -211,9 +214,39 @@ function __ObjectManager:Blinked(target)
 	end
 end
 
+--Register On Spell Cast Event
+function __ObjectManager:OnSpellCast(cb)
+	LocalInsert(ObjectManager.OnSpellCastCallbacks, cb)
+end
+
+--Trigger Spell Cast Event
+function __ObjectManager:SpellCast(data)
+	for i = 1, #self.OnSpellCastCallbacks do
+		self.OnSpellCastCallbacks[i](data);
+	end
+end
+
 
 --Search for changes in particle or missiles in game. trigger the appropriate events.
 function __ObjectManager:Tick()
+	if #self.OnSpellCastCallbacks > 0 then
+		for i = 1, LocalGameHeroCount() do
+			local target = LocalGameHero(i)
+			if target and LocalType(target) == "userdata" then
+				
+				if target.activeSpell and target.activeSpell.valid then
+					if not self.CachedSpells[target.networkID] then
+						local spellData = {owner = target.networkID, data = target.activeSpell, windupEnd = target.activeSpell.startTime + target.activeSpell.windup}
+						self.CachedSpells[target.networkID] =spellData
+						self:SpellCast(spellData)
+					end
+				elseif self.CachedSpells[target.networkID] then
+					self.CachedSpells[target.networkID] = nil
+				end
+			end
+		end
+	end
+
 	--Cache Particles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if #self.OnParticleCreateCallbacks > 0 or #self.OnParticleDestroyCallbacks > 0 then
 		for _, particle in LocalPairs(self.CachedParticles) do
@@ -888,46 +921,5 @@ _G.Alpha.ItemManager = ItemManager
 BuffManager = __BuffManager()
 _G.Alpha.BuffManager = BuffManager
 
-
-local _ballPosition = nil
-
-LocalCallbackAdd('Draw', function()
-	if _ballPosition then
-		Draw.Circle(_ballPosition,200, 15)
-	end
-	
-    for i = 0, myHero.buffCount do
-      if myHero:GetBuff(i).count > 0 then	  
-        local buff = myHero:GetBuff(i)
-		if buff.duration > 0 then
-			print(buff.name)
-		end
-	end
-	end
-	
-end)
 ObjectManager:OnBlink(function(args) print(args.charName .. " used a blink!") end)
-
-
-local BallNames = 
-{
-	--Ball name on ground: Add to list if it changes with skins. Requires testing :D
-	"Orianna_Base_Q_yomu_ring_green",
-}
-
---Sanity check: 
-	--If buff orianaghostself is on us, the ball is on us
-
-
-local _groundBallName = 
-_G.Alpha.ObjectManager:OnParticleCreate(function(args)
-	print(args.name .. " Created")
-	if table.contains(BallNames, args.name) then
-		_ballPosition = args.pos 
-	end
-end)
-_G.Alpha.ObjectManager:OnParticleDestroy(function(args)
-	if table.contains(BallNames, args.name) then
-		_ballPosition = nil
-	end
-end)
+ObjectManager:OnSpellCast(function(args) print(args.data.name .. " cast!") end)
