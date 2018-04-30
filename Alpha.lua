@@ -1181,8 +1181,141 @@ function __DamageManager:__init()
 			APScaling = .2,
 			ADScaling = .45,
 			Danger = 1,
-		},		
+		},
 		
+		
+		--[DARIUS SKILLS]--
+		["DariusCleave"] = 
+		{
+			HeroName = "Darius",
+			SpellName = "Decimate",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 425,
+			Damage = {40,70,100,130,160},
+			ADSCaling = 1.2,
+			Danger = 2,
+		},
+		["DariusNoxianTacticsONH"] = 
+		{
+			HeroName = "Darius",
+			SpellName = "Crippling Strike",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {0,0,0,0,0},--Gives bonus ADScaling, not bonus dmg
+			ADSCaling = .5,
+			Danger = 2,
+		},
+		["DariusAxeGrabCone"] = 
+		{
+			HeroName = "Darius",
+			SpellName = "Apprehend",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_ARC,
+			Danger = 4,
+			CCType = BUFF_STUN,
+		},
+		["DariusExecute"] = 
+		{
+			HeroName = "Darius",
+			SpellName = "Noxian Guillotine",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {100,200,300},
+			--Could do custom damage for this. Increase dmg based on hemorage count
+			ADSCaling = .75,
+			Danger = 4,
+		},
+		
+		--[DIANA SKILLS]--
+		["DianaArc"] = 
+		{
+			HeroName = "Diana",
+			SpellName = "Crescent Strike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 205,
+			Damage = {60,95,130,165,200},
+			APScaling = 0.7,
+			Danger = 2,
+		},
+		
+		--Diana W is a buff: Don't include
+		
+		["DianaVortex"] = 
+		{
+			HeroName = "Diana",
+			SpellName = "Moonfall",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 450,
+			Danger = 3,
+			CCType = BUFF_SLOW,
+		},
+		
+		--Diana R is not an active spell/missile: Don't include
+		
+		
+		--[DRMUNDO SKILLS]--
+		["InfectedCleaverMissileCast"] = 
+		{
+			HeroName = "DrMundo",
+			SpellName = "Infected Cleaver",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "InfectedCleaverMissile",
+			Collision = 1,
+			CurrentHealth = .25,
+			--Could do levels, For now leave it
+			--{.15, .175, .20, .225, .25}
+			Danger = 2,
+		},
+		
+		--[DRAVEN SKILLS]--
+		["DravenSpinning"] = 
+		{
+			HeroName = "Draven",
+			SpellName = "Spinning Axe",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			MissileName = "DravenSpinningAttack",
+			Damage = {35,40,45,50,55},
+			ADScaling = {.65,.75,.85,.95,1.05},
+			Danger = 1,
+		},
+		["DravenDoubleShot"] = 
+		{
+			HeroName = "Draven",
+			SpellName = "Infected Cleaver",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "DravenDoubleShotMissile",
+			Damage = {75,110,145,180,215},
+			ADScaling = .5,
+			Danger = 3,
+			CCType = STATUS_KNOCKBACK,
+		},
+		["DravenRCast"] = 
+		{
+			HeroName = "Draven",
+			SpellName = "Infected Cleaver",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "DravenR",
+			Damage = {175,275,375},
+			ADScaling = 1,
+			Danger = 3,
+		},
 		
 		
 		--[MORGANA SKILLS]--
@@ -1396,7 +1529,7 @@ function __DamageManager:MissileCreated(missile)
 			self:OnUntargetedMissileTable(missile)
 		end
 	else
-		--print("Unhandled missile: " .. missile.name)
+		print("Unhandled missile: " .. missile.name)
 	end
 end
 
@@ -1469,11 +1602,10 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			--TODO: Make sure this handles nil values like a champ
 			damage = skillInfo.Damage[owner:GetSpellData(skillInfo.SpellSlot).level] + 
 			(skillInfo.APScaling and skillInfo.APScaling * owner.ap or 0) +
-			(skillInfo.ADScaling and skillInfo.ADScaling * owner.totalDamage or 0) + 
+			(skillInfo.ADScaling and (LocalType(skillInfo.ADScaling) == "table" and skillInfo.ADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.ADScaling) * owner.totalDamage or 0) + 
 			(skillInfo.CurrentHealth and target.health * skillInfo.CurrentHealth or 0) + 
 			(skillInfo.CurrentHealthAPScaling and target.health * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0)
-		end
-					
+		end		
 		if skillInfo.DamageType == DAMAGE_TYPE_MAGICAL then
 			damage = self:CalculateMagicDamage(owner, target, damage)
 		elseif skillInfo.DamageType == DAMAGE_TYPE_PHYSICAL then
