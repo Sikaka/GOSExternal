@@ -345,8 +345,7 @@ function __ObjectManager:Tick()
 	if #self.OnSpellCastCallbacks > 0 then
 		for i = 1, LocalGameHeroCount() do
 			local target = LocalGameHero(i)
-			if target and LocalType(target) == "userdata" then				
-    
+			if target and LocalType(target) == "userdata" then    
 				if target.activeSpell and target.activeSpell.valid then
 					if not self.CachedSpells[target.networkID] or self.CachedSpells[target.networkID].name ~= target.activeSpell.name then
 						local spellData = {owner = target.networkID, handle = target.handle, name = target.activeSpell.name, data = target.activeSpell, windupEnd = target.activeSpell.startTime + target.activeSpell.windup}
@@ -1317,6 +1316,51 @@ function __DamageManager:__init()
 		},
 		
 		
+		--[LUX SKILLS]--
+		["LuxLightBinding"] = 
+		{
+			HeroName = "Lux",
+			SpellName = "Light Binding",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "LuxLightBindingMis",
+			Radius = 60,
+			Damage = {50,100,150,200,250},
+			APScaling = .7,
+			Danger = 3,
+			CCType = BUFF_ROOT
+		},
+		
+		
+		["LuxLightStrikeKugel"] = 
+		{
+			HeroName = "Lux",
+			SpellName = "Lucent Singularity",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 350,
+			Damage = {60,105,150,195,240},
+			APScaling = .6,
+			Danger = 2,
+			CCType = BUFF_SLOW
+		},
+		
+		["LuxMaliceCannon"] = 
+		{
+			Alias = "LuxMaliceCannonMis",
+			HeroName = "Lux",
+			SpellName = "Final Spark",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 115,
+			Damage = {300,400,500},
+			APScaling = .75,
+			Danger = 5,
+		},
+		
 		--[MORGANA SKILLS]--
 		["DarkBindingMissile"] = 
 		{
@@ -1371,7 +1415,8 @@ function __DamageManager:__init()
 			if spellName == "BaseSpell" then
 			
 			elseif self.MasterSkillLookupTable[spellName] then
-				local spellData = self.MasterSkillLookupTable[spellName]			
+				local spellData = self.MasterSkillLookupTable[spellName]
+				if spellData.Alias then spellName = spellData.Alias end
 				if spellData.MissileName then
 					if LocalType(spellData.MissileName) == "table" then						
 						for i = 1, #spellData.MissileName do
@@ -1528,7 +1573,7 @@ function __DamageManager:MissileCreated(missile)
 			self:OnUntargetedMissileTable(missile)
 		end
 	else
-		print("Unhandled missile: " .. missile.name)
+		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width)
 	end
 end
 
