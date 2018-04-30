@@ -43,6 +43,7 @@ local DAMAGE_TYPE_PHYSICAL			= 1
 local DAMAGE_TYPE_MAGICAL 			= 2
 
 
+
 local BUFF_STUN						= 5
 local BUFF_SILENCE					= 7
 local BUFF_TAUNT					= 8
@@ -56,6 +57,8 @@ local BUFF_BLIND					= 25
 local BUFF_KNOCKUP					= 29
 local BUFF_KNOCKBACK				= 30
 local BUFF_DISARM					= 31
+
+
 
 local TARGET_TYPE_SINGLE			= 0
 local TARGET_TYPE_LINE				= 1
@@ -124,6 +127,111 @@ function __Geometry:IsInRange(p1, p2, range)
 		return false
 	end
 	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
+end
+
+function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision)
+	local hitChance = 1
+	if not self:IsInRange(source.pos, target.pos, range) then hitChance = -1 end
+	if hitChance > 0 then
+		local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed)	
+		local interceptTime = self:GetSpellInterceptTime(source.pos, aimPosition, delay, speed)
+		
+		if not target.pathing or not target.pathing.hasMovePath then
+			hitChance = 2
+		end
+		
+		--Leaving all the stun/slow/dash logic out for now. Not important
+	
+		if checkCollision then
+			if self:CheckMinionCollision(source.pos, aimPosition, delay, speed, radius) then
+				hitChance = -1
+			end
+		end
+	end
+	
+	return aimPosition, hitChance	
+end
+
+function __Geometry:GetSpellInterceptTime(startPos, endPos, delay, speed)	
+	local interceptTime = Game.Latency()/2000 + delay + self:GetDistance(startPos, endPos) / speed
+	return interceptTime
+end
+
+function __Geometry:CheckMinionCollision(origin, endPos, delay, speed, radius, frequency)
+		
+	if not frequency then
+		frequency = radius
+	end
+	local directionVector = (endPos - origin):Normalized()
+	local checkCount = self:GetDistance(origin, endPos) / frequency
+	for i = 1, checkCount do
+		local checkPosition = origin + directionVector * i * frequency
+		local checkDelay = delay + self:GetDistance(origin, checkPosition) / speed
+		if self:IsMinionIntersection(checkPosition, radius, checkDelay, radius * 3) then
+			return true
+		end
+	end
+	return false
+end
+
+function __Geometry:IsMinionIntersection(location, radius, delay, maxDistance)
+	if not maxDistance then
+		maxDistance = 500
+	end
+	for i = 1, LocalGameMinionCount() do
+		local minion = LocalGameMinion(i)
+		if minion and self:CanTarget(minion) and self:IsInRange(minion.pos, location, maxDistance) then
+			local predictedPosition = self:PredictUnitPosition(minion, delay)
+			if self:IsInRange(location, predictedPosition, radius + minion.boundingRadius) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function __Geometry:CanTarget(target, allowInvisible)
+	return target.isEnemy and target.alive and target.health > 0 and target.visible and target.isTargetable
+end
+
+--Returns where the unit will be when the delay has passed given current pathing information. This assumes the target makes NO CHANGES during the delay.
+function __Geometry:PredictUnitPosition(unit, delay)
+	local predictedPosition = unit.pos
+	local timeRemaining = delay
+	local pathNodes = self:GetPathNodes(unit)
+	for i = 1, #pathNodes -1 do
+		local nodeDistance = self:GetDistance(pathNodes[i], pathNodes[i +1])
+		local nodeTraversalTime = nodeDistance / self:GetTargetMS(unit)
+			
+		if timeRemaining > nodeTraversalTime then
+			--This node of the path will be completed before the delay has finished. Move on to the next node if one remains
+			timeRemaining =  timeRemaining - nodeTraversalTime
+			predictedPosition = pathNodes[i + 1]
+		else
+			local directionVector = (pathNodes[i+1] - pathNodes[i]):Normalized()
+			predictedPosition = pathNodes[i] + directionVector *  self:GetTargetMS(unit) * timeRemaining
+			break;
+		end
+	end
+	return predictedPosition
+end
+
+--Returns all existing path nodes
+function __Geometry:GetPathNodes(unit)
+	local nodes = {}
+	LocalInsert(nodes, unit.pos)
+	if unit.pathing.hasMovePath then
+		for i = unit.pathing.pathIndex, unit.pathing.pathCount do
+			path = unit:GetPath(i)
+			LocalInsert(nodes, path)
+		end
+	end		
+	return nodes
+end
+
+function __Geometry:GetTargetMS(target)
+	local ms = target.pathing.isDashing and target.pathing.dashSpeed or target.ms
+	return ms
 end
 
 
@@ -357,6 +465,9 @@ end
 class "__DamageManager"
 --Credits LazyXerath for extra dmg reduction methods
 function __DamageManager:__init()
+
+
+	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true"}
 	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
 	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)
 	
@@ -1285,7 +1396,7 @@ function __DamageManager:MissileCreated(missile)
 			self:OnUntargetedMissileTable(missile)
 		end
 	else
-		print("Unhandled missile: " .. missile.name)
+		--print("Unhandled missile: " .. missile.name)
 	end
 end
 

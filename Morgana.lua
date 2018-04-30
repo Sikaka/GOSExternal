@@ -26,14 +26,16 @@ function EnemyCount(origin, range)
 end
 
 
-Q = {	Range = 1175,	Width = 60,	Delay = 0.25,	Speed = 1200,	Collision = true	}
-W = {	Range = 900,	Width = 325,	Delay = 0.25,	Speed = math.huge	}
+Q = {	Range = 1175,	Radius = 60,	Delay = 0.25,	Speed = 1200,	Collision = true	}
+W = {	Range = 900,	Radius = 325,	Delay = 0.25,	Speed = math.huge	}
 E = {	Range = 800,	Delay = 0.25,	Speed = math.huge	}
 R = {	Range = 625,	Delay = 0.25,	Speed = math.huge	}
 
 Menu = MenuElement({type = MENU, id = myHero.networkID, name = "Morgana Test Script"})
 Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 Menu.Skills:MenuElement({id = "Q", name = "[Q] Dark Binding", type = MENU})
+Menu.Skills.Q:MenuElement({id = "UseOnBlinks", name = "Auto Cast on Flash", value = true, toggle = true})
+Menu.Skills.Q:MenuElement({id = "UseOnCC", name = "Auto Cast on CC", value = true, toggle = true})
 --Prediction library is not yet part of alpha. Would have to rely on Hpred for it currently. lets leave it out for now.
 
 Menu.Skills:MenuElement({id = "W", name = "[W] Tormented Soil", type = MENU})
@@ -49,19 +51,36 @@ for i = 1, Game.HeroCount() do
 	end
 end
 
+	print ()
+
 Menu.Skills:MenuElement({id = "R", name = "[R] Soul Shackles", type = MENU})
 
-_G.Alpha.DamageManager:OnIncomingCC(function(target, damage, ccType) OnIncomingCC(target, damage, ccType) end)
+_G.Alpha.ObjectManager:OnBlink(function(target) 
+	if target.isEnemy and Ready(_Q) and Menu.Skills.Q.UseOnBlinks:Value() and _G.Alpha.Geometry:IsInRange(myHero.pos, target.pos, Q.Range) then
+		local castPosition, accuracy = _G.Alpha.Geometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision)
+		if accuracy > 0 then
+			Control.CastSpell(HK_Q, target.pos)
+		end	
+	end
+end)
 
-
-function OnIncomingCC(target, damage, ccType)
-	--We would want a list of types of cc we want to use these on. Right now this will auto cast even if its just a silence.
-	if target.isEnemy then
+_G.Alpha.DamageManager:OnIncomingCC(function(target, damage, ccType)
+	--Only auto cast if the CC type is something that will immobilize the target. Later I would suggest just using a hitchance calc for prediction so we can target things like fear/charm/slow/etc
+	if target.isEnemy and _G.Alpha.DamageManager.IMMOBILE_TYPES[ccType] then
+		if Ready(_Q) and Menu.Skills.Q.UseOnCC:Value() and _G.Alpha.Geometry:IsInRange(myHero.pos, target.pos, Q.Range) then
+			local castPosition, accuracy = _G.Alpha.Geometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision)
+			if accuracy > 0 then
+				Control.CastSpell(HK_Q, target.pos)
+			end
+		end
 		if  Ready(_W) and Menu.Skills.W.UseOnCC:Value() and _G.Alpha.Geometry:IsInRange(myHero.pos, target.pos, W.Range) then
 			Control.CastSpell(HK_W, target.pos)
 		end
-	end	
-	if target.isAlly and Ready(_E) and Menu.Skills.E.Targets[target.networkID] and Menu.Skills.E.Targets[target.networkID]:Value() > CurrentPctLife(target) and _G.Alpha.Geometry:IsInRange(myHero.pos, target.pos, E.Range) then
+	end
+	
+	--Calculate the damage they would be AFTER the spell hits instead
+	--TODO: Send total incoming damage so we can make better decisions about to evade/shield or not
+	if target.isAlly and Ready(_E) and Menu.Skills.E.Targets[target.networkID] and Menu.Skills.E.Targets[target.networkID]:Value() > (target.health-damage)/target.maxHealth  * 100 and _G.Alpha.Geometry:IsInRange(myHero.pos, target.pos, E.Range) then
 		Control.CastSpell(HK_E, target.pos)
 	end
-end
+ end)
