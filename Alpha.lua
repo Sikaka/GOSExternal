@@ -776,7 +776,7 @@ function __DamageManager:__init()
 			HeroName = "Annie", 
 			SpellSlot = _W,
 			DamageType = DAMAGE_TYPE_MAGICAL,
-			TargetType = TARGET_TYPE_ARC,						
+			TargetType = TARGET_TYPE_ARC,
 			Damage = {70,115,160,205,250},
 			APScaling = .85,
 			Danger = 3,
@@ -1315,6 +1315,218 @@ function __DamageManager:__init()
 			Danger = 3,
 		},
 		
+		--[EKKO SKILLS]--
+		["EkkoQ"] = 
+		{
+			HeroName = "Ekko",
+			SpellName = "Timewinder",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "EkkoQMis",
+			Damage = {60,75,90,105,120},
+			APScaling = .3,
+			Danger = 2,
+		},
+		["EkkoW"] = 
+		{
+			HeroName = "Ekko",
+			SpellName = "Parallel Convergence",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName = "EkkoWMis",
+			Radius = 400,
+			Danger = 3,
+			CCType = STATUS_SLOW,
+		},
+		["EkkoR"] = 
+		{
+			HeroName = "Ekko",
+			SpellName = "Chronobreak",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 375,
+			Damage = {150,300,450},
+			APScaling = 1.5,
+			Danger = 3,
+		},
+		
+		--[ELISE SKILLS]--
+		["EliseHumanQ"] = 
+		{
+			--Only active skillset on load are monitored so this gives us a way to reference skills from our other form. Each needs to reference the other.
+			Alternate = {"EliseSpiderQCast"},
+			HeroName = "Elise",
+			SpellName = "Neurotoxin",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			MissileName = "EliseHumanQ",
+			Damage = {40,75,110,145,180},
+			CurrentHealth = .04,
+			CurrentHealthAPScaling = .03,
+			Danger = 2,
+		},
+		["EliseSpiderQCast"] = 
+		{
+			--Only active skillset on load are monitored so this gives us a way to reference skills from our other form. Each needs to reference the other.
+			HeroName = "Elise",
+			SpellName = "Venomous Bite",
+			Alternate = {"EliseHumanQ"},
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {70,110,150,190,230},
+			MissingHealth = .08,
+			MissingHealthAPScaling = .03,
+			Danger = 2,
+		},
+		["EliseSpiderEInitial"] = 
+		{
+			HeroName = "Elise",
+			SpellName = "Wrapper",
+			Alternate = {"EliseHumanE"},
+			SpellSlot = _E,
+		},
+		["EliseHumanE"] = 
+		{
+			HeroName = "Elise",
+			SpellName = "Cocoon",
+			SpellSlot = _E,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 55,
+			MissileName = "EliseHumanE",
+			Danger = 3,
+			CCType = STATUS_STUN,
+		},
+		
+		--[EVELYNN SKILLS]--
+		["EvelynnQ"] = 
+		{
+			HeroName = "Evelynn",
+			SpellName = "Hate Spike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 90,
+			MissileName = "EvelynnQ",
+			Damage = {25,30,35,40,45},
+			APScaling = .3,
+			Danger = 1,
+		},
+		["EvelynnW"] = 
+		{
+			HeroName = "Evelynn",
+			SpellName = "Allure",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Danger = 3,			
+			CCType = STATUS_SLOW,
+		},
+		["EvelynnE"] = 
+		{
+			Alternate = {"EvelynnE2"},
+			HeroName = "Evelynn",
+			SpellName = "Whiplash",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {55,70,85,100,115},
+			MaximumHealth = .03,
+			MaximumHealthAPScaling = .015,
+			Danger = 2,
+		},
+		["EvelynnE2"] = 
+		{
+			Alternate = {"EvelynnE"},
+			HeroName = "Evelynn",
+			SpellName = "Whiplash",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {95,115,135,155,175},
+			MaximumHealth = .04,
+			MaximumHealthAPScaling = .025,
+			Danger = 3,
+		},
+		["EvelynnR"] = 
+		{
+			HeroName = "Evelynn",
+			SpellName = "Last Caress",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_ARC,
+			Damage = {150,275,400},
+			APScaling = .75,
+			Danger = 3,
+			
+			--This overrides the default arc calculations
+			Radius = 450,
+			Angle = 180,
+		},
+		
+		--[EZREAL SKILLS]--
+		["EzrealMysticShot"] = 
+		{
+			HeroName = "Ezreal",
+			SpellName = "Mystic Shot",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Collision = 1,
+			MissileName = "EzrealMysticShotMissile",
+			Radius = 80,
+			Damage = {15,40,65,90,115},
+			ADScaling = 1.1,
+			APScaling = .4,
+			Danger = 1,
+		},
+		
+		["EzrealEssenceFlux"] = 
+		{
+			HeroName = "Ezreal",
+			SpellName = "Essence Flux",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "EzrealEssenceFluxMissile",
+			Radius = 80,
+			Damage = {70,115,160,205,250},
+			APScaling = .8,
+			Danger = 1,
+		},
+		
+		["EzrealArcaneShift"] = 
+		{
+			HeroName = "Ezreal",
+			SpellName = "Arcane Shift",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			MissileName = "EzrealArcaneShiftMissile",
+			Damage = {80,130,180,230,280},
+			ADScaling = .5,
+			APScaling = .75,
+			Danger = 1,
+		},
+		
+		["EzrealTrueshotBarrage"] = 
+		{
+			HeroName = "Ezreal",
+			SpellName = "Essence Flux",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "EzrealTrueshotBarrage",
+			Radius = 160,
+			Damage = {350,500,650},
+			ADScaling = 1,
+			APScaling = .9,
+			Danger = 3,
+		},
 		
 		--[LUX SKILLS]--
 		["LuxLightBinding"] = 
@@ -1403,6 +1615,35 @@ function __DamageManager:__init()
 			CCType = BUFF_ROOT
 		},
 		
+		--[ZILEAN SKILLS]--
+		["ZileanQ"] = 
+		{
+			HeroName = "Zilean",
+			SpellName = "Time Bomb",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName = "ZileanQMissile",
+			Radius = 120,
+			Damage = {75,115,165,230,300},
+			APScaling = .9,
+			Danger = 3,
+		},
+		--[ZED SKILLS]--
+        ["ZedQ"] = 
+        {
+            HeroName = "Zed",
+            SpellName = "Razor Shuriken",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+            MissileName = "ZedQMissile",
+            Radius = 50,
+            Damage = {80,115,150,185,220},
+            APScaling = .9,
+            Danger = 2,
+        },
+		
 	}
 	
 	--Dirty fix so we can loop skills...
@@ -1412,27 +1653,20 @@ function __DamageManager:__init()
 		local target = LocalGameHero(i)		
 		for _, s in LocalPairs(slotLookupTable) do
 			local spellName = target:GetSpellData(s).name
-			if spellName == "BaseSpell" then
-			
+			if spellName == "BaseSpell" then			
 			elseif self.MasterSkillLookupTable[spellName] then
 				local spellData = self.MasterSkillLookupTable[spellName]
 				if spellData.Alias then spellName = spellData.Alias end
-				if spellData.MissileName then
-					if LocalType(spellData.MissileName) == "table" then						
-						for i = 1, #spellData.MissileName do
-							self.MissileNames[spellData.MissileName[i]] = spellData
-						end
-					else
-						self.MissileNames[spellData.MissileName] = spellData
-					end
-				elseif spellData.ParticleNames then
-					for i = 1, #spellData.ParticleNames do
-						self.ParticleNames[spellData.ParticleNames[i]] = spellData
-					end
-				else
-					self.Skills[spellName] = spellData
+				self:LoadSpell(spellName, spellData, target)
+				--Load all alternate versions of spell
+				if spellData.Alternate then
+					for _, x in LocalPairs(spellData.Alternate) do
+						spellName = x
+						spellData = self.MasterSkillLookupTable[spellName]
+						if spellData.Alias then spellName = spellData.Alias end
+						self:LoadSpell(spellName, spellData, target)
+					end					
 				end
-				print("Loaded skill: " .. spellName .. " on " .. target.charName)
 			else
 				print("Unhandled skill: " .. spellName .. " on " .. target.charName)
 			end
@@ -1441,6 +1675,25 @@ function __DamageManager:__init()
 	
 	LocalCallbackAdd('Tick',  function() self:Tick() end)
 	ObjectManager:OnSpellCast(function(args) self:SpellCast(args) end)
+end
+
+function __DamageManager:LoadSpell(spellName, spellData, target)				
+	if spellData.MissileName then
+		if LocalType(spellData.MissileName) == "table" then						
+			for i = 1, #spellData.MissileName do
+				self.MissileNames[spellData.MissileName[i]] = spellData
+			end
+		else
+			self.MissileNames[spellData.MissileName] = spellData
+		end
+	elseif spellData.ParticleNames then
+		for i = 1, #spellData.ParticleNames do
+			self.ParticleNames[spellData.ParticleNames[i]] = spellData
+		end
+	else
+		self.Skills[spellName] = spellData
+	end
+	print("Loaded skill: " .. spellName .. " on " .. target.charName)
 end
 
 function __DamageManager:Tick()
@@ -1531,11 +1784,13 @@ function __DamageManager:SpellCast(spell)
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_ARC then
+			local arcAngle = self.Skills[spell.name].Angle or spell.data.coneAngle
+			local arcDistance = self.Skills[spell.name].Radius or spell.data.coneDistance
 			local angleOffset = Geometry:Angle(spell.data.startPos,LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z))
 			for _, target in LocalPairs(collection) do
 				if target ~= nil and LocalType(target) == "userdata" then
 					local deltaAngle = LocalAbs(Geometry:Angle(spell.data.startPos,target.pos) - angleOffset)
-					if deltaAngle < spell.data.coneAngle and Geometry:IsInRange(spell.data.startPos, target.pos, spell.data.coneDistance) then
+					if deltaAngle < arcAngle and Geometry:IsInRange(spell.data.startPos, target.pos, arcDistance) then
 						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
 						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType)
 					end
@@ -1643,15 +1898,17 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 		if skillInfo.SpecialDamage then
 			damage = skillInfo.SpecialDamage(owner, target)
 		else
-			print("STARTING")
 			--TODO: Make sure this handles nil values like a champ
 			damage = (skillInfo.Damage and skillInfo.Damage[owner:GetSpellData(skillInfo.SpellSlot).level] or 0 )+ 
-			(skillInfo.APScaling and (LocalType(skillInfo.APScaling) == "table" and skillInfo.APScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.APScaling) * owner.totalDamage or 0) + 
+			(skillInfo.APScaling and (LocalType(skillInfo.APScaling) == "table" and skillInfo.APScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.APScaling) * owner.ap or 0) + 
 			(skillInfo.ADScaling and (LocalType(skillInfo.ADScaling) == "table" and skillInfo.ADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.ADScaling) * owner.totalDamage or 0) + 
 			(skillInfo.CurrentHealth and (LocalType(skillInfo.CurrentHealth) == "table" and skillInfo.CurrentHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.CurrentHealth) * target.health or 0) + 
-			(skillInfo.CurrentHealthAPScaling and target.health * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0)
-			
-		end		
+			(skillInfo.CurrentHealthAPScaling and (target.maxHealth-target.health) * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0) + 
+			(skillInfo.MissingHealth and skillInfo.MissingHealth * (target.maxHealth-target.health) or 0) + 
+			(skillInfo.MissingHealthAPScaling and (target.maxHealth-target.health) * skillInfo.MissingHealthAPScaling * owner.ap/100 or 0) + 	
+			(skillInfo.MaximumHealth and skillInfo.MaximumHealth * target.maxHealth or 0) + 
+			(skillInfo.MaximumHealthAPScaling and target.maxHealth * skillInfo.MaximumHealthAPScaling * owner.ap/100 or 0)			
+		end
 		if skillInfo.DamageType == DAMAGE_TYPE_MAGICAL then
 			damage = self:CalculateMagicDamage(owner, target, damage)
 		elseif skillInfo.DamageType == DAMAGE_TYPE_PHYSICAL then
