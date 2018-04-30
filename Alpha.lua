@@ -1272,9 +1272,8 @@ function __DamageManager:__init()
 			TargetType = TARGET_TYPE_LINE,
 			MissileName = "InfectedCleaverMissile",
 			Collision = 1,
-			CurrentHealth = .25,
-			--Could do levels, For now leave it
-			--{.15, .175, .20, .225, .25}
+			Radius = 60,
+			CurrentHealth = {.15, .175, .20, .225, .25},
 			Danger = 2,
 		},
 		
@@ -1595,16 +1594,18 @@ end
 
 function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 	local damage = 0
-	if skillInfo.Damage or skillInfo.SpecialDamage then
+	if skillInfo.Damage or skillInfo.SpecialDamage or skillInfo.CurrentHealth then
 		if skillInfo.SpecialDamage then
 			damage = skillInfo.SpecialDamage(owner, target)
 		else
+			print("STARTING")
 			--TODO: Make sure this handles nil values like a champ
-			damage = skillInfo.Damage[owner:GetSpellData(skillInfo.SpellSlot).level] + 
-			(skillInfo.APScaling and skillInfo.APScaling * owner.ap or 0) +
+			damage = (skillInfo.Damage and skillInfo.Damage[owner:GetSpellData(skillInfo.SpellSlot).level] or 0 )+ 
+			(skillInfo.APScaling and (LocalType(skillInfo.APScaling) == "table" and skillInfo.APScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.APScaling) * owner.totalDamage or 0) + 
 			(skillInfo.ADScaling and (LocalType(skillInfo.ADScaling) == "table" and skillInfo.ADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.ADScaling) * owner.totalDamage or 0) + 
-			(skillInfo.CurrentHealth and target.health * skillInfo.CurrentHealth or 0) + 
+			(skillInfo.CurrentHealth and (LocalType(skillInfo.CurrentHealth) == "table" and skillInfo.CurrentHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.CurrentHealth) * target.health or 0) + 
 			(skillInfo.CurrentHealthAPScaling and target.health * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0)
+			
 		end		
 		if skillInfo.DamageType == DAMAGE_TYPE_MAGICAL then
 			damage = self:CalculateMagicDamage(owner, target, damage)
