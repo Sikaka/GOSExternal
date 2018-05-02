@@ -582,7 +582,6 @@ function AutoUtil:GetItemSlot(id)
 			return i
 		end
 	end
-
 	return nil
 end
 
@@ -4853,8 +4852,8 @@ function HPred:CalculatePhysicalDamage(target, damage)
 	return damage
 end
 
-function HPred:CalculateMagicDamage(target, damage)			
-	local targetMR = target.magicResist * myHero.magicPenPercent - myHero.magicPen
+function HPred:CalculateMagicDamage(target, damage)
+	local targetMR = target.magicResist - target.magicResist * myHero.magicPenPercent - myHero.magicPen
 	local damageReduction = 100 / ( 100 + targetMR)
 	if targetMR < 0 then
 		damageReduction = 2 - (100 / (100 - targetMR))
