@@ -1528,6 +1528,396 @@ function __DamageManager:__init()
 			Danger = 3,
 		},
 		
+		--[FIORA SKILLS]--
+		--She has no active spells or meaningful missiles. Leave her for now
+				
+		--[FIZZ SKILLS]--
+		["FizzR"] = 
+		{
+			HeroName = "Fizz",
+			SpellName = "Chum the Waters",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Collision = 1,
+			MissileName = "FizzRMissile",
+			Radius = 120,
+			Damage = {225,325,425},
+			APScaling = .8,
+			Danger = 4,
+		},
+		
+		--[GALIO SKILLS]--
+		["GalioQ"] = 
+		{
+			HeroName = "Galio",
+			SpellName = "Winds of War",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 150,
+			Damage = {50,80,110,140,170},
+			APScaling = .8,
+			Danger = 2,
+		},		
+		
+		["GalioE"] = 
+		{
+			HeroName = "Galio",
+			SpellName = "Justice Punch",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 160,
+			Collision = 1,
+			Damage = {100,130,160,190,220},
+			APScaling = .9,
+			Danger = 3,
+			CCType = BUFF_KNOCKUP,
+		},
+		
+		--[GANGPLANK SKILLS]--
+		["GangplankQWrapper"] = 
+		{
+			Alias = "GangplankQProceed",
+			SpellName = "Gangplank",
+			HeroName = "Parrrley", 
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,						
+			Damage = {20,45,70,95,120},
+			ADScaling = 1, 
+			Danger = 2,
+		},
+		
+		["GangplankR"] = 
+		{
+			HeroName = "Gangplank",
+			SpellName = "Cannon Barrage",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 600,
+			Damage = {35,60,85},
+			APScaling = .1,
+			Danger = 3,
+		},
+		
+		--[GAREN SKILLS]--
+		["GarenQ"] = 
+		{
+			SpellName = "Garen",
+			HeroName = "Decisive Strike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,						
+			Damage = {30,65,100,135,170},
+			ADScaling = .4,
+			Danger = 1,
+			CCType = BUFF_SILENCE,
+		},
+		["GarenR"] = 
+		{
+			SpellName = "Garen",
+			HeroName = "Demacian Justice",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,						
+			Damage = {175,350,525},
+			MissingHealth = {.286,.333,.4},
+			Danger = 1,
+		},
+		
+		--[GNAR SKILLS]--
+		["GnarQ"] = 
+		{
+			Alternate = {"GnarBigQ"},
+			HeroName = "Gnar",
+			SpellName = "Boomerang Throw",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "gnarqmissile",
+			Radius = 60,
+			Damage = {5,45,85,125,165},
+			ADScaling = 1.15,
+			Danger = 1,
+			CCType = BUFF_SLOW,
+		},
+		["GnarBigQ"] = 
+		{
+			Alternate = {"GnarQ"},
+			HeroName = "Gnar",
+			SpellName = "Boulder Toss",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "GnarBigQMissile",
+			Radius = 60,
+			Damage = {5,45,85,125,165},
+			ADScaling = 1.2,
+			Danger = 1,
+			CCType = BUFF_SLOW,
+		},
+		["GnarW"] = 
+		{
+			Alternate = {"GnarBigW"},
+		},
+		["GnarBigW"] = 
+		{
+			HeroName = "Gnar",
+			SpellName = "Wallop",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "GnarBigW",
+			Radius = 80,
+			Damage = {25,45,65,85,105},
+			ADScaling = 1,
+			Danger = 3,
+			CCType = BUFF_STUN,
+		},
+		
+		["GnarE"] = 
+		{
+			Alternate = {"GnarBigE"},
+			HeroName = "Gnar",
+			SpellName = "Hop",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 150,
+			Damage = {50,85,120,155,190},
+			MaximumHealth = .06,
+			Danger = 2,
+			CCType = BUFF_SLOW,
+		},
+		["GnarBigE"] = 
+		{
+			Alternate = {"GnarE"},
+			HeroName = "Gnar",
+			SpellName = "Crunch",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 200,
+			Damage = {50,85,120,155,190},
+			MaximumHealth = .06,
+			Danger = 2,
+			CCType = BUFF_SLOW,
+		},
+		["GnarR"] = 
+		{
+			HeroName = "Gnar",
+			SpellName = "GNAR!",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 500,
+			Damage = {200,300,400},
+			ADScaling = .2,
+			APScaling = .5,
+			Danger = 4,
+			CCType = BUFF_KNOCKBACK,
+		},
+		
+		--[GRAGAS SKILLS]--
+		
+		["GragasQ"] = 
+		{
+			HeroName = "Gragas",
+			SpellName = "Barrel Roll",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName = "GragasQMissile",
+			Radius = 275,
+			Damage = {300,400,500},
+			APScaling = .75,
+			Danger = 2,
+			CCType = BUFF_SLOW,
+		},	
+		
+		["GragasW"] = 
+		{
+			Alias = "GragasWAttack",
+			HeroName = "Gragas",
+			SpellName = "Body Slam",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {20,50,80,110,140},
+			MaximumHealth = .08,
+			Danger = 1,
+			CCType = BUFF_STUN,
+		},
+		
+		--Not handled properly by bot
+		["GragasE"] = 
+		{
+			HeroName = "Gragas",
+			SpellName = "Body Slam",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 200,
+			Collision = 1,
+			Damage = {80,130,180,230,280},
+			APScaling = .9,
+			Danger = 3,
+			CCType = BUFF_STUN,
+		},
+		
+		["GragasR"] = 
+		{
+			HeroName = "Gragas",
+			SpellName = "Explosive Cask",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName = "GragasRBoom",
+			Radius = 375,
+			Damage = {200,300,400},
+			APScaling = .7,
+			Danger = 5,
+			CCType = BUFF_KNOCKBACK,
+		},
+		
+		
+		--[GRAVES SKILLS]--		
+		["GravesQLineSpell"] = 
+		{
+			HeroName = "Graves",
+			SpellName = "End of the Line",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "GravesQLineMis",
+			Radius = 60,
+			Damage = {45,60,75,90,105},
+			ADScaling = 1,
+			Danger = 2,
+		},
+		
+		["GravesSmokeGrenade"] = 
+		{
+			HeroName = "Graves",
+			SpellName = "Smoke Screen",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Damage = {60,110,160,210,260},
+			APScaling = .6,
+			Danger = 1,
+			CCType = BUFF_SLOW,
+			Radius = 250,
+		},
+		
+		["GravesChargeShot"] = 
+		{
+			HeroName = "Graves",
+			SpellName = "Collateral Damage",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "GravesChargeShotShot",
+			Radius = 100,
+			Damage = {250,400,550},
+			ADScaling = 1.5,
+			Danger = 5,
+		},
+		
+		--[HECARIM SKILLS]--
+		--not an active skill
+		["HecarimRapidSlash"] = 
+		{
+			HeroName = "Hecarim",
+			SpellName = "Rampage",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Damage = {55,90,125,160,195},
+			ADScaling = .6,
+			Danger = 1,
+			Radius = 350,
+		},
+		["HecarimRamp"] = 
+		{
+			Alias = "HecarimRampAttack",
+			HeroName = "Hecarim",
+			SpellName = "Devastating Charge",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {45,80,115,150,185},
+			ADScaling = .5,
+			Danger = 1,
+			CCType = BUFF_KNOCKBACK,
+		},
+		
+		--not an active skill
+		["HecarimUlt"] = 
+		{
+			HeroName = "Hecarim",
+			SpellName = "Onslaught of Shadows",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {150,250,350},
+			APScaling =  1,
+			Danger = 5,
+			Radius = 400,
+			CCType = BUFF_FEAR,
+		},
+		
+		
+		--[HEIMERDINGER SKILLS]--
+		
+		["HeimerdingerW"] = 
+		{
+			HeroName = "Heimerdinger",
+			SpellName = "Hextech Micro-Rockets",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = {"HeimerdingerWAttack2", "HeimerdingerWAttack2Ult"},
+			Radius = 70,
+			Damage = {60,90,120,150,180},
+			APScaling = .45,
+			Danger = 1,
+		},
+		
+		["HeimerdingerE"] = 
+		{
+			Alternate = {"HeimerdingerEUlt"},
+			HeroName = "Heimerdinger",
+			SpellName = "CH-2 Electron Storm Grenade",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName = "HeimerdingerESpell",
+			Radius = 100,
+			Damage = {60,100,140,180,220},
+			APScaling = .6,
+			Danger = 2,
+		},
+		
+		["HeimerdingerEUlt"] = 
+		{
+			Alternate = "HeimerdingerEUlt",
+			HeroName = "Heimerdinger",
+			SpellName = "CH-2 Electron Storm Grenade",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName ={ "HeimerdingerESpell_ult", "HeimerdingerESpell_ult2", "HeimerdingerESpell_ult3"},
+			Radius = 100,
+			Damage = {60,100,140,180,220},
+			APScaling = .6,
+			Danger = 3,
+		},
+		
+		
 		--[LUX SKILLS]--
 		["LuxLightBinding"] = 
 		{
@@ -1537,6 +1927,7 @@ function __DamageManager:__init()
 			DamageType = DAMAGE_TYPE_MAGICAL,			
 			TargetType = TARGET_TYPE_LINE,
 			MissileName = "LuxLightBindingMis",
+			Collision = 2,
 			Radius = 60,
 			Damage = {50,100,150,200,250},
 			APScaling = .7,
@@ -1904,7 +2295,7 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			(skillInfo.ADScaling and (LocalType(skillInfo.ADScaling) == "table" and skillInfo.ADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.ADScaling) * owner.totalDamage or 0) + 
 			(skillInfo.CurrentHealth and (LocalType(skillInfo.CurrentHealth) == "table" and skillInfo.CurrentHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.CurrentHealth) * target.health or 0) + 
 			(skillInfo.CurrentHealthAPScaling and (target.maxHealth-target.health) * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0) + 
-			(skillInfo.MissingHealth and skillInfo.MissingHealth * (target.maxHealth-target.health) or 0) + 
+			(skillInfo.MissingHealth and (LocalType(skillInfo.MissingHealth) == "table" and skillInfo.MissingHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MissingHealth) * target.health or 0) +
 			(skillInfo.MissingHealthAPScaling and (target.maxHealth-target.health) * skillInfo.MissingHealthAPScaling * owner.ap/100 or 0) + 	
 			(skillInfo.MaximumHealth and skillInfo.MaximumHealth * target.maxHealth or 0) + 
 			(skillInfo.MaximumHealthAPScaling and target.maxHealth * skillInfo.MaximumHealthAPScaling * owner.ap/100 or 0)			
