@@ -1,6 +1,7 @@
 if _G.Alpha then return end
 _G.Alpha = 
 {
+	Menu = nil,
 	Geometry = nil,
 	ObjectManager = nil,
 	DamageManager = nil,
@@ -240,6 +241,10 @@ class "__ObjectManager"
 function __ObjectManager:__init()
 	LocalCallbackAdd('Tick',  function() self:Tick() end)
 	
+	self.CachedBuffs = {}
+	self.OnBuffAddedCallbacks = {}
+	self.OnBuffRemovedCallbacks = {}
+	
 	self.CachedMissiles = {}	
 	self.OnMissileCreateCallbacks = {}
 	self.OnMissileDestroyCallbacks = {}
@@ -260,6 +265,31 @@ function __ObjectManager:__init()
 	self.CachedSpells = {}
 	self.OnSpellCastCallbacks = {}
 end
+
+--Register Buff Added Event
+function __ObjectManager:OnBuffAdded(cb)
+	LocalInsert(ObjectManager.OnBuffAddedCallbacks, cb)
+end
+
+--Trigger Buff Added Event
+function __ObjectManager:BuffAdded(target, buff)
+	for i = 1, #self.OnBuffAddedCallbacks do
+		self.OnBuffAddedCallbacks[i](target, buff);
+	end
+end
+
+--Register Buff Removed Event
+function __ObjectManager:OnBuffRemoved(cb)
+	LocalInsert(ObjectManager.OnBuffRemovedCallbacks, cb)
+end
+
+--Trigger Buff Removed Event
+function __ObjectManager:BuffRemoved(target, buff)
+	for i = 1, #self.OnBuffRemovedCallbacks do
+		self.OnBuffRemovedCallbacks[i](target, buff);
+	end
+end
+
 
 --Register Missile Create Event
 function __ObjectManager:OnMissileCreate(cb)
@@ -341,7 +371,40 @@ end
 local lookupTable = {"one", "two", "three", "four", "five"}
 
 --Search for changes in particle or missiles in game. trigger the appropriate events.
-function __ObjectManager:Tick()	
+function __ObjectManager:Tick()
+	--Check if we have any buff added/removed callbacks before querying
+	if #self.OnBuffAddedCallbacks > 0 or #self.OnBuffRemovedCallbacks  > 0  then
+		--KNOWN ISSUE: Certain skills use buffs... but constantly tweak their start/end time: EG Aatrox Q. I have no way to reliably handle this currently.
+		for _, buff in LocalPairs(self.CachedBuffs) do
+			if not buff or not buff.valid then
+				if buff and buff.owner and buff.data then				
+					self:BuffRemoved(buff.owner, buff.data)
+				end
+				self.CachedBuffs[_] = nil
+			else
+				buff.valid = false
+			end
+		end
+		for i = 1, LocalGameHeroCount() do
+			local target = LocalGameHero(i)
+			if target and LocalType(target) == "userdata" then
+				for i = 0, target.buffCount do
+					local buff = target:GetBuff(i)
+					if buff.duration >0 and buff.expireTime > LocalGameTimer() and buff.startTime <= LocalGameTimer() then
+						local key = target.networkID..buff.name
+						if self.CachedBuffs[key] then
+							self.CachedBuffs[key].valid = true
+						else
+							local buffData = {valid = true, owner = target, data = buff, expireTime = buff.expireTime}
+							self.CachedBuffs[key] = buffData
+							self:BuffAdded(target, buff)
+						end
+					end
+				end
+			end
+		end
+	end
+	
 	if #self.OnSpellCastCallbacks > 0 then
 		for i = 1, LocalGameHeroCount() do
 			local target = LocalGameHero(i)
@@ -415,10 +478,12 @@ function __ObjectManager:Tick()
 							missile.missileData.endPos.y -missile.missileData.startPos.y,
 							missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
 						networkID = missile.networkID,
-						data = missile,
-						
+						data = missile,							
 						endTime = LocalGameTimer() + Geometry:GetDistance(missile.missileData.endPos, missile.missileData.startPos) / missile.missileData.speed,
 					}
+					if DamageManager.MissileNames[missile.name] and DamageManager.MissileNames[missile.name].MissileTime then
+						missileData.endTime = LocalGameTimer() + DamageManager.MissileNames[missile.name].MissileTime
+					end
 					self.CachedMissiles[missile.networkID] =missileData
 					self:MissileCreated(missileData)
 				end
@@ -465,11 +530,13 @@ class "__DamageManager"
 --Credits LazyXerath for extra dmg reduction methods
 function __DamageManager:__init()
 
+	
 
 	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true"}
 	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
 	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)
 	
+	ObjectManager:OnBuffAdded(function(owner, buff) self:BuffAdded(owner, buff) end)
 	self.OnIncomingCCCallbacks = {}
 	
 	self.SiegeMinionList = {"Red_Minion_MechCannon", "Blue_Minion_MechCannon"}
@@ -513,6 +580,9 @@ function __DamageManager:__init()
 	
 	--Simple table for particles we want to track
 	self.ParticleNames = {}
+	
+	--Simple table for buffs we want to track
+	self.BuffNames = {}
 	
 	--Simple table for skills we want to track
 	self.Skills = {}
@@ -563,7 +633,7 @@ function __DamageManager:__init()
 			HeroName = "Ahri",
 			SpellName = "Orb of Deception",
 			SpellSlot = _Q,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
 			Radius = 80,
 			Damage = {40,65,90,115,140},
@@ -575,7 +645,7 @@ function __DamageManager:__init()
 			HeroName = "Ahri", 
 			SpellName = "Fox-Fire",
 			SpellSlot = _W,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_SINGLE,
 			MissileName = "AhriFoxFireMissileTwo",
 			Damage = {40,65,90,115,140},
@@ -587,7 +657,7 @@ function __DamageManager:__init()
 			HeroName = "Ahri", 
 			SpellName = "Charm",
 			SpellSlot = _E,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
 			Collision = 1,
 			Radius = 80,
@@ -601,7 +671,7 @@ function __DamageManager:__init()
 			HeroName = "Ahri", 
 			SpellName = "Spirit Rush",
 			SpellSlot = _R,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_SINGLE,
 			MissileName = "AhriTumbleMissile",
 			Damage = {60,90,120},
@@ -615,7 +685,7 @@ function __DamageManager:__init()
 			HeroName = "Akali",
 			SpellName = "Mark of the Assassin",
 			SpellSlot = _Q,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_SINGLE,
 			Damage = {35,55,75,95,115},
 			APScaling = .4,
@@ -626,7 +696,7 @@ function __DamageManager:__init()
 			HeroName = "Akali", 
 			SpellName = "Crescent Slash",
 			SpellSlot = _E,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_CIRCLE,
 			Radius = 300,
 			Damage = {70,100,130,160,190},
@@ -639,7 +709,7 @@ function __DamageManager:__init()
 			HeroName = "Akali", 
 			SpellName = "Shadow Dance",
 			SpellSlot = _R,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_SINGLE,
 			Damage = {50,100,150},
 			APScaling = .35,
@@ -652,7 +722,7 @@ function __DamageManager:__init()
 			HeroName = "Alistar",
 			SpellName = "Pulverize",
 			SpellSlot = _Q,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_CIRCLE,
 			Radius = 365,
 			Damage = {60,105,150,195,240},
@@ -665,7 +735,7 @@ function __DamageManager:__init()
 			HeroName = "Alistar", 
 			SpellName = "Headbut",
 			SpellSlot = _W,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_SINGLE,
 			Damage = {50,110,165,220,275},
 			APScaling = .7,
@@ -679,7 +749,7 @@ function __DamageManager:__init()
 			HeroName = "Amumu",
 			SpellName = "Bandage Toss",
 			SpellSlot = _Q,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
 			Collision = 1,
 			Radius = 70,
@@ -693,7 +763,7 @@ function __DamageManager:__init()
 			HeroName = "Amumu", 
 			SpellName = "Tantrum",
 			SpellSlot = _E,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_CIRCLE,
 			Radius = 350,
 			Damage = {75,100,125,150,175},
@@ -720,7 +790,7 @@ function __DamageManager:__init()
 			HeroName = "Anivia",
 			SpellName = "Flash Frost",
 			SpellSlot = _Q,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
 			Radius = 225,
 			Damage = {60,85,110,135,160},
@@ -1030,7 +1100,7 @@ function __DamageManager:__init()
 			HeroName = "Caitlyn",
 			SpellName = "90 Caliber Net",
 			SpellSlot = _E,
-			DamageType = DAMAGE_TYPE_MAGIC,
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
 			Radius = 60,
 			MissileName = "CaitlynEntrapmentMissile",
@@ -1917,6 +1987,208 @@ function __DamageManager:__init()
 			Danger = 3,
 		},
 		
+		--[ILLAOI SKILLS]--
+		["IllaoiQ"] = 
+		{
+			HeroName = "Illaoi",
+			SpellName = "Tentacle Smash",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			--MissileName = "IllaoiQMis",
+			Radius = 100,
+			SpecialDamage = 
+				function (owner, target)
+					return owner.levelData.lvl * 10 + owner.totalDamage * 1.2
+				end,
+			Danger = 3,
+		},
+		
+		["IllaoiW"] = 
+		{
+			Alias = "IllaoiWAttack",
+			HeroName = "Illaoi",
+			SpellName = "Harsh Lesson",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {0,0,0,0,0},
+			MaximumHealth = {.03, .035, .04, .045, .05},
+			MaximumHealthADScaling = .02,
+			Danger = 1,
+		},
+		["IllaoiE"] = 
+		{
+			HeroName = "Illaoi",
+			SpellName = "Test of Spirit",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "IllaoiEMis",
+			Radius = 50,
+			Damage = {0,0,0,0,0},
+			Danger = 3,
+		},
+		["IllaoiR"] = 
+		{
+			HeroName = "Illaoi",
+			SpellName = "Leap of Faith",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 450,
+			Damage = {150,250,350},
+			ADScaling = .5,
+			Danger = 3,
+		},
+		
+		
+		--[IRELLIA SKILLS]--
+
+		
+		["IreliaW"] = 
+		{
+			Alias = "IreliaW2",
+			HeroName = "Irelia",
+			SpellName = "Defiant Dance",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 120,
+			Damage = {10,30,50,70,90},
+			ADScaling = .6, 
+			APScaling = .4,
+			Danger = 1,
+		},
+		["IreliaE"] = 
+		{
+			HeroName = "Irelia",
+			SpellName = "Flawless Duet",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "IreliaESecondary", 
+			Radius = 70,
+			Damage = {80,120,160,200,240}, 
+			APScaling = .8,
+			CCType = BUFF_STUN,
+			Danger = 3,
+		},
+		
+		["IreliaR"] = 
+		{
+			HeroName = "Irelia",
+			SpellName = "Vanguard's Edge",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "IreliaR", 
+			Radius = 70,
+			Damage = {125,225,325}, 
+			APScaling = .7,
+			CCType = BUFF_DISARM,
+			Danger = 5,
+		},
+		
+		--[IVERN SKILLS]--
+		["IvernQ"] = 
+		{
+			HeroName = "Ivern",
+			SpellName = "Rootcaller",
+			MissileName = "IvernQ",
+			SpellSlot = _Q,
+			Collision = 1,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 80,
+			Damage = {80,125,170,215,260},
+			APScaling = .7,
+			CCType = BUFF_SNARE,
+			Danger = 3,
+		},
+		
+		["IvernR"] = 
+		{
+			HeroName = "Ivern",
+			SpellName = "Rootcaller",
+			MissileName = "IvernRMissile",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 100,
+			Damage = {70,100,170},
+			APScaling = .3,
+			CCType = BUFF_KNOCKUP,
+			Danger = 3,
+		},
+		
+		--[JANNA SKILLS]--		
+		["HowlingGale"] = 
+		{
+			HeroName = "Janna",
+			SpellName = "Howling Gale",
+			MissileName = {"HowlingGaleSpell", "HowlingGaleSpell1","HowlingGaleSpell2","HowlingGaleSpell3","HowlingGaleSpell4","HowlingGaleSpell5","HowlingGaleSpell6","HowlingGaleSpell7","HowlingGaleSpell8","HowlingGaleSpell9","HowlingGaleSpell10","HowlingGaleSpell11","HowlingGaleSpell12","HowlingGaleSpell13","HowlingGaleSpell14","HowlingGaleSpell15","HowlingGaleSpell16"},
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 120,
+			Damage = {60,85,110,135,160},
+			APScaling = .35,
+			CCType = BUFF_KNOCKUP,
+			Danger = 3,
+		},
+		["SowTheWind"] = 
+		{
+			HeroName = "Janna",
+			SpellName = "Zephyr",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {55,100,145,190,235},
+			CCType = BUFF_SLOW,
+			Danger = 1,
+		},
+		["ReapTheWhirlwind"] = 
+		{
+			HeroName = "Janna",
+			SpellName = "Monsoon",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 725,
+			Damage = {0,0,0,0,0},
+			CCType = BUFF_KNOCKBACK,
+			Danger = 1,
+		},
+		--[JarvanIV Skills]--				
+		["JarvanIVDragonStrike"] = 
+		{
+			HeroName = "JarvanIV",
+			SpellName = "Dragon Strike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 80,
+			Damage = {80,120,160,200,240},
+			ADScaling = 1.2,
+			Danger = 3,
+		},
+		
+		--R and pull are handled through buffs. I REALLY need to handle onBuff events this is getting stupid		
+		["JarvanIVCataclysm"] = 
+		{
+			HeroName = "JarvanIV",
+			SpellName = "Cataclysm",
+			BuffName = "JarvanIVCataclysm",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 325,
+			Damage = {200,325,450},
+			ADScaling = 1.5,
+			Danger = 3,
+		},
+		
 		
 		--[LUX SKILLS]--
 		["LuxLightBinding"] = 
@@ -2020,6 +2292,108 @@ function __DamageManager:__init()
 			APScaling = .9,
 			Danger = 3,
 		},
+		
+		
+		
+		
+		--[XERATH SKILLS]--
+        ["XerathArcaneBarrage2"] = 
+        {
+            HeroName = "Xerath",
+            SpellName = "Eye of Destruction",
+            SpellSlot = _W,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 200,
+            Damage = {60,90,120,150,180},
+            APScaling = .6,
+            Danger = 2,
+			CCType = BUFF_SLOW,
+        },
+        ["XerathMageSpear"] = 
+        {
+            HeroName = "Xerath",
+            SpellName = "Shocking Orb",
+			MissileName = "XerathMageSpearMissile",
+            SpellSlot = _E,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_LINE,
+			Collision = 1,
+            Radius = 60,
+            Damage = {80,110,140,170,200},
+            APScaling = .45,
+            Danger = 2,
+			CCType = BUFF_STUN,
+        },
+        ["XerathLocusOfPower2"] = 
+        {
+            HeroName = "Xerath",
+            SpellName = "Rite of the Arcane",
+			MissileName = "XerathLocusPulse",
+            SpellSlot = _E,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 120,
+            Damage = {200,240,280},
+            APScaling = .43,
+            Danger = 4,
+			MissileTime = .5
+        },
+		
+		--[ZIGGS SKILLS]--
+        ["ZiggsQ"] = 
+        {
+            HeroName = "Ziggs",
+            SpellName = "Bouncing Bomb",
+			MissileName = {"ZiggsQSpell", "ZiggsQSpell2", "ZiggsQSpell3"},
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 140,
+            Damage = {75,120,165,210,255},
+            APScaling = .65,
+            Danger = 2,
+        },
+        ["ZiggsW"] = 
+        {
+            HeroName = "Ziggs",
+            SpellName = "Satchel Charge",
+            SpellSlot = _W,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 275,
+            Damage = {70,105,140,175,210},
+            APScaling = .35,
+            Danger = 2,
+			CCType = BUFF_KNOCKBACK,
+        },
+        ["ZiggsE"] = 
+        {
+            HeroName = "Ziggs",
+            SpellName = "Hexplosive Minefield",
+			MissileName = "ZiggsE3",
+            SpellSlot = _E,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 120,
+            Damage = {40,75,110,145,180},
+            APScaling = .30,
+            Danger = 2,
+			CCType = BUFF_SLOW,
+        },
+        ["ZiggsR"] = 
+        {
+            HeroName = "Ziggs",
+            SpellName = "Mega Inferno Bomb",
+			MissileName = "ZiggsRBoom",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 500,
+            Damage = {200,300,400},
+            APScaling = .733,
+            Danger = 5,
+        },
 		--[ZED SKILLS]--
         ["ZedQ"] = 
         {
@@ -2034,6 +2408,7 @@ function __DamageManager:__init()
             APScaling = .9,
             Danger = 2,
         },
+		
 		
 	}
 	
@@ -2081,6 +2456,8 @@ function __DamageManager:LoadSpell(spellName, spellData, target)
 		for i = 1, #spellData.ParticleNames do
 			self.ParticleNames[spellData.ParticleNames[i]] = spellData
 		end
+	elseif spellData.BuffName then
+		self.BuffNames[spellData.BuffName] = spellData
 	else
 		self.Skills[spellName] = spellData
 	end
@@ -2107,12 +2484,13 @@ end
 
 function __DamageManager:IncomingDamage(owner, target, damage, ccType)
 	
-	if owner and target then
-		print(owner.charName .. " will hit " .. target.charName .. " for " .. damage .. " Damage")
-	else
-		print("No owner/target __DamageManager:IncomingDamage")
+	if Menu.PrintDmg:Value() then
+		if owner and target then
+			print(owner.charName .. " will hit " .. target.charName .. " for " .. damage .. " Damage")
+		else
+			print("No owner/target __DamageManager:IncomingDamage")
+		end
 	end
-	
 	--Trigger any registered OnCC callbacks. Send them the target, damage and type of cc so we can choose our actions
 	if ccType and #self.OnIncomingCCCallbacks then
 		self:IncomingCC(target, damage, ccType)
@@ -2135,7 +2513,7 @@ end
 
 function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 	if skillshot.endTime - LocalGameTimer() < .25 then
-		local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)
+		local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)		
 		for _, target in LocalPairs(targetList) do
 			if target~= nil and LocalType(target) == "userdata" then
 				if Geometry:IsInRange(target.pos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
@@ -2218,7 +2596,7 @@ function __DamageManager:MissileCreated(missile)
 		else
 			self:OnUntargetedMissileTable(missile)
 		end
-	else
+	elseif Menu.PrintMissile:Value() then
 		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width)
 	end
 end
@@ -2297,8 +2675,9 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			(skillInfo.CurrentHealthAPScaling and (target.maxHealth-target.health) * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0) + 
 			(skillInfo.MissingHealth and (LocalType(skillInfo.MissingHealth) == "table" and skillInfo.MissingHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MissingHealth) * target.health or 0) +
 			(skillInfo.MissingHealthAPScaling and (target.maxHealth-target.health) * skillInfo.MissingHealthAPScaling * owner.ap/100 or 0) + 	
-			(skillInfo.MaximumHealth and skillInfo.MaximumHealth * target.maxHealth or 0) + 
-			(skillInfo.MaximumHealthAPScaling and target.maxHealth * skillInfo.MaximumHealthAPScaling * owner.ap/100 or 0)			
+			(skillInfo.MaximumHealth and (LocalType(skillInfo.MaximumHealth) == "table" and skillInfo.MaximumHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealth) * target.maxHealth or 0) +
+			(skillInfo.MaximumHealthAPScaling and (LocalType(skillInfo.MaximumHealthAPScaling) == "table" and skillInfo.MaximumHealthAPScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealthAPScaling) * target.maxHealth or 0)* owner.ap/100 +
+			(skillInfo.MaximumHealthADScaling and (LocalType(skillInfo.MaximumHealthADScaling) == "table" and skillInfo.MaximumHealthADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealthADScaling) * target.maxHealth or 0)* owner.totalDamage/100
 		end
 		if skillInfo.DamageType == DAMAGE_TYPE_MAGICAL then
 			damage = self:CalculateMagicDamage(owner, target, damage)
@@ -2335,6 +2714,37 @@ end
 function __DamageManager:IncomingCC(target, damage, ccType)
 	for i = 1, #self.OnIncomingCCCallbacks do
 		self.OnIncomingCCCallbacks[i](target, damage, ccType);
+	end
+end
+
+--Check for buff based skills
+function __DamageManager:BuffAdded(owner, buff)
+	if self.BuffNames[buff.name] then
+		local spellInfo = self.BuffNames[buff.name]
+		local origin = owner.pos
+		if owner.pathing and owner.pathing.isDashing then
+			origin = owner:GetPath(1)
+		end
+		local collection = self.EnemyHeroes
+		if owner.isEnemy then
+			collection = self.AlliedHeroes
+		end
+		
+		if spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then		
+			for _, target in LocalPairs(collection) do
+				if target ~= nil and LocalType(target) == "userdata" then
+					if Geometry:IsInRange(origin, target.pos, spellInfo.Radius) then
+						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType)
+					end
+				end
+			end
+		else
+			print("Unhandled buff targeting type: " .. spellInfo.TargetType)
+		end		
+	end
+	if #buff.name < 64 and Menu.PrintBuff:Value() then
+		print(owner.charName .. " Gained Buff: " .. buff.name)
 	end
 end
 
@@ -2525,6 +2935,14 @@ end
 
 
 --Initialization
+Menu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
+Menu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = true})
+Menu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = true})
+Menu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = true})
+Menu:MenuElement({id = "PrintSkill", name = "Print Skill Used", value = true})
+
+_G.Alpha.Menu = Menu
+	
 Geometry = __Geometry()
 _G.Alpha.Geometry = Geometry
 
