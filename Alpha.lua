@@ -2174,7 +2174,6 @@ function __DamageManager:__init()
 			Danger = 3,
 		},
 		
-		--R and pull are handled through buffs. I REALLY need to handle onBuff events this is getting stupid		
 		["JarvanIVCataclysm"] = 
 		{
 			HeroName = "JarvanIV",
@@ -2188,8 +2187,142 @@ function __DamageManager:__init()
 			ADScaling = 1.5,
 			Danger = 3,
 		},
+				
+		--[JAYCE SKILLS]--
+		["JayceToTheSkies"] = 
+		{
+			Alternate = {"JayceShockBlast"},
+			HeroName = "Jayce",
+			SpellName = "To The Skies",
+			SpellSlot = _Q,
+		},
+		["JayceShockBlast"] = 
+		{
+			HeroName = "Jayce",
+			SpellName = "Shock Blast",
+			MissileName = {"JayceShockBlastMis","JayceShockBlastWallMis"},
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Collision = 1,
+			Radius = 70,
+			Damage = {70,120,170,220,270,320},
+			ADScaling = 1.2,
+			Danger = 3,
+		},
 		
 		
+		["JayceHyperCharge"] = 
+		{
+			Alternate = {"JayceThunderingBlow"},
+			HeroName = "Jayce",
+			SpellName = "Hyper Charge",
+			SpellSlot = _E,
+		},
+		["JayceThunderingBlow"] = 
+		{
+			HeroName = "Jayce",
+			SpellName = "Thundering Blow",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {0,0,0,0,0},
+			MaximumHealth = {.08,.104,.128,.152,.176,.2},
+			ADScaling = 1,
+			Danger = 1,			
+			CCType = BUFF_KNOCKBACK,
+		},
+			
+		--[Jhin]--	
+		
+		["JhinQ"] = 
+		{
+			HeroName = "Jhin",
+			SpellName = "Dancing Grenade",
+			MissileName = {"JhinQ", "JhinQMisBounce"},
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {40,70,95,120,145},
+			ADScaling = {.4,.475,.55,.625,.7},
+			APScaling = .6,
+			Danger = 1,
+		},
+		
+		["JhinW"] = 
+		{
+			HeroName = "Jhin",
+			SpellName = "Deadly Flourish",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 40,
+			Collision =1,
+			Damage = {50,85,120,155,190},
+			ADScaling =.5,
+			Danger = 3,
+		},
+		
+		["JhinR"] = 
+		{
+			HeroName = "Jhin",
+			SpellName = "Curtain Call",
+			SpellSlot = _R,
+			MissileName = {"JhinRShotMis", "JhinRShotMis4"},
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 80,
+			Collision =1,
+			Damage = {50,125,200},
+			ADScaling =.2,
+			CCType = BUFF_SLOW,
+		},
+		
+		--[Jinx Skills]--		
+		
+		["JinxW"] = 
+		{
+			HeroName = "Jinx",
+			SpellName = "Zap!",
+			MissileName = "JinxWMissile",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 60,
+			Collision =1,
+			Damage = {10,60,110,160,210},
+			ADScaling =1.4,
+			Danger = 3,
+			CCType = BUFF_SLOW,
+		},
+		["JinxE"] = 
+		{
+			HeroName = "Jinx",
+			SpellName = "Flame Chompers!",
+			MissileName = "JinxEHit",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 50,
+			Damage = {70,120,170,220,270},
+			APScaling =1,
+			Danger = 1,
+			CCType = BUFF_SNARE,
+		},
+		["JinxR"] = 
+		{
+			HeroName = "Jinx",
+			SpellName = "Super Mega Death Rocket!",
+			MissileName = "JinxR",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 140,
+			Damage = {25,35,45},
+			ADScaling =.15,
+			MissingHealth = {.25,.3,.35},
+			Danger = 5,
+		},
 		--[LUX SKILLS]--
 		["LuxLightBinding"] = 
 		{
@@ -2407,6 +2540,18 @@ function __DamageManager:__init()
             Damage = {80,115,150,185,220},
             APScaling = .9,
             Danger = 2,
+        },
+        ["ZedR"] = 
+        {
+            HeroName = "Zed",
+            SpellName = "Death Mark",
+            SpellSlot = _R,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            BuffName = "ZedR2",
+            Damage = {0,0,0},
+            ADScaling = 1,
+            Danger = 5,
         },
 		
 		
@@ -2673,7 +2818,7 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			(skillInfo.ADScaling and (LocalType(skillInfo.ADScaling) == "table" and skillInfo.ADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.ADScaling) * owner.totalDamage or 0) + 
 			(skillInfo.CurrentHealth and (LocalType(skillInfo.CurrentHealth) == "table" and skillInfo.CurrentHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.CurrentHealth) * target.health or 0) + 
 			(skillInfo.CurrentHealthAPScaling and (target.maxHealth-target.health) * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0) + 
-			(skillInfo.MissingHealth and (LocalType(skillInfo.MissingHealth) == "table" and skillInfo.MissingHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MissingHealth) * target.health or 0) +
+			(skillInfo.MissingHealth and (LocalType(skillInfo.MissingHealth) == "table" and skillInfo.MissingHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MissingHealth) * (target.maxHealth -target.health) or 0) +
 			(skillInfo.MissingHealthAPScaling and (target.maxHealth-target.health) * skillInfo.MissingHealthAPScaling * owner.ap/100 or 0) + 	
 			(skillInfo.MaximumHealth and (LocalType(skillInfo.MaximumHealth) == "table" and skillInfo.MaximumHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealth) * target.maxHealth or 0) +
 			(skillInfo.MaximumHealthAPScaling and (LocalType(skillInfo.MaximumHealthAPScaling) == "table" and skillInfo.MaximumHealthAPScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealthAPScaling) * target.maxHealth or 0)* owner.ap/100 +
@@ -2738,6 +2883,12 @@ function __DamageManager:BuffAdded(owner, buff)
 						self:IncomingDamage(owner, target, damage, spellInfo.CCType)
 					end
 				end
+			end
+		elseif spellInfo.TargetType == TARGET_TYPE_SINGLE then
+			local target = ObjectManager:GetObjectByHandle(owner.attackData.target)
+			if target then
+				local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
 			end
 		else
 			print("Unhandled buff targeting type: " .. spellInfo.TargetType)
