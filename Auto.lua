@@ -1540,12 +1540,11 @@ end
 function Lux:LoadSpells()
 	Q = {Range = 1075, Width = 50,Delay = 0.25, Speed = 1200, Collision = true}
 	W = {Range = 1075, Width = 120,Delay = 0.25, Speed = 1400}
-	E = {Range = 1100, Width = 350,Delay = 0.25, Speed = 1300}
+	E = {Range = 1100, Width = 310,Delay = 0.25, Speed = 1200}
 	R = {Range = 3340,Width = 115, Delay = 1, Speed = _huge}
 end
 
-function Lux:CreateMenu()
-		
+function Lux:CreateMenu()		
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Light Binding", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
@@ -1748,18 +1747,32 @@ function Lux:AutoR()
 	--Unreliable ult killsteal. use line calculation to improve the accuracy significantly.
 	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
-	if target and HPred:IsInRange(myHero.pos, aimPosition, R.Range) then
-		local thisRDamage = rDamage
-		if HPred:HasBuff(target, "LuxIlluminatingFraulein",1) then
-			thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
-		end
-		
-		if Menu.Skills.R.Killsteal:Value() and AutoUtil:CalculateMagicDamage(target, thisRDamage) >= target.health then
-			SpecialCast(HK_R, aimPosition)
-		elseif Menu.Skills.R.Auto:Value() and Menu.Skills.R.Targets[target.charName] and Menu.Skills.R.Targets[target.charName]:Value() then
+	if target and HPred:IsInRange(myHero.pos, aimPosition, R.Range) then		
+		if Menu.Skills.R.Auto:Value() and Menu.Skills.R.Targets[target.charName] and Menu.Skills.R.Targets[target.charName]:Value() then
 			local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, R.Delay, R.Speed, R.Width, false)
 			if targetCount >= Menu.Skills.R.Count:Value() then
-				SpecialCast(HK_R, aimPosition)
+				SpecialCast(HK_R, aimPosition, false, true)
+			end
+		end
+	elseif Menu.Skills.R.Killsteal:Value() then
+		for i = 1, LocalGameHeroCount() do
+			local hero = LocalGameHero(i)
+			if HPred:CanTarget(hero) then
+				local hitRate, aimPosition = HPred:GetHitchance(myHero.pos, hero, R.Range, R.Delay, R.Speed, R.Width, R.Collision)
+				if hitRate > 2 and HPred:IsInRange(myHero.pos, aimPosition, R.Range) then
+					local thisRDamage = rDamage
+					if HPred:HasBuff(hero, "LuxIlluminatingFraulein",1) then
+						thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
+					end
+					local predictedHealth = hero.health
+					if _G.SDK and _G.SDK.HealthPrediction then
+						predictedHealth = _G.SDK.HealthPrediction:GetPrediction(hero, R.Delay)
+					end
+					thisRDamage = AutoUtil:CalculateMagicDamage(hero, thisRDamage)
+					if thisRDamage >= predictedHealth then
+						SpecialCast(HK_R, aimPosition, false, true)
+					end
+				end
 			end
 		end
 	end	
