@@ -2201,6 +2201,7 @@ function MissFortune:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Double Up", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Minion Crit Bounce", value = true})
+	Menu.Skills.Q:MenuElement({id = "Crit", name = "Require Minion Crit", value = true})
 	Menu.Skills.Q:MenuElement({id = "Hero", name = "Auto 2X Hero Bounce", value = true})
 	Menu.Skills.Q:MenuElement({id = "Killsteal", name = "Killsteal", value = true})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
@@ -2211,7 +2212,9 @@ function MissFortune:CreateMenu()
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Make it Rain", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Cast on Immobile Targets", value = true})
+	Menu.Skills.E:MenuElement({id = "Combo", name = "Cast in Combo", value = true})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 20, min = 5, max = 100, step = 5 })
+	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 end
 
@@ -2287,10 +2290,16 @@ function MissFortune:AutoQ()
 	if (Menu.Skills.Q.Auto:Value() and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value()) or Menu.Skills.Combo:Value() then
 		for i = 1, LocalGameMinionCount() do
 			local t = LocalGameMinion(i)
-			if t and HPred:IsInRange(myHero.pos, t.pos, Q.Range + t.boundingRadius) and HPred:CanTarget(t) and (Menu.Skills.Combo:Value() or self:GetQDamage(t) >= t.health) then
-				local bounceTarget = self:GetQBounce(t)
-				if bounceTarget and HPred:CanTarget(bounceTarget) and _find(bounceTarget.type, "Hero") then
-					SpecialCast(HK_Q, t)
+			if t and HPred:IsInRange(myHero.pos, t.pos, Q.Range + t.boundingRadius) and HPred:CanTarget(t) then
+				local predictedHealth = t.health
+				if _G.SDK and _G.SDK.HealthPrediction then
+					predictedHealth = _G.SDK.HealthPrediction:GetPrediction(t, Q.Delay)
+				end
+				if self:GetQDamage(t) >= predictedHealth or Menu.Skills.Combo:Value() or not Menu.Skills.Q.Crit:Value() then
+					local bounceTarget = self:GetQBounce(t)
+					if bounceTarget and HPred:CanTarget(bounceTarget) and _find(bounceTarget.type, "Hero") then
+						SpecialCast(HK_Q, t)
+					end
 				end
 			end
 		end
@@ -2316,6 +2325,15 @@ function MissFortune:AutoE()
 	local target, aimPosition =HPred:GetImmobileTarget(myHero.pos, E.Range, E.Delay, _huge,Menu.General.ReactionTime:Value())
 	if target and aimPosition then
 		SpecialCast(HK_E, aimPosition)
+	elseif Menu.Skills.E.Combo:Value() and Menu.Skills.Combo:Value() then
+		local target = CurrentTarget(E.Range, true)
+		if target and HPred:CanTarget(target) then
+			local aimPosition = HPred:PredictUnitPosition(target, E.Delay)
+			if HPred:IsInRange(myHero.pos, aimPosition, E.Range) then
+				SpecialCast(HK_E, aimPosition)
+			end
+				
+		end
 	end
 end
 
