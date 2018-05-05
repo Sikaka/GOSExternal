@@ -1541,7 +1541,7 @@ function Lux:LoadSpells()
 	Q = {Range = 1075, Width = 50,Delay = 0.25, Speed = 1200, Collision = true}
 	W = {Range = 1075, Width = 120,Delay = 0.25, Speed = 1400}
 	E = {Range = 1100, Width = 310,Delay = 0.25, Speed = 1200}
-	R = {Range = 3340,Width = 115, Delay = 1, Speed = _huge}
+	R = {Range = 3340, Width = 115, Delay = 1, Speed = _huge}
 end
 
 function Lux:CreateMenu()		
@@ -1739,7 +1739,7 @@ function Lux:AutoE()
 	end	
 end
 
-function Lux:AutoR()
+function Lux:AutoR()			
 	local rDamage= 300 + (myHero:GetSpellData(_R).level -1) * 100 + myHero.ap * 0.75
 	--Check if the target has passive on them because that will deal extra damage
 	--If the target is a near guarenteed hit then count how many targets it will hit: If enough targets are likely then cast regardless of health	
@@ -1748,8 +1748,9 @@ function Lux:AutoR()
 	
 	local target, aimPosition = HPred:GetReliableTarget(myHero.pos, R.Range, R.Delay, R.Speed,R.Width, Menu.General.ReactionTime:Value(), R.Collision)
 	if target and HPred:IsInRange(myHero.pos, aimPosition, R.Range) then		
-		if Menu.Skills.R.Auto:Value() and Menu.Skills.R.Targets[target.charName] and Menu.Skills.R.Targets[target.charName]:Value() then
-			local targetCount = HPred:GetLineTargetCount(myHero.pos, aimPosition, R.Delay, R.Speed, R.Width, false)
+		if Menu.Skills.R.Auto:Value() and Menu.Skills.R.Targets[target.charName] and Menu.Skills.R.Targets[target.charName]:Value() then			
+			local cPos = myHero.pos + ( aimPosition- myHero.pos):Normalized() * R.Range
+			local targetCount = HPred:GetLineTargetCount(myHero.pos, cPos, R.Delay, R.Speed, R.Width, false)
 			if targetCount >= Menu.Skills.R.Count:Value() then
 				SpecialCast(HK_R, aimPosition, false, true)
 			end
@@ -4446,7 +4447,7 @@ function HPred:GetLineTargetCount(source, aimPos, delay, speed, width, targetAll
 			
 			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
-			if proj1 and isOnSegment and (self:GetDistanceSqr(predictedPos, proj1) <= (t.boundingRadius + width) * (t.boundingRadius + width)) then
+			if proj1 and isOnSegment and self:IsInRange(predictedPos, proj1, t.boundingRadius + width) then
 				targetCount = targetCount + 1
 			end
 		end
