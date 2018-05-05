@@ -2487,7 +2487,7 @@ function Karthus:Tick()
 	Karthus:CacheQs()
 	
 	--Re-enable auto attacks if we're basically out of mana...
-	if Menu.Skills.Combo:Value() and CurrentPctMana(myHero) > 15 then
+	if (Menu.Skills.Combo:Value() or IsFarming())and CurrentPctMana(myHero) > 15 then
 		SetAttack(false)
 	else
 		SetAttack(true)
