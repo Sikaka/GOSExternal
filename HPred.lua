@@ -365,7 +365,7 @@ function HPred:GetUnreliableTarget(source, range, delay, speed, radius, checkCol
 		if t and self:CanTarget(t, true) and (not whitelist or whitelist[t.charName]) then
 			local hitChance, aimPosition = self:GetHitchance(source, t, range, delay, speed, radius, checkCollision, isLine)		
 			if hitChance >= minimumHitChance then
-				_insert(_validTargets, {aimPosition,hitChance, hitChance * 100 + AutoUtil:CalculateMagicDamage(t, 400)})
+				_insert(_validTargets, {aimPosition,hitChance, hitChance * 100 + self:CalculateMagicDamage(t, 400)})
 			end
 		end
 	end	
