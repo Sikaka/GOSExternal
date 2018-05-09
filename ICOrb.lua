@@ -903,7 +903,7 @@ class "__Damage"
 		end
 		
 		local flatReceived = 0;
-		if fromIsMinion and targetIsMinion then
+		if not isAbility and targetIsMinion then
 			flatReceived = flatReceived - target.flatDamageReduction;
 		end
 		
@@ -1191,12 +1191,16 @@ class "__Utilities"
 			["MordekaiserQAttack"] = true,
 			["MordekaiserQAttack1"] = true,
 			["MordekaiserQAttack2"] = true,
+			["QuinnWEnhanced"] = true,
 			["XenZhaoThrust"] = true,
 			["XenZhaoThrust2"] = true,
 			["XenZhaoThrust3"] = true,
 			["BlueCardPreAttack"] = true,
 			["RedCardPreAttack"] = true,
-			["GoldCardPreAttack"] = true
+			["GoldCardPreAttack"] = true,
+			["ViktorQBuff"] = true,
+			["MasterYiDoubleStrike"] = true,
+			["QuinnWEnhanced"] = true,
 		};
 		
 		self.NoAutoAttacks = {
@@ -1298,6 +1302,9 @@ class "__Utilities"
 	end
 
 	function __Utilities:CanControl()
+	if ExtLibEvade and ExtLibEvade.Evading then
+		return false, false
+	end
 		local canattack,canmove = true,true
 		for i = 0, myHero.buffCount do
 			local buff = myHero:GetBuff(i);
@@ -1324,7 +1331,7 @@ class "__Utilities"
 		end
 		return canattack,canmove
 	end
-	function __Utilities:__GetAutoAttackRange(from)
+	function __Utilities:__GetAutoAttackRange(from)		
 		local range = from.range;
 		if from.type == Obj_AI_Minion then
 			range = self.MinionsRange[from.charName] ~= nil and self.MinionsRange[from.charName] or 0;
@@ -1505,6 +1512,10 @@ class "__Utilities"
 		if EnemiesInGame["Kayle"] and BuffManager:HasBuff(target, "JudicatorIntervention") then
 			return true;
 		end
+		if EnemiesInGame["Taric"] and BuffManager:HasBuff(target, "TaricR") then
+			return true;
+		end
+
 		if EnemiesInGame["Kindred"] and BuffManager:HasBuff(target, "kindredrnodeathbuff") and (not addHealthCheck or self:GetHealthPercent(target) <= 10) then
 			return true;
 		end
@@ -1693,8 +1704,20 @@ class "__ObjectManager"
 				end
 			end
 		end
+		
+		self.IgnoredMinions = {};
 	end
 
+
+	--Used for a script to manually ignore a minion for last hitting.
+		--EG: Cass has already E'd the minion and will kill it, don't try to auto attack that same minion
+	function __ObjectManager:IgnoreMinion(networkID, expiration)
+		if not expiration then
+			expiration = GetTickCount() + 1000
+		end
+		self.IgnoredMinions[networkID] = expiration
+	end
+	
 	function __ObjectManager:GetMinionType(minion)
 		if Utilities:IsMonster(minion) then
 			return MINION_TYPE_MONSTER;
@@ -1709,7 +1732,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if minion and Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
+			if Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
 				if Utilities:IsInRange(myHero, minion, range) then
 					Linq:Add(result, minion);
 				end
@@ -1722,7 +1745,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if minion and Utilities:IsValidTarget(minion) and minion.isAlly and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
+			if Utilities:IsValidTarget(minion) and minion.isAlly and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
 				if Utilities:IsInRange(myHero, minion, range) then
 					Linq:Add(result, minion);
 				end
@@ -1735,7 +1758,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if minion and Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
+			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION and (self.IgnoredMinions[minion.networkID] == nil or GetTickCount() > self.IgnoredMinions[minion.networkID]) then
 				if Utilities:IsInRange(myHero, minion, range) then
 					Linq:Add(result, minion);
 				end
@@ -1748,7 +1771,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if minion and Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
+			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION and (self.IgnoredMinions[minion.networkID] == nil or GetTickCount() > self.IgnoredMinions[minion.networkID]) then
 				if Utilities:IsInAutoAttackRange(myHero, minion) then
 					Linq:Add(result, minion);
 				end
@@ -1759,53 +1782,53 @@ class "__ObjectManager"
 
 	function __ObjectManager:GetOtherMinions(range)
 		local result = {};
-		---for i = 1, LocalGameWardCount() do
-		--	local minion = LocalGameWard(i);
-		--	if minion and Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
-		--		if Utilities:IsInRange(myHero, minion, range) then
-		--			Linq:Add(result, minion);
-		--		end
-		--	end
-		--end
+		for i = 1, LocalGameWardCount() do
+			local minion = LocalGameWard(i);
+			if Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
+				if Utilities:IsInRange(myHero, minion, range) then
+					Linq:Add(result, minion);
+				end
+			end
+		end
 		return result;
 	end
 
 	function __ObjectManager:GetOtherAllyMinions(range)
 		local result = {};
-		--for i = 1, LocalGameWardCount() do
-		--	local minion = LocalGameWard(i);
-		--	if minion and Utilities:IsValidTarget(minion) and minion.isAlly and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
-		--		if Utilities:IsInRange(myHero, minion, range) then
-		--			Linq:Add(result, minion);
-		--		end
-		--	end
-		--end
+		for i = 1, LocalGameWardCount() do
+			local minion = LocalGameWard(i);
+			if Utilities:IsValidTarget(minion) and minion.isAlly and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
+				if Utilities:IsInRange(myHero, minion, range) then
+					Linq:Add(result, minion);
+				end
+			end
+		end
 		return result;
 	end
 
 	function __ObjectManager:GetOtherEnemyMinions(range)
 		local result = {};
-		--for i = 1, LocalGameWardCount() do
-		--	local minion = LocalGameWard(i);
-		--	if minion and Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
-		--		if Utilities:IsInRange(myHero, minion, range) then
-		--			Linq:Add(result, minion);
-		--		end
-		--	end
-		--end
+		for i = 1, LocalGameWardCount() do
+			local minion = LocalGameWard(i);
+			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
+				if Utilities:IsInRange(myHero, minion, range) then
+					Linq:Add(result, minion);
+				end
+			end
+		end
 		return result;
 	end
 
 	function __ObjectManager:GetOtherEnemyMinionsInAutoAttackRange()
 		local result = {};
-		--for i = 1, LocalGameWardCount() do
-		--	local minion = LocalGameWard(i);
-		--	if minion and Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
-		--		if Utilities:IsInAutoAttackRange(myHero, minion) then
-		--			Linq:Add(result, minion);
-		--		end
-		--	end
-		--end
+		for i = 1, LocalGameWardCount() do
+			local minion = LocalGameWard(i);
+			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_OTHER_MINION then
+				if Utilities:IsInAutoAttackRange(myHero, minion) then
+					Linq:Add(result, minion);
+				end
+			end
+		end
 		return result;
 	end
 
@@ -1813,7 +1836,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if minion and Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_MONSTER then
+			if Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_MONSTER then
 				if Utilities:IsInRange(myHero, minion, range) then
 					Linq:Add(result, minion);
 				end
@@ -1826,7 +1849,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if minion and Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_MONSTER then
+			if Utilities:IsValidTarget(minion) and self:GetMinionType(minion) == MINION_TYPE_MONSTER then
 				if Utilities:IsInAutoAttackRange(myHero, minion) then
 					Linq:Add(result, minion);
 				end
@@ -1839,7 +1862,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i);
-			if hero and Utilities:IsValidTarget(hero) then
+			if Utilities:IsValidTarget(hero) then
 				if Utilities:IsInRange(myHero, hero, range) then
 					Linq:Add(result, hero);
 				end
@@ -1852,7 +1875,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i);
-			if hero and Utilities:IsValidTarget(hero) and hero.isAlly then
+			if Utilities:IsValidTarget(hero) and hero.isAlly then
 				if Utilities:IsInRange(myHero, hero, range) then
 					Linq:Add(result, hero);
 				end
@@ -1865,7 +1888,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i);
-			if hero and Utilities:IsValidTarget(hero) and hero.isEnemy then
+			if Utilities:IsValidTarget(hero) and hero.isEnemy then
 				if Utilities:IsInRange(myHero, hero, range) then
 					Linq:Add(result, hero);
 				end
@@ -1878,7 +1901,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i);
-			if hero and Utilities:IsValidTarget(hero) and hero.isEnemy then
+			if Utilities:IsValidTarget(hero) and hero.isEnemy then
 				if Utilities:IsInAutoAttackRange(myHero, hero) then
 					Linq:Add(result, hero);
 				end
@@ -1891,7 +1914,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameTurretCount() do
 			local turret = LocalGameTurret(i);
-			if turret and Utilities:IsValidTarget(turret) then
+			if Utilities:IsValidTarget(turret) then
 				if Utilities:IsInRange(myHero, turret, range) then
 					Linq:Add(result, turret);
 				end
@@ -1904,7 +1927,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameTurretCount() do
 			local turret = LocalGameTurret(i);
-			if turret and Utilities:IsValidTarget(turret) and turret.isAlly then
+			if Utilities:IsValidTarget(turret) and turret.isAlly then
 				if Utilities:IsInRange(myHero, turret, range) then
 					Linq:Add(result, turret);
 				end
@@ -1917,7 +1940,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameTurretCount() do
 			local turret = LocalGameTurret(i);
-			if turret and Utilities:IsValidTarget(turret) and turret.isEnemy then
+			if Utilities:IsValidTarget(turret) and turret.isEnemy then
 				if Utilities:IsInRange(myHero, turret, range) then
 					Linq:Add(result, turret);
 				end
@@ -2669,6 +2692,9 @@ class "__Orbwalker"
 				["MordekaiserQAttack1"] = true,
 				["MordekaiserQAttack2"] = true
 			},
+			["Quinn"] = {
+				["QuinnWEnhanced"] = true
+			},
 			["TwistedFate"] = {
 				["BlueCardPreAttack"] = true,
 				["RedCardPreAttack"] = true,
@@ -2843,6 +2869,8 @@ class "__Orbwalker"
 					end
 				end
 				if (not SupportMode) or (BuffManager:GetBuffCount(myHero, "TalentReaper") > 0) then
+					--List of ignore minions that champion scripts have already cast skill on.
+					
 					if self.LastHitMinion ~= nil then
 						if self.AlmostLastHitMinion ~= nil and not Utilities:IdEquals(self.AlmostLastHitMinion, self.LastHitMinion) and Utilities:IsSiegeMinion(self.AlmostLastHitMinion) then
 							return nil;
@@ -2990,10 +3018,10 @@ class "__Orbwalker"
 		end
 		
 		local AutoAttackReset = self.AutoAttackResets[myHero.charName];
-		if AutoAttackReset ~= nil then
+		if AutoAttackReset ~= nil and self.Menu.General.AttackResetting:Value() then
 			local spellData = Utilities:GetSpellDataFromSlot(myHero, AutoAttackReset.Slot);
 			local castTime = spellData.castTime;
-			if castTime > self.AutoAttackResetCastTime and (not AutoAttackReset.toggle or spellData.currentCd < 0.5) then
+			if castTime > self.AutoAttackResetCastTime and (not AutoAttackReset.toggle or spellData.currentCd < 0.5) then				
 				if self.AutoAttackResetCastTime > 0 then
 					local name = AutoAttackReset["Name"];
 					if name == nil or name == spellData.name then
@@ -3041,7 +3069,7 @@ class "__Orbwalker"
 			end
 		end
 		
-		if (not self.IsNone) then
+		if (not self.IsNone) then		
 			self:Orbwalk();
 		end
 		if self.LastHoldPosition > 0 and CurrentTime - self.LastHoldPosition > 0.025 then
@@ -3084,7 +3112,6 @@ class "__Orbwalker"
 		end
 		
 		if self.Attack and self:CanAttack() then
-			
 			local target = self:GetTarget();
 			if target ~= nil then
 				local args = {
@@ -3470,16 +3497,6 @@ class "__Orbwalker"
 		return animationTime;
 	end
 
-	function __Orbwalker:GetLastHitTargets(rawDamage, damageType)
-		local targets = {}		
-		for _, orbwalkerMinion in pairs(OrbwalkerMinionsHash) do
-			if orbwalkerMinion:CanLastHit(rawDamage, damageType) then
-				Linq:Add(targets, orbwalkerMinion);
-			end
-		end
-		return targets
-	end
-	
 	function __Orbwalker:GetTarget()
 		if Utilities:IsValidTarget(self.ForceTarget) then
 			--return Utilities:IsInAutoAttackRange(myHero, self.ForceTarget) and self.ForceTarget or nil;
@@ -3635,7 +3652,7 @@ class "__Orbwalker"
 			[ORBWALKER_MODE_FLEE] 			= self:HasMode(ORBWALKER_MODE_FLEE),
 		};
 	end
-
+	
 	function __Orbwalker:CalculateLastHittableMinions()
 		local allyTurrets = ObjectManager:GetAllyTurrets();
 		local nearestTurret = nil;
@@ -4034,10 +4051,6 @@ class "__OrbwalkerMinion"
 
 	function __OrbwalkerMinion:IsLastHittable()
 		return self.LastHitHealth <= Orbwalker:GetAutoAttackDamage(self.Minion);
-	end
-	
-	function __OrbwalkerMinion:CanLastHit(rawDamage, damageType)		
-		return  self.LastHitHealth <= __Damage:CalculateDamage(myHero, self.Minion, rawDamage, damageType)
 	end
 
 	function __OrbwalkerMinion:IsAlmostLastHittable(IsUnderTurret)

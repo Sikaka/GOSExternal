@@ -518,7 +518,7 @@ function __ObjectManager:Tick()
 				if self.CachedParticles[particle.networkID] then
 					self.CachedParticles[particle.networkID].valid = true
 				else
-					local particleData = { valid = true, pos = particle.pos, name = particle.name}
+					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
 					self.CachedParticles[particle.networkID] =particleData
 					self:ParticleCreated(particleData)
 				end
@@ -530,7 +530,7 @@ function __ObjectManager:Tick()
 	if (#self.OnMissileCreateCallbacks > 0 or #self.OnMissileDestroyCallbacks > 0) and GetTickCount() > self.NextCacheMissiles then
 		self.NextCacheMissiles = GetTickCount() + Menu.Performance.MissileCache:Value()
 		for _, missile in LocalPairs(self.CachedMissiles) do
-			if not missile or not missile.data or not missile.valid then
+			if not missile or not missile.data or missile.dead or not missile.valid then
 				if missile and missile.data then
 					self:MissileDestroyed(missile)
 				end
@@ -2394,6 +2394,144 @@ function __DamageManager:__init()
 			MissingHealth = {.25,.3,.35},
 			Danger = 5,
 		},
+		
+		--[Kalista Skills]--
+		["KalistaMysticShot"] = 
+		{
+			HeroName = "Kalista",
+			SpellName = "Pierce",
+			MissileName ="kalistamysticshotmis",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Collision = 1,
+			Radius = 40,			
+			Damage = {10,70,130,190,250},
+			ADScaling = 1,
+			Danger = 1,
+		},
+		
+		--[Karma Skills]--
+		["KarmaQ"] = 
+		{
+			HeroName = "Karma",
+			SpellName = "Inner Flame",
+			MissileName = {"KarmaQMissile","KarmaQMissileMantra"},
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Collision = 1,
+			Radius = 60,			
+			Damage = {180,125,170,215,260},
+			APScaling = .6,
+			Danger = 2,
+		},
+		["KarmaSpiritBind"] = 
+		{
+			HeroName = "Karma",
+			SpellName = "Focused Resolve",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {30,55,80,150,130},
+			APScaling = .45,
+			Danger = 2,
+		},
+		
+		--[Karthus Skills]--		
+		["KarthusLayWasteA1"] = 
+		{
+			HeroName = "Karthus",
+			SpellName = "LayWaste",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 160,			
+			Damage = {50,70,90,110,130},
+			APScaling = .3,
+			Danger = 2,
+		},
+		
+		--W is a different targeting type, leave it for now
+		--R is delayed damage, leave it for now
+		
+		--[Kassadin skills]--		
+		["NullLance"] = 
+		{
+			HeroName = "Kassadin",
+			SpellName = "Null Sphere",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {65,95,125,155,185},
+			APScaling = .7,
+			Danger = 1,
+		},	
+		["ForcePulse"] = 
+		{
+			HeroName = "Kassadin",
+			SpellName = "Force Pulse",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_ARC,
+			Damage = {65,95,125,155,185},
+			APScaling = .7,
+			Danger = 3,
+			CCType = BUFF_SLOW
+		},	
+		["RiftWalk"] = 
+		{
+			HeroName = "Kassadin",
+			SpellName = "Riftwalk",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 270,
+			Damage = {80,100,120},
+			APScaling = .3,
+			Danger = 3,
+		},
+		
+		--[Katarina Skills]--
+		["KatarinaQ"] = 
+		{
+			HeroName = "Katarina",
+			SpellName = "Bouncing Blade",
+			MissileName = {"KatarinaQ", "KatarinaQMis"},
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {75,105,135,165,195},
+			APScaling = .3,
+			Danger = 1,
+		},
+		["KatarinaEWrapper"] = 
+		{
+			Alias = "KatarinaE",
+			HeroName = "Katarina",
+			SpellName = "Shunpo",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {15,30,45,60,75},
+			APScaling = .25,
+			ADScaling = 1.5,
+			Danger = 1,
+		},
+		["KatarinaR"] = 
+		{
+			HeroName = "Katarina",
+			SpellName = "Death Lotus",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			MissileName ="KatarinaRMis",
+			Damage = {25,37.5,50},
+			APScaling = .19,
+			ADScaling = .22,
+			Danger = 1,
+		},
+		
 		--[LUX SKILLS]--
 		["LuxLightBinding"] = 
 		{
@@ -2439,6 +2577,50 @@ function __DamageManager:__init()
 			APScaling = .75,
 			Danger = 5,
 		},
+		
+		--[MALPHITE SKILLS]--
+		["SeismicShard"] = 
+		{
+			HeroName = "Malphite",
+			SpellName = "Seismic Shard",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			MissileName = "SeismicShard",
+			Damage = {70,120,170,220,270},
+			APScaling = .6,
+			Danger = 1,
+			CCType = BUFF_SLOW
+		},
+		["Landslide"] = 
+		{
+			HeroName = "Malphite",
+			SpellName = "Ground Slam",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 300,
+			Damage = {60,95,130,165,200},
+			APScaling = .6,
+			Danger = 1,
+			CCType = BUFF_SLOW
+		},
+		--Malphite ult is not active skill, missile or buff... 
+		["UFSlash"] = 
+		{
+			HeroName = "Malphite",
+			SpellName = "Unstoppable Force",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 270,
+			Damage = {200,300,400},
+			APScaling = 1,
+			Danger = 5,
+			CCType = BUFF_KNOCKUP
+		},
+		
+		
 		
 		--[MORGANA SKILLS]--
 		["DarkBindingMissile"] = 
@@ -2789,6 +2971,7 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 end
 
 function __DamageManager:SpellCast(spell)
+	if Menu.PrintSkill:Value() then print(spell.name) end
 	if self.Skills[spell.name] then
 		local owner = ObjectManager:GetObjectByHandle(spell.handle)
 		if owner == nil then return end
@@ -2808,8 +2991,8 @@ function __DamageManager:SpellCast(spell)
 		elseif spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
 			local castPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)			
 			for _, target in LocalPairs(collection) do
-				if target ~= nil and LocalType(target) == "userdata" then					
-					if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius) then
+				if target ~= nil and LocalType(target) == "userdata" then
+					if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
 						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType)
 					end

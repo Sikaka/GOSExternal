@@ -1,8 +1,3 @@
-if FileExist(COMMON_PATH .. "Alpha.lua") then
-	require 'Alpha'
-else
-	print("ERROR: Alpha.lua is not present in your Scripts/Common folder. Please download it from the forum.")
-end
 
 local LocalGameHeroCount 			= Game.HeroCount;
 local LocalGameHero 				= Game.Hero;
@@ -18,7 +13,6 @@ local LocalGameMissileCount 		= Game.MissileCount;
 local LocalGameMissile				= Game.Missile;
 local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
-local LocalGeometry 				= _G.Alpha.Geometry;
 
 function Ready(spellSlot)
 	return Game.CanUseSpell(spellSlot) == 0
@@ -44,7 +38,6 @@ function GetTarget(range)
 	return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
 end
 
-Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 function WndMsg(msg,key)
 	if msg == 513 then
 		local starget = nil
@@ -86,7 +79,15 @@ print("Ziggs will load shortly")
 DelayAction(function() LoadScript() end, remaining)
 	
 
-function LoadScript()	
+function LoadScript()
+	--if not myHero.charName ~= "Ziggs" then print("This script is only compatible with Ziggs!") return end
+	if FileExist(COMMON_PATH .. "Alpha.lua") then
+		require 'Alpha'
+	else
+		print("ERROR: Alpha.lua is not present in your Scripts/Common folder. Please download it from the forum.")
+	end
+	_G.Alpha.DamageManager:InitializeCallbacks()
+	LocalGeometry 				= _G.Alpha.Geometry;
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = "Ziggs"})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Bouncing Bomb", type = MENU})
@@ -126,6 +127,7 @@ function LoadScript()
 	_G.Alpha.ObjectManager:OnBlink(function(target) OnBlink(target) end )
 	_G.Alpha.ObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
+	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end
 
 local WPos = nil
