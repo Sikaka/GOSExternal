@@ -81,9 +81,9 @@ W = {	Range = 1000,	Radius = 325,	Delay = 0.25,	Speed = 2000	}
 E = {	Range = 900,	Radius = 325,Delay = 0.25,	Speed = 1800	}
 R = {	Range = 5300,	Radius = 550,Delay = 0.375,	Speed = 1500	}
 
-local msRemaining = (30 - Game.Timer()) * 1000
+local remaining = 30 - Game.Timer()
 print("Ziggs will load shortly")
-DelayAction(function() LoadScript() end, msRemaining)
+DelayAction(function() LoadScript() end, remaining)
 	
 
 function LoadScript()	
