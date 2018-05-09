@@ -123,26 +123,56 @@ end
 
 function __Geometry:IsInRange(p1, p2, range)
 	if not p1 or not p2 then
-		local dInfo = debug.getinfo(2)
+		local dInfo = debug.getinfo(1)
 		print("Undefined IsInRange target. Please report. Method: " .. dInfo.name .. "  Line: " .. dInfo.linedefined)
 		return false
 	end
 	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
 end
 
-function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision)
+function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision, isLine)
 	local hitChance = 1
 	if not self:IsInRange(source.pos, target.pos, range) then hitChance = -1 end
+	local aimPosition = target.pos
 	if hitChance > 0 then
-		local aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed)	
+	
+		local reactionTime = self:PredictReactionTime(target, .15)
+		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed)	
 		local interceptTime = self:GetSpellInterceptTime(source.pos, aimPosition, delay, speed)
 		
 		if not target.pathing or not target.pathing.hasMovePath then
 			hitChance = 2
 		end
 		
-		--Leaving all the stun/slow/dash logic out for now. Not important
-	
+		if isLine then
+			local pathVector = aimPosition - target.pos
+			local castVector = (aimPosition - myHero.pos):Normalized()
+			if pathVector.x + pathVector.z ~= 0 then
+				pathVector = pathVector:Normalized()
+				if pathVector:DotProduct(castVector) < -.85 or pathVector:DotProduct(castVector) > .85 then
+					if speed > 3000 then
+						hitChance = 3
+					else
+						hitChance = 2
+					end
+				end
+			end
+		end
+		
+		local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
+		if movementRadius - target.boundingRadius <= radius /2 then
+			origin,movementRadius = self:UnitMovementBounds(target, interceptTime, 0)
+			if movementRadius - target.boundingRadius <= radius /2 then
+				hitChance = 4
+			else		
+				hitChance = 3
+			end
+		end
+		
+		if self:GetImmobileTime(target) >= interceptTime then
+			hitChance = 5
+		end
+		
 		if checkCollision then
 			if self:CheckMinionCollision(source.pos, aimPosition, delay, speed, radius) then
 				hitChance = -1
@@ -151,6 +181,47 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 	end
 	
 	return aimPosition, hitChance	
+end
+
+function __Geometry:GetImmobileTime(unit)
+	local duration = 0
+	for i = 0, unit.buffCount do
+		local buff = unit:GetBuff(i)
+		if buff and buff.count > 0 and buff.duration> duration and (buff.type == BUFF_STUN or buff.type == BUFF_ROOT or buff.type == BUFF_SURPRESS or buff.type == BUFF_KNOCKUP ) then
+			duration = buff.duration
+		end
+	end
+	return duration		
+end
+
+function __Geometry:PredictReactionTime(unit, minimumReactionTime)
+	if not minimumReactionTime then minimumReactionTime = .15 end
+	local reactionTime = minimumReactionTime
+	if unit.activeSpell and unit.activeSpell.valid then		
+		local windupRemaining = unit.activeSpell.startTime + unit.activeSpell.windup - Game.Timer()
+		if windupRemaining > 0 then
+			reactionTime = windupRemaining
+			if unit.activeSpell.isAutoAttack then
+				reactionTime = reactionTime / 3
+			end
+		end
+	end
+	
+	if unit.pathing.hasMovePath and unit.pathing.isDashing and unit.pathing.dashSpeed>500 then
+		reactionTime = self:GetDistance(unit.pos, unit:GetPath(1)) / unit.pathing.dashSpeed
+	end
+	return reactionTime
+end
+
+function __Geometry:UnitMovementBounds(unit, delay, reactionTime)
+	local startPosition = self:PredictUnitPosition(unit, delay)
+	
+	local radius = 0
+	local deltaDelay = delay -reactionTime- self:GetImmobileTime(unit)	
+	if (deltaDelay >0) then
+		radius = self:GetTargetMS(unit) * deltaDelay	
+	end
+	return startPosition, radius	
 end
 
 function __Geometry:GetSpellInterceptTime(startPos, endPos, delay, speed)	
@@ -264,6 +335,10 @@ function __ObjectManager:__init()
 	
 	self.CachedSpells = {}
 	self.OnSpellCastCallbacks = {}
+	
+	self.NextCacheMissiles = GetTickCount()
+	self.NextCacheParticles = GetTickCount()
+	self.NextCacheBuffs = GetTickCount()
 end
 
 --Register Buff Added Event
@@ -373,7 +448,8 @@ local lookupTable = {"one", "two", "three", "four", "five"}
 --Search for changes in particle or missiles in game. trigger the appropriate events.
 function __ObjectManager:Tick()
 	--Check if we have any buff added/removed callbacks before querying
-	if #self.OnBuffAddedCallbacks > 0 or #self.OnBuffRemovedCallbacks  > 0  then
+	if (#self.OnBuffAddedCallbacks > 0 or #self.OnBuffRemovedCallbacks  > 0) and GetTickCount() > self.NextCacheBuffs then
+		self.NextCacheBuffs = GetTickCount() + Menu.Performance.BuffCache:Value()
 		--KNOWN ISSUE: Certain skills use buffs... but constantly tweak their start/end time: EG Aatrox Q. I have no way to reliably handle this currently.
 		for _, buff in LocalPairs(self.CachedBuffs) do
 			if not buff or not buff.valid then
@@ -423,7 +499,8 @@ function __ObjectManager:Tick()
 	end
 
 	--Cache Particles ONLY if a create or destroy event is registered: If not it's a waste of processing
-	if #self.OnParticleCreateCallbacks > 0 or #self.OnParticleDestroyCallbacks > 0 then
+	if (#self.OnParticleCreateCallbacks > 0 or #self.OnParticleDestroyCallbacks > 0) and GetTickCount() > self.NextCacheParticles then
+		self.NextCacheParticles = GetTickCount() + Menu.Performance.ParticleCache:Value()
 		for _, particle in LocalPairs(self.CachedParticles) do
 			if not particle or not particle.valid then
 				if particle then					
@@ -450,7 +527,8 @@ function __ObjectManager:Tick()
 	end
 	
 	--Cache Missiles ONLY if a create or destroy event is registered: If not it's a waste of processing
-	if #self.OnMissileCreateCallbacks > 0 or #self.OnMissileDestroyCallbacks > 0 then
+	if (#self.OnMissileCreateCallbacks > 0 or #self.OnMissileDestroyCallbacks > 0) and GetTickCount() > self.NextCacheMissiles then
+		self.NextCacheMissiles = GetTickCount() + Menu.Performance.MissileCache:Value()
 		for _, missile in LocalPairs(self.CachedMissiles) do
 			if not missile or not missile.data or not missile.valid then
 				if missile and missile.data then
@@ -529,14 +607,7 @@ end
 class "__DamageManager"
 --Credits LazyXerath for extra dmg reduction methods
 function __DamageManager:__init()
-
-	
-
 	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true"}
-	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
-	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)
-	
-	ObjectManager:OnBuffAdded(function(owner, buff) self:BuffAdded(owner, buff) end)
 	self.OnIncomingCCCallbacks = {}
 	
 	self.SiegeMinionList = {"Red_Minion_MechCannon", "Blue_Minion_MechCannon"}
@@ -2473,6 +2544,47 @@ function __DamageManager:__init()
 			MissileTime = .5
         },
 		
+		--[Wukong Skills]--
+		["MonkeyKingDoubleAttack"] =
+        {
+			Alias = "MonkeyKingQAttack",
+            HeroName = "MonkeyKing",
+            SpellName = "Crushing Blow",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {30,60,90,120,150},
+            ADScaling = {1.10,1.20,1.30,1.40,1.50},
+            Danger = 1,
+        },
+		
+		["MonkeyKingNimbus"] =
+        {
+            HeroName = "MonkeyKing",
+            SpellName = "Nimbus Strike",
+            SpellSlot = _E,
+            BuffName = "MonkeyKingNimbusKick",
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {65,110,155,200,245},
+            ADScaling = .8,
+            Danger = 1,
+        },
+		
+		["MonkeyKingSpinToWin"] =
+        {
+            HeroName = "MonkeyKing",
+            SpellName = "Cyclone",
+            SpellSlot = _R,
+            BuffName = "MonkeyKingSpinToWin",
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 375,
+            Damage = {20,120,200},
+            ADScaling = 1.1,
+            CCType = BUFF_KNOCKUP,
+            Danger = 5,
+        },
 		--[ZIGGS SKILLS]--
         ["ZiggsQ"] = 
         {
@@ -2498,7 +2610,6 @@ function __DamageManager:__init()
             Damage = {70,105,140,175,210},
             APScaling = .35,
             Danger = 2,
-			CCType = BUFF_KNOCKBACK,
         },
         ["ZiggsE"] = 
         {
@@ -2584,6 +2695,13 @@ function __DamageManager:__init()
 		end
 	end
 	
+end
+
+--Helper method to enable all the callbacks needed to calculate damage. By default we dont need to track all this shit.
+function __DamageManager:InitializeCallbacks()	
+	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
+	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)	
+	ObjectManager:OnBuffAdded(function(owner, buff) self:BuffAdded(owner, buff) end)
 	LocalCallbackAdd('Tick',  function() self:Tick() end)
 	ObjectManager:OnSpellCast(function(args) self:SpellCast(args) end)
 end
@@ -2813,6 +2931,7 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			damage = skillInfo.SpecialDamage(owner, target)
 		else
 			--TODO: Make sure this handles nil values like a champ
+			
 			damage = (skillInfo.Damage and skillInfo.Damage[owner:GetSpellData(skillInfo.SpellSlot).level] or 0 )+ 
 			(skillInfo.APScaling and (LocalType(skillInfo.APScaling) == "table" and skillInfo.APScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.APScaling) * owner.ap or 0) + 
 			(skillInfo.ADScaling and (LocalType(skillInfo.ADScaling) == "table" and skillInfo.ADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.ADScaling) * owner.totalDamage or 0) + 
@@ -3087,6 +3206,12 @@ end
 
 --Initialization
 Menu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
+Menu:MenuElement({id = "Performance", name = "Performance", type = MENU})
+Menu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = 100, min = 10, max = 1000, step = 10 })
+Menu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = 200, min = 10, max = 1000, step = 10 })
+Menu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 100, min = 10, max = 1000, step = 10 })
+	
+	
 Menu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = true})
 Menu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = true})
 Menu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = true})
@@ -3110,5 +3235,5 @@ BuffManager = __BuffManager()
 _G.Alpha.BuffManager = BuffManager
 
 
-ObjectManager:OnBlink(function(args) print(args.charName .. " used a blink!") end)
-ObjectManager:OnSpellCast(function(args) print(args.data.name .. " cast!") end)
+--ObjectManager:OnBlink(function(args) print(args.charName .. " used a blink!") end)
+--ObjectManager:OnSpellCast(function(args) print(args.data.name .. " cast!") end)
