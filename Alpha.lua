@@ -2532,6 +2532,263 @@ function __DamageManager:__init()
 			Danger = 1,
 		},
 		
+		--[Kayle Skills]--
+		["JudicatorReckoning"] = 
+		{
+			HeroName = "Kayle",
+			SpellName = "Reckoning",
+			MissileName = "JudicatorReckoning",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {60,110,160,210,260},
+			APScaling = .6,
+			ADScaling = 1,
+			Danger = 1,
+			CCType = BUFF_SLOW
+		},
+		
+		--[Kayne Skills]--
+		
+		["KaynW"] = 
+		{
+			HeroName = "Kayn",
+			SpellName = "Blade's Reach",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 50,
+			Damage = {90,135,180,225,270},
+			ADScaling = 1.3,
+			Danger = 2,
+			CCType = BUFF_SLOW
+		},
+		["KaynR"] = 
+		{
+			HeroName = "Kayn",
+			SpellName = "Umbral Trespass",
+			BuffName = "KaynR",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {150,250,350},
+			ADScaling = 1.75,
+			Danger = 4,
+		},
+		
+		--[Kennen Skills]--
+		
+		["KennenShurikenHurlMissile1"] = 
+		{
+			HeroName = "Kennen",
+			SpellName = "Thundering Shuriken",
+			MissileName = "KennenShurikenHurlMissile1",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 50,
+			Damage = {75,115,155,195,235},
+			APScaling = .75,
+			Danger = 1,
+		},
+		
+		["KennenBringTheLight"] = 
+		{
+			HeroName = "Kennen",
+			SpellName = "Electrical Surge",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {60,85,110,135,160},
+			APScaling = .8,
+			Danger = 1,
+		},
+		
+		["KennenShurikenStorm"] = 
+		{
+			HeroName = "Kennen",
+			SpellName = "Electrical Surge",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 500,
+			Damage = {40,75,110},
+			APScaling = .2,
+			Danger = 3,
+		},
+		
+		--[Khazix Skills]--
+		
+		["KhazixQ"] = 
+		{
+			HeroName = "Khazix",
+			Alternate = {"KhazixQLong"},
+			SpellName = "Taste Their Fear",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {50,75,100,125,150},
+			ADScaling = 1.3,
+			Danger = 1,
+		},
+		
+		["KhazixQLong"] = 
+		{
+			HeroName = "Khazix",
+			Alternate = {"KhazixQ"},
+			SpellName = "Taste Their Fear",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {50,75,100,125,150},
+			ADScaling = 1.3,
+			Danger = 1,
+		},
+		
+		["KhazixW"] = 
+		{
+			HeroName = "Khazix",
+			SpellName = "Void Spike",
+			MissileName = "KhazixWMissile",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 73,
+			Damage = {85,115,145,175,205},
+			ADScaling = 1,
+			Danger = 1,
+		},
+		
+		--Can't get kha E to work... it has a missile associated but I cant seem to get it to work
+		["KhazixE"] = 
+		{
+			HeroName = "Khazix",
+			SpellName = "Void Spike",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 300,
+			Damage = {65,100,135,170,205},
+			ADScaling = .2,
+			Danger = 1,
+			MissileName = "KhazixEInvisMissile",
+			MissileTime = .5
+		},
+		
+		--[Kindred Skills]--
+		["KindredQ"] = 
+		{
+			HeroName = "Kindred",
+			SpellName = "Dance of Arrows",
+			MissileName = "KindredQMissile",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {60,80,100,120,140},
+			ADScaling = .65,
+			Danger = 1,
+		},
+		
+		["KindredEWrapper"] = 
+		{
+			Alias = "KindredE",
+			HeroName = "Kindred",
+			SpellName = "Mounting Dread",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {65,85,105,125,145},
+			ADScaling = .8,
+			Danger = 1,
+			CCType = BUFF_SLOW
+		},
+		
+		
+		--[Kled Skills]--
+		["KledQ"] = 
+		{
+			HeroName = "Kled",
+			Alternate = {"KledRiderQ"},
+			SpellName = "Beartrap on a Rope",
+			MissileName = "KledQMissile",
+			Radius = 70,
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {30,55,80,105,130},
+			ADScaling = .6,
+			Danger = 1,
+		},
+		["KledRiderQ"] = 
+		{
+			HeroName = "Kled",
+			Alternate = {"KledQ"},
+			SpellName = "Pocket Pistol",
+			MissileName = "KledRiderQMissile",
+			Radius = 45,
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {30,50,65,80,95},
+			ADScaling = .8,
+			Danger = 1,
+		},
+		["KledR"] = 
+		{
+			HeroName = "Kled",
+			SpellName = "Chaaaaaaaarge!!!",
+			BuffName = "KledRDash",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 300,
+			Damage = {200,300,400},
+			ADScaling = 3,
+			Danger = 4,
+		},
+		
+		--[Kogmaw Skills]--
+		["KogMawQ"] = 
+		{
+			HeroName = "Kogmaw",
+			SpellName = "Caustic Spittle",
+			MissileName = "KogMawQ",
+			Radius = 70,
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {80,130,180,230,280},
+			APScaling = .5,
+			Danger = 1,
+		},
+		["KogMawVoidOoze"] = 
+		{
+			HeroName = "Kogmaw",
+			SpellName = "Void Ooze",
+			MissileName = "KogMawVoidOozeMissile",
+			Radius = 120,
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {60,105,150,195,240},
+			APScaling = .5,
+			Danger = 2,
+			CCType = BUFF_SLOW
+		},
+		["KogMawLivingArtillery"] = 
+		{
+			HeroName = "Kogmaw",
+			SpellName = "Living Artillery",
+			Radius = 225,
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Damage = {100,140,180},
+			APScaling = .25,
+			ADScaling = .65,
+			Danger = 2,
+		},
+		
 		--[LUX SKILLS]--
 		["LuxLightBinding"] = 
 		{
@@ -2927,7 +3184,7 @@ function __DamageManager:Tick()
 end
 
 
-function __DamageManager:IncomingDamage(owner, target, damage, ccType)
+function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
 	
 	if Menu.PrintDmg:Value() then
 		if owner and target then
@@ -2938,19 +3195,22 @@ function __DamageManager:IncomingDamage(owner, target, damage, ccType)
 	end
 	--Trigger any registered OnCC callbacks. Send them the target, damage and type of cc so we can choose our actions
 	if ccType and #self.OnIncomingCCCallbacks then
-		self:IncomingCC(target, damage, ccType)
+		self:IncomingCC(target, damage, ccType, canDodge)
 	end
 end
 
-function __DamageManager:CheckLineMissileCollision(skillshot, targetList)
-	local nextPosition = skillshot.data.pos + skillshot.forward* skillshot.data.missileData.speed * (Game.Latency() * 0.001 + .25)	
+function __DamageManager:CheckLineMissileCollision(skillshot, targetList)	
+	--Get distance between current position and endPos
+	local distRemaining = Geometry:GetDistance(skillshot.data.pos, skillshot.data.missileData.endPos)	
+	local step = LocalMin(distRemaining, skillshot.data.missileData.speed  * .35)
+	local nextPosition = skillshot.data.pos + skillshot.forward * step
 	local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)
 	for _, target in LocalPairs(targetList) do
 		if target~= nil and LocalType(target) == "userdata" then
 			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(skillshot.data.pos, nextPosition, target.pos)
 			if isOnSegment and Geometry:IsInRange(target.pos, pointLine, skillshot.data.missileData.width + target.boundingRadius) then
 				local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
-				self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType)
+				self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
 			end
 		end
 	end
@@ -2963,7 +3223,7 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 			if target~= nil and LocalType(target) == "userdata" then
 				if Geometry:IsInRange(target.pos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
 					local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
-					self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType)
+					self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
 				end
 			end
 		end
@@ -2994,7 +3254,7 @@ function __DamageManager:SpellCast(spell)
 				if target ~= nil and LocalType(target) == "userdata" then
 					if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
-						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType)
+						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType,true)
 					end
 				end
 			end
@@ -3007,7 +3267,7 @@ function __DamageManager:SpellCast(spell)
 					local deltaAngle = LocalAbs(Geometry:Angle(spell.data.startPos,target.pos) - angleOffset)
 					if deltaAngle < arcAngle and Geometry:IsInRange(spell.data.startPos, target.pos, arcDistance) then
 						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
-						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType)
+						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType,true)
 					end
 				end
 			end
@@ -3018,7 +3278,7 @@ function __DamageManager:SpellCast(spell)
 					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, castPos, target.pos)
 					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
-						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType)
+						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType,true)
 					end
 				end
 			end
@@ -3107,6 +3367,26 @@ function __DamageManager:OnTargetedMissileTable(missile)
 	end
 end
 
+
+function __DamageManager:PredictDamage(owner, target, spellName)
+	local damage = 0
+	local skillInfo = self.MasterSkillLookupTable[spellName]
+	if skillInfo then damage =self:CalculateSkillDamage(owner, target, skillInfo) end
+	
+	local targetCollection = self.EnemyDamage
+	if target.isAlly then
+		targetCollection = self.AlliedDamage
+	end
+	if targetCollection[target.handle] then
+		for _, dmg in LocalPairs(targetCollection[target.handle]) do
+			if dmg then
+				damage = damage + dmg.Damage
+			end
+		end
+	end	
+	return damage
+end
+
 function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 	local damage = 0
 	if skillInfo.Damage or skillInfo.SpecialDamage or skillInfo.CurrentHealth then
@@ -3158,9 +3438,9 @@ function __DamageManager:OnIncomingCC(cb)
 end
 
 --Trigger Incoming CC Event
-function __DamageManager:IncomingCC(target, damage, ccType)
+function __DamageManager:IncomingCC(target, damage, ccType, canDodge)
 	for i = 1, #self.OnIncomingCCCallbacks do
-		self.OnIncomingCCCallbacks[i](target, damage, ccType);
+		self.OnIncomingCCCallbacks[i](target, damage, ccType, canDodge);
 	end
 end
 
@@ -3187,8 +3467,10 @@ function __DamageManager:BuffAdded(owner, buff)
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_SINGLE then
-			local target = ObjectManager:GetObjectByHandle(owner.attackData.target)
+			print("Single Target")
+			local target = ObjectManager:GetObjectByHandle(owner.attackData.target)			
 			if target then
+				print(target.charName)
 				local damage = self:CalculateSkillDamage(owner, target, spellInfo)
 				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
 			end
