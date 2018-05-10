@@ -9,6 +9,7 @@ _G.Alpha =
 	BuffManager = nil,
 }
 
+local LocalOSClock					= os.clock;
 local LocalVector					= Vector;
 local LocalCallbackAdd				= Callback.Add;
 local LocalCallbackDel				= Callback.Del;
@@ -629,6 +630,8 @@ function __DamageManager:__init()
 	
 	self.EnemyHeroes = {}
 	self.EnemyDamage = {}
+	
+	self.IgnoredCollisions = {}
 	
 	for i = 1, Game.HeroCount() do
 		local target = Game.Hero(i)
@@ -3169,6 +3172,90 @@ function __DamageManager:__init()
 			Danger = 5,
 		},
 		
+		--[Malzahar Skills]--
+		["MalzaharQ"] = 
+		{
+			HeroName = "Malzahar",
+			SpellName = "Call of the Void",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "MalzaharQMissile",
+			Radius = 85,
+			Damage = {70,105,140,175,210},
+			APScaling = .65,
+			Danger = 2,
+			CCType = BUFF_SILENCE
+		},
+		["MalzaharE"] = 
+		{
+			HeroName = "Malzahar",
+			SpellName = "Malefic Visions",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {80,115,150,185,220},
+			APScaling = .8,
+			Danger = 2,
+		},
+		["MalzaharR"] = 
+		{
+			HeroName = "Malzahar",
+			SpellName = "Nether Grasp",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {125,200,275},
+			APScaling = .8,
+			Danger = 5,
+			CCType = BUFF_SURPRESS,
+		},
+		
+		--[Maokai skills]--
+		["MaokaiQ"] = 
+		{
+			HeroName = "Maokai",
+			SpellName = "Bramble Smash",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "MaokaiQMissile",
+			Radius = 110,
+			Damage = {65,105,145,185,225},
+			APScaling = .4,
+			Danger = 2,
+			CCType = BUFF_SLOW
+		},
+		["MaokaiE"] = 
+		{
+			HeroName = "Maokai",
+			SpellName = "Sapling Toss",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName = "MaokaiEMissile",
+			Radius = 120,
+			Damage = {25,50,75,100,125},
+			MaximumHealth = {.06,.065,.07,.075,.08},
+			MaximumHealthAP = .01,
+			Danger = 2,
+			CCType = BUFF_SLOW
+		},
+		["MaokaiR"] = 
+		{
+			HeroName = "Maokai",
+			SpellName = "Nature's Grasp",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = {"MaokaiRMis","MaokaiRMisExtra"},
+			Radius = 120,
+			Damage = {150,225,300},
+			APScaling = .75,
+			Danger = 4,
+			CCType = BUFF_ROOT
+		},
+		
 		--[MALPHITE SKILLS]--
 		["SeismicShard"] = 
 		{
@@ -3253,6 +3340,464 @@ function __DamageManager:__init()
 			APScaling = .7,
 			Danger = 4,
 			CCType = BUFF_ROOT
+		},
+		
+		--[Master Yi Skills]--
+		
+		["AlphaStrike"] = 
+		{
+			HeroName = "Master Yi",
+			SpellName = "AlphaStrike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {25,60,95,130,165},
+			ADScaling = 1.0,
+			Danger = 1,
+		},
+		
+		--[Miss Fortune Skills]--
+		["MissFortuneRicochetShot"] = 
+		{
+			HeroName = "MissFortune",
+			SpellName = "Double Up",
+			SpellSlot = _Q,
+			MissileName = {"MissFortuneRicochetShot", "MissFortuneRShotExtra"},
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {20,40,60,80,100},
+			ADScaling = 1.0,
+			APScaling = .35,
+			Danger = 1,
+		},
+		["MissFortuneScattershot"] = 
+		{
+			HeroName = "MissFortune",
+			SpellName = "Make It Rain",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 200,
+			Damage = {10,14.375,18.75,23.125,27.5},
+			APScaling = .1,
+			Danger = 1,
+			CCType = BUFF_SLOW
+		},
+		["MissFortuneScattershot"] = 
+		{
+			HeroName = "MissFortune",
+			SpellName = "Bullet Time",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "MissFortuneBullets",
+			Radius = 20,
+			Damage = {0,0,0},
+			APScaling = .2,
+			ADScaling = .75,
+			Danger = 1,
+		},
+		
+		--[Nami Skills]--
+		
+		["NamiQ"] = 
+		{
+			HeroName = "Nami",
+			SpellName = "Aqua Prison",
+			SpellSlot = _Q,
+			MissileName = "NamiQMissile",
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 120,
+			Damage = {75,130,185,240,295},
+			APScaling = .5,
+			Danger = 3,
+			CCType = BUFF_KNOCKUP
+		},
+		
+		["NamiW"] = 
+		{
+			HeroName = "Nami",
+			SpellName = "Aqua Prison",
+			SpellSlot = _W,
+			MissileName = {"NamiWMissileEnemy", "NamiWEnemy"},
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {65,95,125,155,185},
+			APScaling = .3,
+			Danger = 1,
+		},
+		
+		["NamiE"] = 
+		{
+			Alias = "NamiCritAttack",
+			HeroName = "Nami",
+			SpellName = "Tidecaller's Blessing",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {25,40,55,70,85},
+			APScaling = .2,
+			ADScaling = 1,
+			Danger = 1,
+			CCType = BUFF_SLOW
+		},
+		
+		["NamiR"] = 
+		{
+			Alias = "NamiRMissile",
+			HeroName = "Nami",
+			SpellName = "Tidal Wave",
+			SpellSlot = _R,
+			MissileName = "NamiRMissile",
+			Radius = 250,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {150,250,350},
+			APScaling = .6,
+			Danger = 3,
+			CCType = BUFF_KNOCKUP
+		},
+		
+		
+		--[Nasus Skills]--
+		
+		["NasusQ"] = 
+		{
+			Alias = "NasusQAttack",
+			HeroName = "Nasus",
+			SpellName = "Siphoning Strike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			SpecialDamage = 
+			function (owner, target)
+				local buff = BuffManager:GetBuffByName(myHero, "NasusQStacks")
+				return  buff.stacks + ({30,50,70,90,110})[owner:GetSpellData(SpellSlot).level] + owner.totalDamage
+			end,
+			Danger = 1,
+		},
+		["NasusW"] = 
+		{
+			HeroName = "Nasus",
+			SpellName = "Wither",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			SpecialDamage = 
+			function (owner, target)
+				return 0
+			end,
+			Danger = 3,
+			CCType = BUFF_SLOW
+		},
+		["NasusE"] = 
+		{
+			HeroName = "Nasus",
+			SpellName = "Spirit Fire",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 400,
+			Damage = {55,95,135,175,215},
+			APScaling = .6,
+			Danger = 1,
+		},
+		
+		--[Nautilus Skills]--		
+		["NautilusAnchorDrag"] = 
+		{
+			Alternate = {"NautilusRavageStrikeAttack"},
+			HeroName = "Nautilus",
+			SpellName = "Dredge Line",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "NautilusAnchorDragMissile",
+			Radius = 90,
+			Collision = 1,
+			Damage = {80,120,160,200,240},
+			APScaling = .75,
+			Danger = 3,			
+			CCType = BUFF_SNARE,
+		},	
+		["NautilusRavageStrikeAttack"] = 
+		{
+			HeroName = "Nautilus",
+			SpellName = "Snare Auto Attack",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			SpecialDamage = 
+			function (owner, target)
+				return  ({8,14,20,26,32,38,44,50,56,662,68,75,80,86,92,98,104,110})[owner.levelData.lvl] + owner.totalDamage
+			end,
+			Danger = 1,
+			CCType = BUFF_SNARE,
+		},	
+		["NautilusSplashZone"] = 
+		{
+			HeroName = "Nautilus",
+			SpellName = "Riptide",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 400,
+			Damage = {55,85,115,145,175},
+			APScaling = .3,
+			Danger = 1,			
+			CCType = BUFF_SLOW,
+		},
+		["NautilusGrandLine"] = 
+		{
+			HeroName = "Nautilus",
+			SpellName = "Depth Charge",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {200,325,450},
+			APScaling = .8,
+			Danger = 5,			
+			CCType = BUFF_STUN,
+		},
+		
+		--[Nidalee Skills]--
+		["JavelinToss"] = 
+		{
+			Alternate = {"Takedown"},
+			HeroName = "Nidalee",
+			SpellName = "Javelin Toss",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "JavelinToss",
+			Radius = 45,
+			Collision = 1,
+			Damage = {70,85,100,115,130},
+			APScaling = .4,
+			Danger = 2,
+		},
+		["Takedown"] = 
+		{
+			Alias = "NidaleeTakedownAttack",
+			Alternate = {"JavelinToss"},
+			HeroName = "Nidalee",
+			SpellName = "Takedown",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {5,30,55,80},
+			APScaling = .4,
+			ADScaling = .75,
+			Danger = 2,
+		},
+		["PrimalSurge"] = 
+		{
+			Alternate = {"Swipe"},
+			HeroName = "Nidalee",
+			SpellName = "Swipe",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {0,0,0,0},
+			Danger = 0,
+		},
+		["Swipe"] = 
+		{
+			HeroName = "Nidalee",
+			SpellName = "Swipe",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_ARC,
+			Damage = {70,130,190,250},
+			APScaling = .45,
+			Danger = 1,
+		},
+		
+		--[Nocturne Skills]--
+		["NocturneDuskbringer"] = 
+		{
+			HeroName = "Nocturne",
+			SpellName = "Duskbringer",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "NocturneDuskbringer",
+			Radius = 60,
+			Damage = {65,110,155,200,245},
+			ADScaling = .75,
+			Danger = 1,
+		},
+		
+		["NocturneParanoia"] = 
+		{
+			HeroName = "Nocturne",
+			SpellName = "Paranoia",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,		
+			--Does not have target... not much I can do here. Trying with low radius circle target instead. 	
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 200,
+			BuffName = "nocturneparanoiadash",
+			Damage = {150,275,400},
+			ADScaling = 1.5,
+			Danger = 3,
+		},
+		
+		--[Nunu skills]--
+		
+		["IceBlast"] = 
+		{
+			HeroName = "Nunu",
+			SpellName = "Ice Blast",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {80,120,160,200,240,280},
+			APScaling = .9,
+			Danger = 2,
+			CCType = BUFF_SLOW,
+		},
+		["AbsoluteZero"] = 
+		{
+			HeroName = "Nunu",
+			SpellName = "Absolute Zero",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 650,
+			Damage = {78,110,140,171},
+			APScaling = .31,
+			Danger = 2,
+			CCType = BUFF_SLOW,
+		},
+		
+		--[Olaf Skills]--
+		
+		["OlafAxeThrowCast"] = 
+		{
+			HeroName = "Olaf",
+			SpellName = "Undertow",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "OlafAxeThrow",
+			Radius = 90,
+			Damage = {80,125,170,215,260},
+			ADScaling = 1,
+			Danger = 1,
+			CCType = BUFF_SLOW,
+		},
+		["OlafRecklessStrike"] = 
+		{
+			HeroName = "Olaf",
+			SpellName = "Reckless Swing",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_TRUE,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {70,115,160,205,250},
+			ADScaling = .5,
+			Danger = 2,
+		},
+		
+		--[Oriana Skills]--
+		
+		["OrianaIzunaCommand"] = 
+		{
+			HeroName = "Oriana",
+			SpellName = "Command: Attack",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "OrianaIzuna",
+			Radius = 90,
+			Damage = {60,90,120,150,180},
+			APScaling = .5,
+			Danger = 1,
+		},
+		["OrianaRedactCommand"] = 
+		{
+			HeroName = "Oriana",
+			SpellName = "Command: Protect",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "OrianaRedact",
+			Radius = 90,
+			Damage = {60,90,120,150,180},
+			APScaling = .3,
+			Danger = 1,
+		},
+		--["OrianaDetonateCommand"] = 
+		--{
+			--The cast position is always at oriana's location not the ball's location... currently there is no graceful way to handle this
+		--	HeroName = "Oriana",
+		--	SpellName = "Command: Shockwave",
+		--	SpellSlot = _R,
+		--	DamageType = DAMAGE_TYPE_MAGICAL,			
+		--	TargetType = TARGET_TYPE_CIRCLE,
+		--	Radius = 410,
+		--	Damage = {60,90,120,150,180},
+		--	APScaling = .3,
+		--	Danger = 1,
+		--},
+		
+		--[Ornn skills]--
+		
+		["OrnnQ"] = 
+		{
+			HeroName = "Ornn",
+			SpellName = "Volcanic Rupture",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "OrnnQ",
+			Radius = 65,
+			Damage = {20,50,80,110,140},
+			ADScaling = 1,
+			Danger = 1,
+			CCType = BUFF_SLOW,
+		},
+		["OrnnE"] = 
+		{
+			HeroName = "Ornn",
+			SpellName = "Searing Charge",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 150,
+			Damage = {80,125,170,215,260},
+			Danger = 3,
+			CCType = BUFF_KNOCKUP,
+		},
+		["OrnnR"] = 
+		{
+			Alternate = {"OrnnR2"},
+			HeroName = "Ornn",
+			SpellName = "Call of the Forge God",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "OrnnRWave",
+			Radius = 250,
+			Damage = {125,175,225},
+			APScaling = .2,
+			Danger = 3,
+			CCType = BUFF_SLOW,
+		},
+		["OrnnR2"] = 
+		{
+			HeroName = "Ornn",
+			SpellName = "Call of the Forge God",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "OrnnRWave2",
+			Radius = 250,
+			Damage = {125,175,225},
+			APScaling = .2,
+			Danger = 3,
+			CCType = BUFF_KNOCKUP,
 		},
 		
 		--[ZILEAN SKILLS]--
@@ -3501,18 +4046,29 @@ function __DamageManager:LoadSpell(spellName, spellData, target)
 end
 
 function __DamageManager:Tick()
+	local currentTime = LocalGameTimer()	
+	for _, expires in LocalPairs(self.IgnoredCollisions) do
+		if currentTime > expires then
+			self.IgnoredCollisions[_] = nil
+		end
+	end
+	
 	for _, skillshot in LocalPairs(self.EnemySkillshots) do
-		if skillshot.Sort == TARGET_TYPE_LINE then
-			self:CheckLineMissileCollision(skillshot, self.AlliedHeroes)
-		elseif skillshot.Sort ==TARGET_TYPE_CIRCLE then			
-			self:CheckCircleMissileCollision(skillshot, self.AlliedHeroes)
+		if skillshot and skillshot.data and not self.IgnoredCollisions[skillshot.networkID] then
+			if skillshot.Sort == TARGET_TYPE_LINE then
+				self:CheckLineMissileCollision(skillshot, self.AlliedHeroes)
+			elseif skillshot.Sort ==TARGET_TYPE_CIRCLE then			
+				self:CheckCircleMissileCollision(skillshot, self.AlliedHeroes)
+			end
 		end
 	end
 	for _, skillshot in LocalPairs(self.AlliedSkillshots) do
-		if skillshot.Sort == TARGET_TYPE_LINE then
-			self:CheckLineMissileCollision(skillshot, self.EnemyHeroes)
-		elseif skillshot.Sort ==TARGET_TYPE_CIRCLE then			
-			self:CheckCircleMissileCollision(skillshot, self.EnemyHeroes)
+		if skillshot and skillshot.data  and not self.IgnoredCollisions[skillshot.networkID] then
+			if skillshot.Sort == TARGET_TYPE_LINE then
+				self:CheckLineMissileCollision(skillshot, self.EnemyHeroes)
+			elseif skillshot.Sort ==TARGET_TYPE_CIRCLE then			
+				self:CheckCircleMissileCollision(skillshot, self.EnemyHeroes)
+			end
 		end
 	end
 end
@@ -3534,7 +4090,6 @@ function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
 end
 
 function __DamageManager:CheckLineMissileCollision(skillshot, targetList)	
-	--Get distance between current position and endPos
 	local distRemaining = Geometry:GetDistance(skillshot.data.pos, skillshot.data.missileData.endPos)	
 	local step = LocalMin(distRemaining, skillshot.data.missileData.speed  * .35)
 	local nextPosition = skillshot.data.pos + skillshot.forward * step
@@ -3545,6 +4100,7 @@ function __DamageManager:CheckLineMissileCollision(skillshot, targetList)
 			if isOnSegment and Geometry:IsInRange(target.pos, pointLine, skillshot.data.missileData.width + target.boundingRadius) then
 				local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
 				self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
+				self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
 			end
 		end
 	end
@@ -3558,6 +4114,7 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 				if Geometry:IsInRange(target.pos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
 					local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
 					self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
+				self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
 				end
 			end
 		end
@@ -3628,6 +4185,7 @@ function __DamageManager:MissileCreated(missile)
 		if missile.Sort == TARGET_TYPE_CIRCLE then
 			self:OnUntargetedMissileTable(missile)
 		elseif missile.data.missileData.target > 0 then
+			--Unable currently to handle line skillshots that have a target (IE: Oriana E)
 			if LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack") then
 				self:OnAutoAttackMissile(missile)
 			else
@@ -3801,10 +4359,8 @@ function __DamageManager:BuffAdded(owner, buff)
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_SINGLE then
-			print("Single Target")
 			local target = ObjectManager:GetObjectByHandle(owner.attackData.target)			
 			if target then
-				print(target.charName)
 				local damage = self:CalculateSkillDamage(owner, target, spellInfo)
 				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
 			end
@@ -3971,6 +4527,22 @@ function __ItemManager:GetItemSlot(unit, id)
 end
 
 class "__BuffManager"
+function __BuffManager:GetBuffByName(target, buffName)
+	for i = 1, target.buffCount do 
+		local buff = target:GetBuff(i)
+		if buff.duration > 0 and buff.name == buffName then
+			return buff
+		end
+	end
+end
+function __BuffManager:GetBuffByType(target, buffType)
+	for i = 1, target.buffCount do 
+		local buff = target:GetBuff(i)
+		if buff.duration > 0 and buff.type == buffType then
+			return buff
+		end
+	end
+end
 function __BuffManager:HasBuff(target, buffName, minimumDuration)
 
 	local duration = minimumDuration
@@ -3986,6 +4558,7 @@ function __BuffManager:HasBuff(target, buffName, minimumDuration)
 		end
 	end
 end
+
 function __BuffManager:HasBuffType(target, buffType, minimumDuration)
 	local duration = minimumDuration
 	if not minimumDuration then
