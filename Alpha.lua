@@ -67,6 +67,7 @@ local TARGET_TYPE_LINE				= 1
 local TARGET_TYPE_CIRCLE			= 2
 local TARGET_TYPE_ARC				= 3
 local TARGET_TYPE_BOX				= 4
+local TARGET_TYPE_RING				= 5
 
 
 local Geometry = nil
@@ -3800,6 +3801,121 @@ function __DamageManager:__init()
 			CCType = BUFF_KNOCKUP,
 		},
 		
+		--[Pantheon Skills]--
+		
+		["PantheonQ"] = 
+		{
+			HeroName = "Pantheon",
+			SpellName = "Spear Shot",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {75,115,155,195,235},
+			BonusADScaling = 1.4,
+			Danger = 1,
+		},
+		["PantheonE"] = 
+		{
+			HeroName = "Pantheon",
+			SpellName = "Heartseeker Strike",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_ARC,
+			Damage = {50,75,100,125,150},
+			BonusADScaling = 1.5,
+			Danger = 1,
+		},
+		
+		--[Poppy Skills]--
+		["PoppyQ"] = 
+		{
+			Alias = "PoppyQSpell",
+			HeroName = "Poppy",
+			SpellName = "Hammer Shock",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 100,
+			Damage = {40,60,80,100,120},
+			BonusADScaling = .8,
+			MaximumHealth = .08,
+			Danger = 1,
+		},
+		["PoppyR"] = 
+		{
+			Alias = "PoppyRSpell",
+			Alternate = {"PoppyRSpellInstant"},
+			HeroName = "Poppy",
+			SpellName = "Keeper's Verdict",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 100,
+			MissileName = "PoppyRMissile",
+			Damage = {200,300,400},
+			BonusADScaling = .9,
+			Danger = 4,
+			CCType = BUFF_KNOCKUP,
+		},
+		["PoppyRSpellInstant"] = 
+		{
+			HeroName = "Poppy",
+			SpellName = "Keeper's Verdict",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 200,
+			Damage = {200,300,400},
+			BonusADScaling = .9,
+			Danger = 4,
+			CCType = BUFF_KNOCKUP,
+		},
+		
+		--[Quinn Skills]--
+		["QuinnQ"] = 
+		{
+			HeroName = "Quinn",
+			SpellName = "Blinding Assault",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "QuinnQ",
+			Radius = 60,
+			Damage = {20,45,70,95,120},
+			ADScaling = {.8,.9,1.0,1.1,1.2},
+			Danger = 1,
+			CCType = BUFF_BLIND,
+		},
+		["QuinnW"] = 
+		{
+			Alias = "QuinnWEnhanced",
+			HeroName = "Quinn",
+			SpellName = "Harrier",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			SpecialDamage = 
+			function (owner, target)
+				return 10 + owner.levelData.lvl * 5 + ({1.16, 1.18,1.2,1.22,1.26,1.28,1.3,1.32,1.34,1.36,1.38,1.4,1.42,1.44,1.46,1.48,1.5})[owner.levelData.lvl] * owner.totalDamage 
+			end,
+			Danger = 1,
+		},
+		
+		["QuinnE"] = 
+		{
+			HeroName = "Quinn",
+			SpellName = "Vault",
+			BuffName = "QuinnE",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {40,70,100,130,160},
+			BonusADScaling = .2,
+			Danger = 1,
+			CCType = BUFF_SLOW,
+		},
+		
+		
 		--[ZILEAN SKILLS]--
 		["ZileanQ"] = 
 		{
@@ -3816,6 +3932,45 @@ function __DamageManager:__init()
 		},
 		
 		
+		--[Veigar Skills]--
+		
+		["VeigarBalefulStrike"] = 
+		{
+			HeroName = "Veigar",
+			SpellName = "Baleful Strike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Collision = 2,
+			Radius = 70,
+			Damage = {70,110,150,190,230},
+			APScaling = .6,
+			Danger = 1,
+		},
+		["VeigarEventHorizon"] = 
+		{
+			HeroName = "Veigar",
+			SpellName = "Event Horizon",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_RING,
+			Radius = 300,
+			Ring = 80,
+			Damage = {0,0,0,0,0},
+			Danger = 4,
+			CCType = BUFF_STUN,
+		},
+		["VeigarR"] = 
+		{
+			HeroName = "Veigar",
+			SpellName = "Primordial Burst",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {175,250,325},
+			APScaling = .75,
+			Danger = 4,
+		},
 		
 		
 		--[XERATH SKILLS]--
@@ -3983,6 +4138,48 @@ function __DamageManager:__init()
             Danger = 5,
         },
 		
+		--[Zyra Skills]--
+		["ZyraQ"] = 
+		{
+			HeroName = "Zyra",
+			SpellName = "Deadly Spines",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_BOX,
+			Radius = 85,
+			Length = 375,
+			Damage = {60,95,130,165,200},
+			APScaling = .6,
+			Danger = 2,
+		},
+		["ZyraE"] = 
+		{
+			HeroName = "Zyra",
+			SpellName = "Grasping Roots",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName="ZyraE",
+			Radius = 70,
+			Damage = {60,105,150,195,240},
+			APScaling = .5,
+			Danger = 3,
+			CCType = BUFF_ROOT,
+		},
+		["ZyraR"] = 
+		{
+			HeroName = "Zyra",
+			SpellName = "Stranglethorns",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 500,
+			Damage = {180,265,350},
+			APScaling = .7,
+			Danger = 4,
+			CCType = BUFF_KNOCKUP,
+		},
+		
 		
 	}
 	
@@ -4057,7 +4254,7 @@ function __DamageManager:Tick()
 		if skillshot and skillshot.data and not self.IgnoredCollisions[skillshot.networkID] then
 			if skillshot.Sort == TARGET_TYPE_LINE then
 				self:CheckLineMissileCollision(skillshot, self.AlliedHeroes)
-			elseif skillshot.Sort ==TARGET_TYPE_CIRCLE then			
+			elseif skillshot.Sort ==TARGET_TYPE_CIRCLE then
 				self:CheckCircleMissileCollision(skillshot, self.AlliedHeroes)
 			end
 		end
@@ -4133,32 +4330,59 @@ function __DamageManager:SpellCast(spell)
 		end
 		
 		local spellInfo = self.Skills[spell.name]
-		if spellInfo.TargetType == TARGET_TYPE_SINGLE then
+		if spellInfo.TargetType == TARGET_TYPE_SINGLE then			
 			local target = ObjectManager:GetObjectByHandle(spell.data.target)
 			if target then
-				local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
-				self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType)
+				local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
 			local castPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)			
 			for _, target in LocalPairs(collection) do
 				if target ~= nil and LocalType(target) == "userdata" then
 					if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius + target.boundingRadius) then
-						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
-						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType,true)
+						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
 					end
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_ARC then
-			local arcAngle = self.Skills[spell.name].Angle or spell.data.coneAngle
-			local arcDistance = self.Skills[spell.name].Radius or spell.data.coneDistance
+			local arcAngle = spellInfo.Angle or spell.data.coneAngle
+			local arcDistance = spellInfo.Radius or spell.data.coneDistance
 			local angleOffset = Geometry:Angle(spell.data.startPos,LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z))
 			for _, target in LocalPairs(collection) do
 				if target ~= nil and LocalType(target) == "userdata" then
 					local deltaAngle = LocalAbs(Geometry:Angle(spell.data.startPos,target.pos) - angleOffset)
 					if deltaAngle < arcAngle and Geometry:IsInRange(spell.data.startPos, target.pos, arcDistance) then
-						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
-						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType,true)
+						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
+					end
+				end
+			end
+		elseif spellInfo.TargetType == TARGET_TYPE_BOX and spellInfo.Length then
+		
+			--This is the direction between the box and our hero. We can then use Perpendicular to get the offsets we need
+			local origin = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)
+			local directionVector = (origin- spell.data.startPos):Normalized():Perpendicular()			
+			local p1 = origin - directionVector * spellInfo.Length			
+			local p2 = origin + directionVector * spellInfo.Length
+			for _, target in LocalPairs(collection) do
+				if target ~= nil and LocalType(target) == "userdata" then					
+					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(p1, p2, target.pos)
+					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
+						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
+					end
+				end
+			end
+		elseif spellInfo.TargetType == TARGET_TYPE_RING and spellInfo.Ring then
+			local castPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)			
+			for _, target in LocalPairs(collection) do
+				if target ~= nil and LocalType(target) == "userdata" then
+					local dist =  Geometry:GetDistance(castPos, target.pos)
+					if dist > spellInfo.Radius and dist < spellInfo.Radius + spellInfo.Ring + target.boundingRadius then						
+						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
 					end
 				end
 			end
@@ -4168,8 +4392,8 @@ function __DamageManager:SpellCast(spell)
 					if target ~= nil and LocalType(target) == "userdata" then			
 					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, castPos, target.pos)
 					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
-						local damage = self:CalculateSkillDamage(owner, target, self.Skills[spell.name])
-						self:IncomingDamage(owner, target, damage, self.Skills[spell.name].CCType,true)
+						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo,true)
 					end
 				end
 			end
@@ -4290,6 +4514,7 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			damage = (skillInfo.Damage and skillInfo.Damage[owner:GetSpellData(skillInfo.SpellSlot).level] or 0 )+ 
 			(skillInfo.APScaling and (LocalType(skillInfo.APScaling) == "table" and skillInfo.APScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.APScaling) * owner.ap or 0) + 
 			(skillInfo.ADScaling and (LocalType(skillInfo.ADScaling) == "table" and skillInfo.ADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.ADScaling) * owner.totalDamage or 0) + 
+			(skillInfo.BonusADScaling and (LocalType(skillInfo.BonusADScaling) == "table" and skillInfo.BonusADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.BonusADScaling) * owner.bonusDamage or 0) + 
 			(skillInfo.CurrentHealth and (LocalType(skillInfo.CurrentHealth) == "table" and skillInfo.CurrentHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.CurrentHealth) * target.health or 0) + 
 			(skillInfo.CurrentHealthAPScaling and (target.maxHealth-target.health) * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0) + 
 			(skillInfo.MissingHealth and (LocalType(skillInfo.MissingHealth) == "table" and skillInfo.MissingHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MissingHealth) * (target.maxHealth -target.health) or 0) +
