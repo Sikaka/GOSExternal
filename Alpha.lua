@@ -2411,6 +2411,35 @@ function __DamageManager:__init()
 			Danger = 1,
 		},
 		
+		--[KaiSa Skills]--
+		["KaisaQ"] = 
+		{
+			HeroName = "Kaisa",
+			SpellName = "Icathian Rain",
+			MissileName ={"KaisaQLeftMissile1","KaisaQRightMissile1","KaisaQLeftMissile2","KaisaQRightMissile2","KaisaQLeftMissile3","KaisaQRightMissile3",},
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {45,61.25,77.5,93.75,110},
+			ADScaling = .35,
+			APScaling = .5,
+			Danger = 1,
+		},
+		["KaisaW"] = 
+		{
+			HeroName = "Kaisa",
+			SpellName = "Void Seeker",
+			MissileName ="KaisaW",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Radius =100,
+			Damage = {20,45,70,95,120},
+			ADScaling = 1.5,
+			APScaling = .45,
+			Danger = 3,
+		},
+		
 		--[Karma Skills]--
 		["KarmaQ"] = 
 		{
@@ -2746,6 +2775,93 @@ function __DamageManager:__init()
 			ADScaling = 3,
 			Danger = 4,
 		},
+		--[Leblanc Skills]--
+		
+		["LeblancQ"] = 
+		{
+			HeroName = "Leblanc",
+			Alternate = {"LeblancRQ"},
+			SpellName = "Sigil of Malice",
+			MissileName = "LeblancQ",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {55,80,105,130,155},
+			APScaling = .4,
+			Danger = 1,
+		},
+		["LeblancRQ"] = 
+		{
+			HeroName = "Leblanc",
+			Alternate = {"LeblancQ"},
+			SpellName = "Sigil of Malice",
+			MissileName = "LeblancRQ",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {55,80,105,130,155},
+			APScaling = .4,
+			Danger = 1,
+		},
+		["LeblancW"] = 
+		{
+			HeroName = "Leblanc",
+			Alternate = {"LeblancRW"},
+			BuffName = "LeblancW",
+			Radius = 65,
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 220,
+			Damage = {85,125,165,205,245},
+			APScaling = .6,
+			Danger = 3,
+		},
+		
+		["LeblancRW"] = 
+		{
+			HeroName = "Leblanc",
+			Alternate = {"LeblancW"},
+			BuffName = "LeblancRW",
+			Radius = 65,
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 220,
+			Damage = {85,125,165,205,245},
+			APScaling = .6,
+			Danger = 3,
+		},
+		
+		["LeblancRE"] = 
+		{
+			HeroName = "Leblanc",
+			Alternate = {"LeblancE"},
+			SpellName = "Ethereal Chains",
+			MissileName = "LeblancRE",
+			Radius = 65,
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {40,60,80,100,120},
+			APScaling = .3,
+			Danger = 2,
+		},
+		
+		["LeblancE"] = 
+		{
+			HeroName = "Leblanc",
+			Alternate = {"LeblancRE"},
+			SpellName = "Ethereal Chains",
+			MissileName = "LeblancEMissile",
+			Radius = 65,
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_LINE,
+			Damage = {40,60,80,100,120},
+			APScaling = .3,
+			Danger = 3,
+		},
 		
 		--[Kogmaw Skills]--
 		["KogMawQ"] = 
@@ -2787,6 +2903,224 @@ function __DamageManager:__init()
 			APScaling = .25,
 			ADScaling = .65,
 			Danger = 2,
+		},
+		
+		--[LeeSin Skills]--
+		["BlindMonkQOne"] = 
+		{
+			Alternate = {"BlindMonkQTwo"},
+			HeroName = "Leesin",
+			SpellName = "Sonic Wave",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,			
+			MissileName = "BlindMonkQOne",
+			Collision = 1,
+			Radius = 60,
+			Damage = {55,85,115,145,175},
+			ADScaling = .9,
+			Danger = 1,
+		},
+		
+		["BlindMonkQTwo"] = 
+		{
+			Alternate = {"BlindMonkQOne"},
+			HeroName = "Leesin",
+			SpellName = "Resonating Strike",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			BuffName = "BlindMonkQTwoDash",
+			Damage = {55,85,115,145,175},
+			ADScaling = .9,
+			MissingHealth = .6,
+			Danger = 2,
+		},
+		
+		["BlindMonkEOne"] = 
+		{
+			HeroName = "Leesin",
+			SpellName = "Tempest",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 350,
+			Damage = {70,105,140,175,210},
+			ADScaling = 1,
+			Danger = 2,
+		},
+		
+		["BlindMonkRKick"] = 
+		{
+			HeroName = "Leesin",
+			SpellName = "Dragon's Rage",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {150,375,600},
+			ADScaling = 2,
+			Danger = 4,
+			CCType = BUFF_KNOCKBACK,
+		},
+		
+		--[Leona Skills]--
+		["LeonaShieldOfDaybreak"] = 
+		{
+			Alias = "LeonaShieldOfDaybreakAttack",
+			HeroName = "Leona",
+			SpellName = "Shield of Daybreak",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {10,35,60,85,110},
+			APScaling = .3,
+			ADScaling = 1,
+			Danger = 3,
+			CCType = BUFF_STUN
+		},
+		
+		["LeonaZenithBlade"] = 
+		{
+			HeroName = "Leona",
+			SpellName = "Zenith Blade",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,			
+			MissileName = "LeonaZenithBladeMissile",
+			Radius = 70,
+			Damage = {60,100,140,180,220},
+			APScaling = .4,
+			Danger = 3,
+			CCType = BUFF_ROOT
+		},
+		["LeonaSolarFlare"] = 
+		{
+			HeroName = "Leona",
+			SpellName = "Solar Flare",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 300,
+			Damage = {100,175,250},
+			APScaling = .8,
+			Danger = 5,
+			CCType = BUFF_STUN
+		},
+		
+		
+		--[Lissandra Skills]--
+		
+		["LissandraQ"] = 
+		{
+			Alias = "LissandraQMissile",
+			HeroName = "Lissandra",
+			SpellName = "Ice Shard",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = {"LissandraQMissile", "LissandraQShards"},
+			Radius = 75,
+			Damage = {70,100,130,160,190},
+			APScaling = .7,
+			Danger = 1,
+			CCType = BUFF_SLOW
+		},
+		["LissandraE"] = 
+		{
+			Alias = "LissandraEMissile",
+			HeroName = "Lissandra",
+			SpellName = "Glacial Path",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "LissandraEMissile",
+			Radius = 125,
+			Damage = {70,115,160,205,250},
+			APScaling = .6,
+			Danger = 1,
+		},
+		["LissandraR"] = 
+		{
+			Alias = "LissandraREnemy",
+			HeroName = "Lissandra",
+			SpellName = "Frozen Tomb",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {150,250,350},
+			APScaling = .7,
+			Danger = 5,
+			CCType = BUFF_STUN
+		},
+		
+		--[Lucian Skills]--
+		
+		["LucianQ"] = 
+		{
+			HeroName = "Lucian",
+			SpellName = "Piercing Light",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {85,120,155,190,225},
+			ADScaling = {.6,.7,.8,.9,1.0},
+			Danger = 1,
+		},
+		["LucianW"] = 
+		{
+			HeroName = "Lucian",
+			SpellName = "Ardent Blaze",
+			MissileName = "LucianWMissile",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 55,
+			Collision = 1,
+			Damage = {85,125,165,205,245},
+			APScaling = .9,
+			Danger = 1,
+		},
+		["LucianR"] = 
+		{
+			HeroName = "Lucian",
+			SpellName = "The Culling",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = {"LucianRMissile", "LucianRMissileOffhand"},
+			Radius = 110,
+			Collision = 1,
+			Damage = {20,35,50},
+			APScaling = .1,
+			ADScaling = .25,
+			Danger = 1,
+		},
+		
+		--[Lulu Skills]--
+		
+		["LuluQ"] = 
+		{
+			HeroName = "Lulu",
+			SpellName = "Glitterlance",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = {"LuluQMissile", "LuluQMissileTwo"},
+			Radius = 60,
+			Damage = {80,125,170,215,260},
+			APScaling = .5,
+			Danger = 3,
+			CCType = BUFF_SLOW
+		},
+		
+		["LuluW"] = 
+		{
+			Alias = "LuluWTwo",
+			HeroName = "Lulu",
+			SpellName = "Whimsy",
+			SpellSlot = _Q,		
+			TargetType = TARGET_TYPE_SINGLE,
+			CCType = BUFF_CHARM
 		},
 		
 		--[LUX SKILLS]--
