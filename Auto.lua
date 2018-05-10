@@ -1740,7 +1740,7 @@ function Lux:AutoE()
 end
 
 function Lux:AutoR()			
-	local rDamage= 300 + (myHero:GetSpellData(_R).level -1) * 100 + myHero.ap * 0.75
+	local rDamage= 200 + (myHero:GetSpellData(_R).level) * 100 + myHero.ap * 0.75
 	--Check if the target has passive on them because that will deal extra damage
 	--If the target is a near guarenteed hit then count how many targets it will hit: If enough targets are likely then cast regardless of health	
 	
@@ -1758,11 +1758,11 @@ function Lux:AutoR()
 	elseif Menu.Skills.R.Killsteal:Value() then
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
-			if HPred:CanTarget(hero) then
+			if HPred:CanTarget(hero) and Menu.Skills.R.Targets[hero.charName] and Menu.Skills.R.Targets[hero.charName]:Value() then
 				local hitRate, aimPosition = HPred:GetHitchance(myHero.pos, hero, R.Range, R.Delay, R.Speed, R.Width, R.Collision)
 				if hitRate > 2 and HPred:IsInRange(myHero.pos, aimPosition, R.Range) then
 					local thisRDamage = rDamage
-					if HPred:HasBuff(hero, "LuxIlluminatingFraulein",1) then
+					if HPred:HasBuff(hero, "LuxIlluminatingFraulein",1.25) then
 						thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
 					end
 					local predictedHealth = hero.health
@@ -1770,7 +1770,7 @@ function Lux:AutoR()
 						predictedHealth = _G.SDK.HealthPrediction:GetPrediction(hero, R.Delay)
 					end
 					thisRDamage = AutoUtil:CalculateMagicDamage(hero, thisRDamage)
-					if thisRDamage >= predictedHealth then
+					if thisRDamage > predictedHealth then
 						SpecialCast(HK_R, aimPosition, false, true)
 					end
 				end
@@ -2491,8 +2491,7 @@ function Karthus:Tick()
 		SetAttack(false)
 	else
 		SetAttack(true)
-	end
-	
+	end	
 	
 	if Ready(_E) then
 		Karthus:AutoE()
@@ -3121,9 +3120,15 @@ local _enemyAngles = {}
 function Cassiopeia:GetEnemyAngles()
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
-		if t and t.alive and t.visible and t.isEnemy and t.pathing.hasMovePath then
-			if _enemyAngles[t.networkID] == nil then _enemyAngles[t.networkID] = {dir = (t.posTo - t.pos):Normalized(), updateTick = GetTickCount()}
-			else _enemyAngles[t.networkID].dir = (t.posTo - t.pos):Normalized() _enemyAngles[t.networkID].updateTick = GetTickCount() end
+		if t and t.alive and t.visible and t.isEnemy then
+			if t.pathing.hasMovePath then
+				if _enemyAngles[t.networkID] == nil then _enemyAngles[t.networkID] = {dir = (t.posTo - t.pos):Normalized(), updateTick = Game.Timer()}
+				else _enemyAngles[t.networkID].dir = (t.posTo - t.pos):Normalized() _enemyAngles[t.networkID].updateTick = Game.Timer() end
+			elseif t.activeSpell and t.activeSpell.valid and t.activeSpell.placementPos then
+				d = (Vector(t.activeSpell.placementPos.x, t.activeSpell.placementPos.y, t.activeSpell.placementPos.z) - t.pos):Normalized()
+				if _enemyAngles[t.networkID] == nil then _enemyAngles[t.networkID] = {dir = d, updateTick = Game.Timer()}
+				else _enemyAngles[t.networkID].dir = d _enemyAngles[t.networkID].updateTick = Game.Timer() end				
+			end
 		end
 	end
 end
@@ -3230,8 +3235,11 @@ function Cassiopeia:FarmE()
 			end
 			local predictedDamage = minion.health - predictedHealth
 			
-			if predictedHealth > 0 and (predictedDamage < 25 or predictedHealth > 25) and self:GetEDamage(minion) > predictedHealth + 5 then
-				SpecialCast(HK_E, minion.pos)
+			if predictedHealth > 0 and (predictedDamage < 25 or predictedHealth > 25) and self:GetEDamage(minion) > predictedHealth + 5 then			
+				SpecialCast(HK_E, minion.pos)			
+				if _G.SDK and _G.SDK.ObjectManager and _G.SDK.ObjectManager.IgnoreMinion then					
+					_G.SDK.ObjectManager:IgnoreMinion(minion.networkID)
+				end
 				break
 			end
 		end
@@ -3266,54 +3274,78 @@ function Cassiopeia:AutoR()
 	if Menu.Skills.R.Assist:Value() then		
 		self:ManualR()
 		return
-	end
-	
-	--TODO
-	--Ideally we should loop angles around us to find the one that will have the highest score (target count + priorityStunCount*5)
-	--Sort by score, cast towards the highest one if it reaches target count limit
-	
+	end	
+		
 	if Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value() then
-		local target = CurrentTarget(R.Range)
-		if target and HPred:IsInRange(myHero.pos, target.pos, R.Range) then
-			local aimPos = HPred:PredictUnitPosition(target, R.Delay)
-			local rCount = 0
-			local castAngle = HPred:Angle(myHero.pos,aimPos)
-			for i = 1, LocalGameHeroCount() do
-				local t = LocalGameHero(i)
-				if t and HPred:CanTarget(t) then				
-					local predictedPosition = HPred:PredictUnitPosition(t, R.Delay)
-					local deltaAngle = _abs(HPred:Angle(myHero.pos, predictedPosition) - castAngle)					
-					if deltaAngle <= 37 and HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
-						local willStun = false
-						if Menu.Skills.Combo:Value() and _enemyAngles[t.networkID] and Menu.Skills.R.Targets[t.networkID] and Menu.Skills.R.Targets[t.networkID]:Value() then			
-							local relativePosition = (myHero.pos - t.pos):Normalized()
-							local dot = _enemyAngles[t.networkID].dir:DotProduct(relativePosition)
-							if dot > .7 then
-								local tickTime = GetTickCount() - _enemyAngles[t.networkID].updateTick
-								print("Dot: " .. dot .. " Tick Time: " .. tickTime .. " Target: " .. t.charName)
-								willStun = true
-							end
-						end
-						rCount = rCount + 1
-						--If it will stun a priority target then we can stop looking and use this target
-						if willStun then rCount = 5 break end
-					end
-				end
-			end
-			if rCount >= Menu.Skills.R.Count:Value() then
-				SpecialCast(HK_R, aimPos)
+		local castOffset = (self:GetRDirection() - myHero.pos):Normalized()
+		for i = -60, 60, 10 do
+			local castDir = castOffset:Rotated(i,0,0)
+			local targets, stun = self:PredictR(castDir)
+			if targets >= Menu.Skills.R.Count:Value() or (stun > 0 and Menu.Skills.Combo:Value()) then
+				SpecialCast(HK_R, myHero.pos + castDir * 300)
+				break
 			end
 		end
 	end
 end
 
-function Cassiopeia:ManualR()
-	local target = CurrentTarget(R.Range)
-	if target and HPred:CanTarget(target) then
-		local aimPos = HPred:PredictUnitPosition(target, R.Delay)
-		if HPred:IsInRange(myHero.pos, aimPos, R.Range) then
-			SpecialCast(HK_R, aimPos)
+function Cassiopeia:GetRDirection()
+	local sum = Vector(0,0,0)
+	local count = 0
+	for i = 1, LocalGameHeroCount() do
+		local target = LocalGameHero(i)
+		if target and HPred:CanTarget(target) then
+			local predictedPosition = HPred:PredictUnitPosition(target, R.Delay)
+			if HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
+				sum = sum + predictedPosition
+				count = count + 1
+			end
 		end
+	end	
+	sum = sum / count
+	return sum 
+end
+
+function Cassiopeia:PredictR(direction)	
+	local hitCount = 0
+	local stunCount = 0
+	local castPos = myHero.pos + direction * R.Range
+	local castAngle = HPred:Angle(myHero.pos, castPos)
+	for i = 1, LocalGameHeroCount() do
+		local target = LocalGameHero(i)
+		if target and HPred:CanTarget(target) then
+			local predictedPosition = HPred:PredictUnitPosition(target, R.Delay)
+			if HPred:IsInRange(myHero.pos, predictedPosition, R.Range) then
+				local deltaAngle = _abs(HPred:Angle(myHero.pos, predictedPosition) - castAngle)
+				if deltaAngle <= 37 then
+					hitCount = hitCount + 1
+					if _enemyAngles[target.networkID] then
+						local relativePosition = (myHero.pos - predictedPosition)
+						local dot = _enemyAngles[target.networkID].dir:DotProduct(relativePosition)
+						if dot > .65 and Menu.Skills.R.Targets[target.networkID] and Menu.Skills.R.Targets[target.networkID]:Value() then
+							stunCount = stunCount + 1
+						end
+					end
+				end
+			end
+		end
+	end
+	return hitCount, stunCount
+end
+
+function Cassiopeia:ManualR()
+	local castOffset = (self:GetRDirection() - myHero.pos):Normalized()
+	local minTargets, minStun = self:PredictR(castOffset)
+	for i = -60, 60, 10 do
+		local castDir = castOffset:Rotated(i,0,0)
+		local targets, stun = self:PredictR(castDir)
+		if targets > minTargets or stun > minStun  then
+			SpecialCast(HK_R, myHero.pos + castDir * 300)
+			return
+		end
+	end
+	if minTargets > 0 then		
+		SpecialCast(HK_R, myHero.pos + castOffset * 300)
 	end
 end
 
