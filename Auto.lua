@@ -1787,6 +1787,20 @@ function Blitzcrank:__init()
 	self:CreateMenu()
 	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
+	
+	
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:OnPostAttack(function(args)
+			if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+				local target = HPred:GetEnemyHeroByHandle(myHero.activeSpell.target)
+				if target then
+					Control.CastSpell(HK_E)
+				end
+			end
+		end)
+	end
+	
+	
 end
 
 function Blitzcrank:CreateMenu()
@@ -1872,9 +1886,6 @@ function Blitzcrank:Tick()
 		end
 	end	
 	
-	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-		Blitzcrank:AutoE()
-	end
 	if Ready(_R) and CurrentPctMana(myHero) >= Menu.Skills.R.Mana:Value() then
 	
 		
@@ -1889,16 +1900,6 @@ function Blitzcrank:Tick()
 		NextSpellCast = .35 + Game.Timer()
 		end
 	end
-end
-
-function Blitzcrank:AutoE()
-	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.target and _find(myHero.activeSpell.name, "Attack") then
-		local target = HPred:GetEnemyHeroByHandle(myHero.activeSpell.target)
-		local windupRemaining = myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer()
-		if target and windupRemaining > 0 and windupRemaining < .15 then
-			Control.CastSpell(HK_E)
-		end
-	end	
 end
 
 
@@ -2684,6 +2685,8 @@ end
 
 
 class "Illaoi" 
+local _spirit
+local _nextSpiritSearch = Game.Timer()
 function Illaoi:__init()
 
 	print("Loaded [Auto] ".. myHero.charName)
@@ -2691,6 +2694,17 @@ function Illaoi:__init()
 	self:CreateMenu()
 	BotTick = self.Tick;
 	Callback.Add("Draw", function() self:Draw() end)
+	
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:OnPostAttack(function(args)
+			if Ready(_W) and currentMana >= Menu.Skills.W.Mana:Value() then
+				local target = HPred:GetEnemyHeroByHandle(myHero.activeSpell.target)				
+				if target or (_spirit and _spirit.networkID == myHero.activeSpell.target) then
+					Control.CastSpell(HK_W)
+				end
+			end
+		end)
+	end
 end
 
 function Illaoi:CreateMenu()
@@ -2730,8 +2744,6 @@ end
 
 
 
-local _spirit
-local _nextSpiritSearch = Game.Timer()
 
 function Illaoi:GetSpirit()
 	if _nextSpiritSearch > Game.Timer() then return end
@@ -2784,10 +2796,6 @@ function Illaoi:Tick()
 		end
 	end	
 	
-	if Ready(_W) and currentMana >= Menu.Skills.W.Mana:Value() then
-		Illaoi:AutoW()
-	end
-	
 	if Ready(_Q) and (Menu.Skills.Combo:Value() or (Menu.Skills.Q.Auto:Value() and currentMana >= Menu.Skills.Q.Mana:Value())) then
 		local target, aimPosition = HPred:GetReliableTarget(myHero.pos, Q.Range, Q.Delay, Q.Speed,Q.Width, Menu.General.ReactionTime:Value(), Q.Collision)
 		if target and not HPred:IsInRange(myHero.pos, aimPosition, Q.Range) then
@@ -2809,17 +2817,6 @@ function Illaoi:Tick()
 		end
 		if targetCount >= Menu.Skills.R.Count:Value() then
 			Control.CastSpell(HK_R)
-		end
-	end
-end
-
-function Illaoi:AutoW()
-	--check if we are middle of an auto attack
-	if myHero.activeSpell and myHero.activeSpell.valid and myHero.activeSpell.target and _find(myHero.activeSpell.name, "Attack") then
-		local target = HPred:GetEnemyHeroByHandle(myHero.activeSpell.target)
-		local windupRemaining = myHero.activeSpell.startTime + myHero.activeSpell.windup - Game.Timer()
-		if (target or _spirit and HPred:IsInRange(myHero.pos, _spirit.pos, 200)) and windupRemaining > 0 and windupRemaining < .15 then
-			Control.CastSpell(HK_W)
 		end
 	end
 end

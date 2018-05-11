@@ -4830,7 +4830,3 @@ _G.Alpha.ItemManager = ItemManager
 
 BuffManager = __BuffManager()
 _G.Alpha.BuffManager = BuffManager
-
-
---ObjectManager:OnBlink(function(args) print(args.charName .. " used a blink!") end)
---ObjectManager:OnSpellCast(function(args) print(args.data.name .. " cast!") end)
