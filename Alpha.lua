@@ -3915,7 +3915,305 @@ function __DamageManager:__init()
 			CCType = BUFF_SLOW,
 		},
 		
+		--[Rakan Skills]--
+		["RakanQ"] = 
+		{
+			HeroName = "Rakan",
+			SpellName = "Gleaming Quill",
+			MissileName = "RakanQMis",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 65,
+			Collision = 1,
+			Damage = {70,115,160,205,250},
+			APScaling = .6,
+			Danger = 1,
+		},
+		["RakanW"] = 
+		{
+			Alias = "RakanWCast",
+			HeroName = "Rakan",
+			SpellName = "Grand Entrance",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Damage = {70,115,160,205,250},
+			Radius = 250,
+			APScaling = .7,
+			Danger = 3,			
+            CCType = BUFF_KNOCKUP,
+		},
 		
+		--[Rammus Skills]--		
+		["PuncturingTaunt"] = 
+		{
+			HeroName = "Rammus",
+			SpellName = "Frenzying Taunt",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {0,0,0,0,0},
+			Danger = 5,			
+            CCType = BUFF_TAUNT,
+		},
+		
+		--[RekSai Skills]--
+		
+		["RekSaiQ"] = 
+		{
+			Alternate = {"RekSaiQBurrowed"},
+			HeroName = "RekSai",
+			SpellName = "Frenzying Taunt",
+			SpellSlot = _Q,
+		},
+		
+		["RekSaiQBurrowed"] = 
+		{
+			HeroName = "RekSai",
+			SpellName = "Prey Seeker",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Collision = 1,
+			MissileName="RekSaiQBurrowedMis",
+			Radius = 65,
+			Damage = {60,90,120,150,180},
+			BonusADScaling = .4,
+			APScaling = .7,
+			Danger = 1,			
+		},
+		["RekSaiE"] = 
+		{
+			HeroName = "RekSai",
+			SpellName = "Frenzying Taunt",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {55,65,75,85,95},
+			BonusADScaling = .85,
+			Danger = 1,			
+		},
+		
+		--Doesn't work sadly...
+		["RekSaiRWrapper"] = 
+		{
+			HeroName = "RekSai",
+			SpellName = "Void Rush",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			BuffName = "RekSaiR2",
+			Damage = {100,250,400},
+			BonusADScaling = 1.85,
+			MissingHealth = {.2,.25,.3},
+			Danger = 3,			
+		},
+		
+		
+		--[Renekton Skills]--		
+		
+		["RenektonPreExecute"] = 
+		{
+			Alternate = {"RenektonSuperExecute"},
+			Alias = "RenektonExecute",
+			HeroName = "Renekton",
+			SpellName = "Ruthless Predator",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {10,30,50,70,90},
+			ADScaling = 1.5,
+			Danger = 3,
+			CCType = BUFF_STUN,	
+		},
+		["RenektonSuperExecute"] = 
+		{
+			HeroName = "Renekton",
+			SpellName = "Ruthless Predator",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {15,45,75,105,135},
+			ADScaling = 2.25,
+			Danger = 4,
+			CCType = BUFF_STUN,	
+		},
+		
+		--[Rengar Skills]--
+		
+		["RengarQ"] = 
+		{
+			Alternate = {"RengarQEmpAttack"},
+			Alias = "RengarQAttack",
+			HeroName = "Rengar",
+			SpellName = "Savagery",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {30,60,90,120,150},
+			ADScaling = {1,1.05,1.1,1.15,1.2},
+			Danger = 1,
+		},
+		["RengarQEmpAttack"] = 
+		{
+			HeroName = "Rengar",
+			SpellName = "Savagery",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {30,60,90,120,150},
+			ADScaling = 1.5,
+			Danger = 1,
+		},
+		["RengarE"] = 
+		{
+			Alternate = {"RengarEEmp"},
+			HeroName = "Rengar",
+			SpellName = "Bola Strike",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName="RengarEMis",
+			Collision = 1,
+			Radius = 70,
+			Damage = {50,100,145,190,235},
+			BonusADScaling = .8,
+			Danger = 1,
+			CCType = BUFF_SLOW,
+		},
+		["RengarEEmp"] = 
+		{
+			HeroName = "Rengar",
+			SpellName = "Bola Strike",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName="RengarEEmpMis",
+			Collision = 1,
+			Radius = 70,
+			Damage = {50,100,145,190,235},
+			BonusADScaling = .8,
+			Danger = 1,
+			CCType = BUFF_SNARE,
+		},
+		
+		--[Riven Skills]--
+		
+		["RivenMartyr"] = 
+		{
+			HeroName = "Riven",
+			SpellName = "Ki Burst",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 125,
+			Damage = {55,85,115,145,175},
+			BonusADScaling = 1,
+			Danger = 2,
+			CCType = BUFF_STUN,
+		},
+		["RivenFengShuiEngine"] = 
+		{
+			Alias = "RivenIzunaBlade",
+			HeroName = "Riven",
+			SpellName = "Blade of the Exile",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_ARC,
+			Damage = {100,150,200},
+			BonusADScaling = .6,
+			Danger = 4,
+		},
+		
+		--[Rumble Skills]--
+		
+		["RumbleGrenade"] = 
+		{
+			Alternate = {"RumbleGrenadeEmp"},
+			HeroName = "Rumble",
+			SpellName = "Electro Harpoon",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName="RumbleGrenadeMissile",
+			Collision = 1,
+			Radius = 60,
+			Damage = {60,85,110,135,160},
+			APScaling = .4,
+			Danger = 2,
+			CCType = BUFF_SLOW,
+		},
+		["RumbleGrenadeEmp"] = 
+		{
+			HeroName = "Rumble",
+			SpellName = "Electro Harpoon",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName="RumbleGrenadeMissileDangerZone",
+			Collision = 1,
+			Radius = 60,
+			Damage = {90,127,165,202,240},
+			APScaling = .6,
+			Danger = 3,
+			CCType = BUFF_SLOW,
+		},
+		["RumbleCarpetBomb"] = 
+		{
+			HeroName = "Rumble",
+			SpellName = "The Equalizer",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName="RumbleCarpetBombMissile",
+			Radius = 200,
+			Damage = {200,300,400},
+			APScaling = .45,
+			Danger = 5,
+			CCType = BUFF_SLOW,
+		},
+		
+		
+		--[Ryze Skills]--
+		
+		["RyzeQWrapper"] = 
+		{
+			HeroName = "Ryze",
+			SpellName = "Overload",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName="RyzeQ",
+			Collision = 1,
+			Radius = 55,
+			Damage = {60,75,110,135,160,185},
+			APScaling = .45,
+			Danger = 1,
+		},
+		["RyzeW"] = 
+		{
+			HeroName = "Ryze",
+			SpellName = "Rune Prison",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {80,100,120,140,160},
+			APScaling = .6,
+			Danger = 2,
+			CCType = BUFF_ROOT,
+		},
+		["RyzeE"] = 
+		{
+			HeroName = "Ryze",
+			SpellName = "Overload",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {70,90,110,130,150},
+			APScaling = .3,
+			Danger = 1,
+		},
 		--[ZILEAN SKILLS]--
 		["ZileanQ"] = 
 		{
@@ -4584,7 +4882,7 @@ function __DamageManager:BuffAdded(owner, buff)
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_SINGLE then
-			local target = ObjectManager:GetObjectByHandle(owner.attackData.target)			
+			local target = ObjectManager:GetObjectByHandle(owner.attackData.target)
 			if target then
 				local damage = self:CalculateSkillDamage(owner, target, spellInfo)
 				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
