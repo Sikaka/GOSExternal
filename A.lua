@@ -7,10 +7,10 @@
     local rep                = string.rep 
     local format             = string.format
 
-    local AUTO_PATH            = COMMON_PATH.."Auto/"
-    local dotlua             = ".lua" 
-    local charName           = myHero.charName 
-    local shouldLoad         = {"commonLib"}
+    local AUTO_PATH			= 	COMMON_PATH.."Auto/"
+    local dotlua			= 	".lua" 
+    local charName			= 	myHero.charName 
+    local shouldLoad		= 	{"Alpha"}
 
     local function readAll(file)
         local f = assert(open(file, "r"))
@@ -19,12 +19,11 @@
         return content
     end
     
-    --WR--
     local function AutoUpdate()
-        local CHAMP_PATH = AUTO_PATH..'/Champion Modules/'
-        local SCRIPT_URL = "https://raw.githubusercontent.com/rman200/WinRateEXT/master/"
-        local WR_URL     = "https://raw.githubusercontent.com/rman200/WinRateEXT/master/Common/WinRate/"
-        local CHAMP_URL  = "https://raw.githubusercontent.com/rman200/WinRateEXT/master/Common/WinRate/Champion%20Modules/"
+        local CHAMP_PATH = AUTO_PATH..'/Champions/'
+        local SCRIPT_URL = "https://raw.githubusercontent.com/Sikaka/WinRateEXT/GOSExternal/"
+        local AUTO_URL     = "https://raw.githubusercontent.com/Sikaka/WinRateEXT/GOSExternal/master/Auto/"
+        local CHAMP_URL  = "https://raw.githubusercontent.com/Sikaka/WinRateEXT/GOSExternal/master/Auto/Champions/"
         local versionControl     = AUTO_PATH .. "versionControl.lua"
         local versionControl2    = AUTO_PATH .. "versionControl2.lua"
         --
@@ -71,11 +70,11 @@
         local function GetVersionControl()
             --[[First Time Being Run]]
             if not FileExist(versionControl) then 
-                DownloadFileAsync(WR_URL.."remote_versionControl0", versionControl, function() end)          
+                DownloadFileAsync(AUTO_URL.."remote_versionControl0", versionControl, function() end)          
                 repeat until FileExist(versionControl)
             end             
             --[[Every Load]]  
-            DownloadFileAsync(WR_URL.."remote_versionControl.lua", versionControl2, function() end)          
+            DownloadFileAsync(AUTO_URL.."remote_versionControl.lua", versionControl2, function() end)          
             repeat until FileExist(versionControl2)
         end
         --
@@ -96,7 +95,7 @@
             end
             --[[Core Check]]
             if currentData.Core.Version < latestData.Core.Version then
-                --DownloadFile(WR_URL, AUTO_PATH, "core.lua")
+                --DownloadFile(AUTO_URL, AUTO_PATH, "core.lua")
                 currentData.Core.Version = latestData.Core.Version
                 currentData.Core.Changelog = latestData.Core.Changelog
             end
@@ -109,7 +108,7 @@
             --[[Dependencies Check]]
             for k,v in pairs(latestData.Dependencies) do
                 if not currentData.Dependencies[k] or currentData.Dependencies[k].Version < v.Version then
-                    DownloadFile(WR_URL, AUTO_PATH, k..dotlua)
+                    DownloadFile(AUTO_URL, AUTO_PATH, k..dotlua)
                     currentData.Dependencies[k].Version = v.Version
                 end
                 local name = tostring(k)
@@ -120,7 +119,7 @@
             --[[Utilities Check]]
             for k,v in pairs(latestData.Utilities) do
                 if not currentData.Utilities[k] or currentData.Utilities[k].Version < v.Version then
-                    DownloadFile(WR_URL, AUTO_PATH, k..dotlua)
+                    DownloadFile(AUTO_URL, AUTO_PATH, k..dotlua)
                     currentData.Utilities[k].Version = v.Version
                 end
                 if v.Version >=1 then
@@ -143,7 +142,7 @@
         end
     end
 
-    local function LoadWR()         
+    local function LoadAuto()         
         local function writeModule(content)            
             local f = assert(open(AUTO_PATH.."activeModule.lua", content and "a" or "w"))
             if content then
@@ -164,7 +163,7 @@
 
     function OnLoad()   
         if AutoUpdate() then
-            _G.WR_Loaded = true
-            LoadWR()
+            _G.Auto_Loaded = true
+            LoadAuto()
         end
     end    
