@@ -1,0 +1,22 @@
+Data = {
+    Champions = {
+        Brand = {
+            Version = 1.00,
+            Changelog = "Brand Changelog Here",
+        },
+    },
+    Loader = {
+        Version = 1.00,
+    },
+    Dependencies = {
+        Alpha = {
+            Version = 1.00,
+        },
+    },
+    Core = {
+        Version = 0,
+        Changelog = "Alpha Version ChangeLog Here",
+    },
+}
+
+return Data
