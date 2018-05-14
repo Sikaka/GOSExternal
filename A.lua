@@ -89,7 +89,7 @@
             local currentData, latestData = dofile(versionControl), dofile(versionControl2)
             --[[Loader Version Check]]
             if currentData.Loader.Version < latestData.Loader.Version then
-                DownloadFile(SCRIPT_URL, SCRIPT_PATH, "WR.lua")        
+                DownloadFile(SCRIPT_URL, SCRIPT_PATH, "A.lua")        
                 currentData.Loader.Version = latestData.Loader.Version
                 TextOnScreen("Please Reload The Script! [F6]x2")
             end
