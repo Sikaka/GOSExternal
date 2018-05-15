@@ -1,5 +1,6 @@
 if _G.Alpha then return end
-_G.Alpha = 
+	print("ALPHA LOADED")
+_G.Alpha =
 {
 	Menu = nil,
 	Geometry = nil,
@@ -5104,7 +5105,6 @@ Menu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", 
 Menu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = 200, min = 10, max = 1000, step = 10 })
 Menu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 100, min = 10, max = 1000, step = 10 })
 
-	
 Menu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = true})
 Menu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = true})
 Menu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = true})
