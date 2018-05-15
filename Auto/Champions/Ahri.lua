@@ -1,87 +1,11 @@
-
-local LocalGameHeroCount 			= Game.HeroCount;
-local LocalGameHero 				= Game.Hero;
-local LocalGameMinionCount 			= Game.MinionCount;
-local LocalGameMinion 				= Game.Minion;
-local LocalGameTurretCount 			= Game.TurretCount;
-local LocalGameTurret 				= Game.Turret;
-local LocalGameWardCount 			= Game.WardCount;
-local LocalGameWard 				= Game.Ward;
-local LocalGameObjectCount 			= Game.ObjectCount;
-local LocalGameObject				= Game.Object;
-local LocalGameMissileCount 		= Game.MissileCount;
-local LocalGameMissile				= Game.Missile;
-local LocalGameParticleCount 		= Game.ParticleCount;
-local LocalGameParticle				= Game.Particle;
-
-function Ready(spellSlot)
-	return Game.CanUseSpell(spellSlot) == 0
-end
-	
-function CurrentPctLife(entity)
-	local pctLife =  entity.health/entity.maxHealth  * 100
-	return pctLife
-end
-
-function CurrentPctMana(entity)
-	local pctMana =  entity.mana/entity.maxMana * 100
-	return pctMana
-end
-
-function CanTarget(target)
-	return target.isEnemy and target.alive and target.health > 0 and target.visible and target.isTargetable
-end
-
-
-function GetTarget(range)
-	if forcedTarget and LocalGeometry:IsInRange(myHero.pos, forcedTarget.pos, range) then return forcedTarget end
-	return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
-end
-
-function WndMsg(msg,key)
-	if msg == 513 then
-		local starget = nil
-		local dist = 10000
-		for i  = 1,LocalGameHeroCount(i) do
-			local enemy = LocalGameHero(i)
-			if enemy and enemy.alive and enemy.isEnemy and LocalGeometry:GetDistanceSqr(mousePos, enemy.pos) < dist then
-				starget = enemy
-				dist = LocalGeometry:GetDistanceSqr(mousePos, enemy.pos)
-			end
-		end
-		if starget then
-			forcedTarget = starget
-		else
-			forcedTarget = nil
-		end
-	end	
-end
-
-function EnemyCount(origin, range)
-	local count = 0
-	for i  = 1,LocalGameHeroCount(i) do
-		local enemy = LocalGameHero(i)
-		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemy.pos, range) then
-			count = count + 1
-		end			
-	end
-	return count
-end
-
-
 Q = {	Range = 1400,	Radius = 180,	Delay = 0.25,	Speed = 1700	}
 W = {	Range = 1000,	Radius = 325,	Delay = 0.25,	Speed = 2000	}
 E = {	Range = 900,	Radius = 325,Delay = 0.25,	Speed = 1800	}
 R = {	Range = 5300,	Radius = 550,Delay = 0.375,	Speed = 1500	}
-
-local remaining = 30 - Game.Timer()
-print("Ziggs will load shortly")
-DelayAction(function() LoadScript() end, remaining)
 	
 
 function LoadScript()
-	--if not myHero.charName ~= "Ziggs" then print("This script is only compatible with Ziggs!") return end
-	
+	--if not myHero.charName ~= "Ziggs" then print("This script is only compatible with Ziggs!") return end	
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = "Ziggs"})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Bouncing Bomb", type = MENU})
