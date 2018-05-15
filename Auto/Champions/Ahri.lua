@@ -81,13 +81,7 @@ DelayAction(function() LoadScript() end, remaining)
 
 function LoadScript()
 	--if not myHero.charName ~= "Ziggs" then print("This script is only compatible with Ziggs!") return end
-	if FileExist(COMMON_PATH .. "Alpha.lua") then
-		require 'Alpha'
-	else
-		print("ERROR: Alpha.lua is not present in your Scripts/Common folder. Please download it from the forum.")
-	end
-	_G.Alpha.DamageManager:InitializeCallbacks()
-	LocalGeometry 				= _G.Alpha.Geometry;
+	
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = "Ziggs"})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Bouncing Bomb", type = MENU})

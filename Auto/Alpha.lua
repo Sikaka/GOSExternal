@@ -451,7 +451,7 @@ local lookupTable = {"one", "two", "three", "four", "five"}
 function __ObjectManager:Tick()
 	--Check if we have any buff added/removed callbacks before querying
 	if (#self.OnBuffAddedCallbacks > 0 or #self.OnBuffRemovedCallbacks  > 0) and GetTickCount() > self.NextCacheBuffs then
-		self.NextCacheBuffs = GetTickCount() + Menu.Performance.BuffCache:Value()
+		self.NextCacheBuffs = GetTickCount() + BUFF_CACHE_DELAY
 		--KNOWN ISSUE: Certain skills use buffs... but constantly tweak their start/end time: EG Aatrox Q. I have no way to reliably handle this currently.
 		for _, buff in LocalPairs(self.CachedBuffs) do
 			if not buff or not buff.valid then
@@ -502,7 +502,7 @@ function __ObjectManager:Tick()
 
 	--Cache Particles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if (#self.OnParticleCreateCallbacks > 0 or #self.OnParticleDestroyCallbacks > 0) and GetTickCount() > self.NextCacheParticles then
-		self.NextCacheParticles = GetTickCount() + Menu.Performance.ParticleCache:Value()
+		self.NextCacheParticles = GetTickCount() + PARTICLE_CACHE_DELAY
 		for _, particle in LocalPairs(self.CachedParticles) do
 			if not particle or not particle.valid then
 				if particle then					
@@ -530,7 +530,7 @@ function __ObjectManager:Tick()
 	
 	--Cache Missiles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if (#self.OnMissileCreateCallbacks > 0 or #self.OnMissileDestroyCallbacks > 0) and GetTickCount() > self.NextCacheMissiles then
-		self.NextCacheMissiles = GetTickCount() + Menu.Performance.MissileCache:Value()
+		self.NextCacheMissiles = GetTickCount() + MISSILE_CACHE_DELAY
 		for _, missile in LocalPairs(self.CachedMissiles) do
 			if not missile or not missile.data or missile.dead or not missile.valid then
 				if missile and missile.data then
@@ -5097,20 +5097,23 @@ function __BuffManager:HasBuffType(target, buffType, minimumDuration)
 	end
 end
 
-
-
 --Initialization
 Menu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
 Menu:MenuElement({id = "Performance", name = "Performance", type = MENU})
 Menu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = 100, min = 10, max = 1000, step = 10 })
 Menu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = 200, min = 10, max = 1000, step = 10 })
 Menu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 100, min = 10, max = 1000, step = 10 })
-	
+
 	
 Menu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = true})
 Menu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = true})
 Menu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = true})
 Menu:MenuElement({id = "PrintSkill", name = "Print Skill Used", value = true})
+
+
+MISSILE_CACHE_DELAY = Menu.Performance.MissileCache:Value()
+PARTICLE_CACHE_DELAY = Menu.Performance.ParticleCache:Value()
+BUFF_CACHE_DELAY = Menu.Performance.BuffCache:Value()
 
 _G.Alpha.Menu = Menu
 	
