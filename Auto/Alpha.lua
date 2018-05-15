@@ -313,6 +313,7 @@ end
 class "__ObjectManager"
 --Initialize the object manager
 function __ObjectManager:__init()
+	
 	LocalCallbackAdd('Tick',  function() self:Tick() end)
 	
 	self.CachedBuffs = {}
@@ -449,7 +450,7 @@ end
 local lookupTable = {"one", "two", "three", "four", "five"}
 
 --Search for changes in particle or missiles in game. trigger the appropriate events.
-function __ObjectManager:Tick()
+function __ObjectManager:Tick()	
 	--Check if we have any buff added/removed callbacks before querying
 	if (#self.OnBuffAddedCallbacks > 0 or #self.OnBuffRemovedCallbacks  > 0) and GetTickCount() > self.NextCacheBuffs then
 		self.NextCacheBuffs = GetTickCount() + BUFF_CACHE_DELAY
@@ -711,7 +712,7 @@ function __DamageManager:__init()
 			SpellSlot = _Q,
 			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
-			Radius = 80,
+			Radius = 100,
 			Damage = {40,65,90,115,140},
 			APScaling = .35,
 			Danger = 2,
@@ -4572,7 +4573,7 @@ end
 
 function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
 	
-	if Menu.PrintDmg:Value() then
+	if AlphaMenu.PrintDmg:Value() then
 		if owner and target then
 			print(owner.charName .. " will hit " .. target.charName .. " for " .. damage .. " Damage")
 		else
@@ -4618,7 +4619,7 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 end
 
 function __DamageManager:SpellCast(spell)
-	if Menu.PrintSkill:Value() then print(spell.name) end
+	if AlphaMenu.PrintSkill:Value() then print(spell.name) end
 	if self.Skills[spell.name] then
 		local owner = ObjectManager:GetObjectByHandle(spell.handle)
 		if owner == nil then return end
@@ -4717,7 +4718,7 @@ function __DamageManager:MissileCreated(missile)
 		else
 			self:OnUntargetedMissileTable(missile)
 		end
-	elseif Menu.PrintMissile:Value() then
+	elseif AlphaMenu.PrintMissile:Value() then
 		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width)
 	end
 end
@@ -4892,7 +4893,7 @@ function __DamageManager:BuffAdded(owner, buff)
 			print("Unhandled buff targeting type: " .. spellInfo.TargetType)
 		end		
 	end
-	if #buff.name < 64 and Menu.PrintBuff:Value() then
+	if #buff.name < 64 and AlphaMenu.PrintBuff:Value() then
 		print(owner.charName .. " Gained Buff: " .. buff.name)
 	end
 end
@@ -5099,21 +5100,20 @@ function __BuffManager:HasBuffType(target, buffType, minimumDuration)
 end
 
 --Initialization
-Menu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
-Menu:MenuElement({id = "Performance", name = "Performance", type = MENU})
-Menu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = 100, min = 10, max = 1000, step = 10 })
-Menu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = 200, min = 10, max = 1000, step = 10 })
-Menu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 100, min = 10, max = 1000, step = 10 })
+AlphaMenu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
+AlphaMenu:MenuElement({id = "Performance", name = "Performance", type = MENU})
+AlphaMenu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = 100, min = 10, max = 1000, step = 10, callback = function(delay) MISSILE_CACHE_DELAY = delay end })
+AlphaMenu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = 200, min = 10, max = 1000, step = 10, callback = function(delay) PARTICLE_CACHE_DELAY = delay end })
+AlphaMenu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 100, min = 10, max = 1000, step = 10, callback = function(delay) BUFF_CACHE_DELAY = delay end })
 
-Menu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = true})
-Menu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = true})
-Menu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = true})
-Menu:MenuElement({id = "PrintSkill", name = "Print Skill Used", value = true})
+AlphaMenu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = true})
+AlphaMenu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = true})
+AlphaMenu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = true})
+AlphaMenu:MenuElement({id = "PrintSkill", name = "Print Skill Used", value = true})
 
-
-MISSILE_CACHE_DELAY = Menu.Performance.MissileCache:Value()
-PARTICLE_CACHE_DELAY = Menu.Performance.ParticleCache:Value()
-BUFF_CACHE_DELAY = Menu.Performance.BuffCache:Value()
+MISSILE_CACHE_DELAY =AlphaMenu.Performance.BuffCache:Value()
+PARTICLE_CACHE_DELAY =AlphaMenu.Performance.ParticleCache:Value()
+BUFF_CACHE_DELAY =AlphaMenu.Performance.BuffCache:Value()
 
 _G.Alpha.Menu = Menu
 	

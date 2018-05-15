@@ -1,7 +1,7 @@
-Q = {	Range = 1400,	Radius = 180,	Delay = 0.25,	Speed = 1700	}
-W = {	Range = 1000,	Radius = 325,	Delay = 0.25,	Speed = 2000	}
-E = {	Range = 900,	Radius = 325,Delay = 0.25,	Speed = 1800	}
-R = {	Range = 5300,	Radius = 550,Delay = 0.375,	Speed = 1500	}
+Q = {	Range = 880,	Radius = 90,	Delay = 0.25,	Speed = 1700	}
+W = {	Range = 1000,	Delay = 0.25,	Speed = 999999	}
+E = {	Range = 975,	Radius = 50,	Delay = 0.25,	Speed = 1600	}
+R = {	Range = 450,	Radius = 600,	Delay = 0.25,	Speed = 999999	}
 	
 
 function LoadScript()
@@ -60,6 +60,20 @@ end
 local NextTick = GetTickCount()
 function Tick()
 	if NextTick > GetTickCount() then return end
+	
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
+		local target = GetTarget(E.Range)
+		--Get cast position for target
+		if target and CanTarget(target) and Menu.Skills.Combo:Value() then
+			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision)
+			if castPosition and accuracy >= Menu.Skills.E.Accuracy:Value() and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
+				NextTick = GetTickCount() + 250
+				_G.Control.CastSpell(HK_E, castPosition)
+				return
+			end	
+		end
+	end
+	
 	if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		local target = GetTarget(Q.Range)
 		--Get cast position for target
@@ -80,18 +94,7 @@ function Tick()
 			end			
 		end
 	end
-	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
-		local target = GetTarget(E.Range)
-		--Get cast position for target
-		if target and CanTarget(target) and Menu.Skills.Combo:Value() then
-			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision)
-			if castPosition and accuracy >= Menu.Skills.E.Accuracy:Value() and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
-				NextTick = GetTickCount() + 250
-				_G.Control.CastSpell(HK_E, castPosition)
-				return
-			end	
-		end
-	end
+	
 	if Ready(_W) then
 		local wData = myHero:GetSpellData(_W)
 		if wData.toggleState == 0 then

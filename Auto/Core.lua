@@ -78,6 +78,8 @@ local remaining = 30 - Game.Timer()
 print(myHero.charName .. " will load shortly")
 DelayAction(function()
 	_G.Alpha.DamageManager:InitializeCallbacks()
-	LocalGeometry = _G.Alpha.Geometry;	
+	LocalGeometry = _G.Alpha.Geometry
+	LocalObjectManager = _G.Alpha.ObjectManager
+	LocalDamageManager = _G.Alpha.DamageManager
 	LoadScript() 
 end, remaining)
