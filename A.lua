@@ -21,63 +21,47 @@ local function readAll(file)
 end
 
 local function AutoUpdate()
-	local CHAMP_PATH = AUTO_PATH..'Champions/'
-	local SCRIPT_URL = "https://raw.githubusercontent.com/Sikaka/GOSExternal/"
-	local AUTO_URL     = "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/"
-	local CHAMP_URL  = "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/Champions/"
-	local oldVersion     = AUTO_PATH .. "currentVersion.lua"
-	local newVersion    = AUTO_PATH .. "newVersion.lua"
+	local CHAMP_PATH			= AUTO_PATH..'Champions/'
+	local SCRIPT_URL			= "https://raw.githubusercontent.com/Sikaka/GOSExternal/"
+	local AUTO_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/"
+	local CHAMP_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/Champions/"
+	local oldVersion			= "currentVersion.lua"
+	local newVersion			= "newVersion.lua"
 	--
-	--
-	local function DownloadFile(from, to, filename)
-		DownloadFileAsync(from..filename, to..filename, function() end)            
-		repeat until FileExist(to..filename)
+	local function serializeTable(val, name, depth) --recursive function to turn a table into plain text, pls dont mess with this
+		skipnewlines = false
+		depth = depth or 0
+		local res = rep(" ", depth)
+		if name then res = res .. name .. " = " end
+		if type(val) == "table" then
+			res = res .. "{" .. "\n"
+			for k, v in pairs(val) do
+				res =  res .. serializeTable(v, k, depth + 4) .. "," .. "\n" 
+			end
+			res = res .. rep(" ", depth) .. "}"
+		elseif type(val) == "number" then
+			res = res .. tostring(val)
+		elseif type(val) == "string" then
+			res = res .. format("%q", val)
+		end    
+		return res
 	end
-	
+	local function DownloadFile(from, to, filename)
+		DownloadFileAsync(from..filename, to..filename, function() end)
+		repeat until FileExist(to..filename)
+		print("Downloading: " .. from.. filename)
+		print("To: " .. to.. filename)
+	end	
 	
 	local function GetVersionControl()
-		if not FileExist(oldVersion) then 
+		if not FileExist(AUTO_PATH..oldVersion) then 
 			DownloadFile(AUTO_URL, AUTO_PATH, oldVersion) 
 		end
 		DownloadFile(AUTO_URL, AUTO_PATH, newVersion)
-	end        
-	
-	local function CheckUpdate()
-		local currentData, latestData = dofile(versionControl), dofile(versionControl2)
-		if currentData.Loader.Version < latestData.Loader.Version then
-			DownloadFile(SCRIPT_URL, SCRIPT_PATH, "A.lua")        
-			currentData.Loader.Version = latestData.Loader.Version
-			TextOnScreen("Please Reload The Script! [F6]x2")
-		end
-		
-		for k,v in pairs(latestData.Dependencies) do
-			if not currentData.Dependencies[k] or currentData.Dependencies[k].Version < v.Version then
-				DownloadFile(SCRIPT_URL, AUTO_PATH, k..dotlua)
-				currentData.Dependencies[k].Version = v.Version
-			end
-		end
-		
-		for k,v in pairs(latestData.Champions) do
-			if not currentData.Champions[k] or currentData.Champions[k].Version < v.Version then
-				DownloadFile(SCRIPT_URL, CHAMP_PATH, k..dotlua)
-				currentData.Champions[k].Version = v.Version
-			end
-		end
-		
-		if currentData.Core.Version < latestData.Core.Version then
-			DownloadFile(SCRIPT_URL, AUTO_PATH, "Core.lua")        
-			currentData.Core.Version = latestData.Core.Version
-		end
-		
-		UpdateVersionControl(currentData)
-		
-		if CheckSupported() then
-			InitializeScript()
-		end
-	end
+	end    
 			
 	local function CheckSupported()
-		local Data = dofile(newVersion)
+		local Data = dofile(AUTO_PATH..newVersion)
 		return Data.Champions[charName]
 	end
 	
@@ -105,7 +89,50 @@ local function AutoUpdate()
 		
 		--Load the active module
 		dofile(AUTO_PATH.."dynamicScript"..dotlua) 
-    end	
+    end	    
+	
+	local function CheckUpdate()
+		print("1")
+		local currentData, latestData = dofile(AUTO_PATH..oldVersion), dofile(AUTO_PATH..newVersion)
+		if currentData.Loader.Version < latestData.Loader.Version then
+			DownloadFile(SCRIPT_URL, SCRIPT_PATH, "A.lua")        
+			currentData.Loader.Version = latestData.Loader.Version
+		end
+		print("2")
+		
+		for k,v in pairs(latestData.Dependencies) do
+			if not currentData.Dependencies[k] or currentData.Dependencies[k].Version < v.Version then
+				DownloadFile(AUTO_URL, AUTO_PATH, k..dotlua)
+				currentData.Dependencies[k].Version = v.Version
+			end
+		end
+		
+		print("3")
+		for k,v in pairs(latestData.Champions) do
+			if not currentData.Champions[k] or currentData.Champions[k].Version < v.Version then
+				DownloadFile(CHAMP_URL, CHAMP_PATH, k..dotlua)
+				currentData.Champions[k].Version = v.Version
+			end
+		end
+		
+		print("4")
+		if currentData.Core.Version < latestData.Core.Version or not FileExist(AUTO_PATH.."Core.lua") then
+			DownloadFile(AUTO_URL, AUTO_PATH, "Core.lua")        
+			currentData.Core.Version = latestData.Core.Version
+		end
+		
+		print("5")
+		UpdateVersionControl(currentData)
+		
+		print("6")
+		if CheckSupported() then
+			print("loading script")
+			InitializeScript()
+		else
+			print("Champion not supported")
+		end
+		print("7")
+	end
 	
 	GetVersionControl()
 	CheckUpdate()
