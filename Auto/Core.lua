@@ -12,6 +12,14 @@ local LocalGameMissileCount 		= Game.MissileCount;
 local LocalGameMissile				= Game.Missile;
 local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
+if FileExist(COMMON_PATH .. "Auto/Alpha.lua") then
+	require 'Auto/Alpha'
+else
+	print("ERROR: Auto/Alpha.lua is not present in your Scripts/Common folder. Please re open loader.")
+end
+_G.Alpha.DamageManager:InitializeCallbacks()
+LocalGeometry = _G.Alpha.Geometry;
+	
 
 function Ready(spellSlot)
 	return Game.CanUseSpell(spellSlot) == 0
