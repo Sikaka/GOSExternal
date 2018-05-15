@@ -2,6 +2,7 @@ if _G.Auto_Loaded then
 	return 
 end
 
+local osclock			= os.clock;
 local open               = io.open
 local concat             = table.concat
 local rep                = string.rep 
@@ -46,11 +47,10 @@ local function AutoUpdate()
 		return res
 	end
 	local function DownloadFile(from, to, filename)
-		DownloadFileAsync(from..filename, to..filename, function() end)
-		for i = 1, 10000 do
-			if FileExist(to..filename) then break end
-		end
-		--repeat until FileExist(to..filename)
+		
+		local startTime = osclock()
+		DownloadFileAsync(from..filename, to..filename, function() end)		
+		repeat until osclock() - startTime > 5 or FileExist(to..filename)
 		print("Downloading: " .. from.. filename)
 		print("To: " .. to.. filename)
 	end	
@@ -103,7 +103,7 @@ local function AutoUpdate()
 		print("2")
 		
 		for k,v in pairs(latestData.Dependencies) do
-			if not currentData.Dependencies[k] or currentData.Dependencies[k].Version < v.Version then
+			if not FileExist(AUTO_PATH..k..dotlua) or not currentData.Dependencies[k] or currentData.Dependencies[k].Version < v.Version then
 				DownloadFile(AUTO_URL, AUTO_PATH, k..dotlua)				
 				if not currentData.Dependencies[k] then
 					currentData.Dependencies[k] = v
@@ -115,7 +115,8 @@ local function AutoUpdate()
 		
 		print("3")
 		for k,v in pairs(latestData.Champions) do
-			if not currentData.Champions[k] or currentData.Champions[k].Version < v.Version then
+			if not FileExist(CHAMP_PATH..k..dotlua) or not currentData.Champions[k] or currentData.Champions[k].Version < v.Version then
+				print("Trying champ: " .. k)
 				DownloadFile(CHAMP_URL, CHAMP_PATH, k..dotlua)
 				if not currentData.Champions[k] then
 					currentData.Champions[k] = v

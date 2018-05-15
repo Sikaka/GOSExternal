@@ -1,7 +1,4 @@
 Data = {
-    Loader = {
-        Version = 1,
-    },
     Champions = {
         Ahri = {
             Changelog = "Ahri Changelog Here",
@@ -12,14 +9,17 @@ Data = {
             Version = 1,
         },
     },
-    Dependencies = {
-        Alpha = {
-            Version = 1,
-        },
+    Loader = {
+        Version = 1,
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
         Version = 1,
+    },
+    Dependencies = {
+        Alpha = {
+            Version = 1,
+        },
     },
 }
 
