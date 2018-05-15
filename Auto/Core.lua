@@ -1,3 +1,4 @@
+local LocalGameTimer				= Game.Timer;
 local LocalGameHeroCount 			= Game.HeroCount;
 local LocalGameHero 				= Game.Hero;
 local LocalGameMinionCount 			= Game.MinionCount;
@@ -66,7 +67,6 @@ function EnemyCount(origin, range)
 	end
 	return count
 end
-
 
 if FileExist(COMMON_PATH .. "Auto/Alpha.lua") then
 	require 'Auto/Alpha'

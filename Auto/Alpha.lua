@@ -315,6 +315,7 @@ class "__ObjectManager"
 function __ObjectManager:__init()
 	
 	LocalCallbackAdd('Tick',  function() self:Tick() end)
+	LocalCallbackAdd('Draw',  function() self:Draw() end)
 	
 	self.CachedBuffs = {}
 	self.OnBuffAddedCallbacks = {}
@@ -341,7 +342,9 @@ function __ObjectManager:__init()
 	self.OnSpellCastCallbacks = {}
 	
 	self.NextCacheMissiles = GetTickCount()
+	self.LastMissileCount = 0
 	self.NextCacheParticles = GetTickCount()
+	self.LastParticleCount = 0
 	self.NextCacheBuffs = GetTickCount()
 end
 
@@ -372,7 +375,7 @@ end
 
 --Register Missile Create Event
 function __ObjectManager:OnMissileCreate(cb)
-	LocalInsert(ObjectManager.OnMissileCreateCallbacks, cb)
+	--LocalInsert(ObjectManager.OnMissileCreateCallbacks, cb)
 end
 
 --Trigger Missile Create Event
@@ -447,12 +450,20 @@ function __ObjectManager:SpellCast(data)
 	end
 end
 
-local lookupTable = {"one", "two", "three", "four", "five"}
+local particleDuration = 0
+local missileDuration= 0
+local buffDuration= 0
+function __ObjectManager:Draw()
+	Draw.Text("PARTICLES: " .. particleDuration, 14, 200, 100)
+	Draw.Text("MISSILES: " .. missileDuration, 14, 200, 125)
+	Draw.Text("BUFFS: " .. buffDuration, 14, 200, 150)
+end
 
 --Search for changes in particle or missiles in game. trigger the appropriate events.
 function __ObjectManager:Tick()	
 	--Check if we have any buff added/removed callbacks before querying
 	if (#self.OnBuffAddedCallbacks > 0 or #self.OnBuffRemovedCallbacks  > 0) and GetTickCount() > self.NextCacheBuffs then
+		local t = LocalOSClock()
 		self.NextCacheBuffs = GetTickCount() + BUFF_CACHE_DELAY
 		--KNOWN ISSUE: Certain skills use buffs... but constantly tweak their start/end time: EG Aatrox Q. I have no way to reliably handle this currently.
 		for _, buff in LocalPairs(self.CachedBuffs) do
@@ -483,6 +494,7 @@ function __ObjectManager:Tick()
 				end
 			end
 		end
+		buffDuration = LocalOSClock() - t;
 	end
 	
 	if #self.OnSpellCastCallbacks > 0 then
@@ -504,10 +516,12 @@ function __ObjectManager:Tick()
 
 	--Cache Particles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if (#self.OnParticleCreateCallbacks > 0 or #self.OnParticleDestroyCallbacks > 0) and GetTickCount() > self.NextCacheParticles then
+		
+		local t = LocalOSClock()
 		self.NextCacheParticles = GetTickCount() + PARTICLE_CACHE_DELAY
 		for _, particle in LocalPairs(self.CachedParticles) do
 			if not particle or not particle.valid then
-				if particle then					
+				if particle then
 					self:ParticleDestroyed(particle)
 				end
 				self.CachedParticles[_] = nil
@@ -516,22 +530,29 @@ function __ObjectManager:Tick()
 			end
 		end	
 		
-		for i = 1, LocalGameParticleCount() do 
-			local particle = LocalGameParticle(i)
-			if particle ~= nil and LocalType(particle) == "userdata" then
-				if self.CachedParticles[particle.networkID] then
-					self.CachedParticles[particle.networkID].valid = true
-				else
-					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
-					self.CachedParticles[particle.networkID] =particleData
-					self:ParticleCreated(particleData)
+		local particleCount = LocalGameParticleCount()
+		
+		if particleCount ~= self.LastParticleCount then
+			self.LastParticleCount = particleCount
+			for i = 1, particleCount do 
+				local particle = LocalGameParticle(i)
+				if particle ~= nil and LocalType(particle) == "userdata" then
+					if self.CachedParticles[particle.networkID] then
+						self.CachedParticles[particle.networkID].valid = true
+					else
+						local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
+						self.CachedParticles[particle.networkID] =particleData
+						self:ParticleCreated(particleData)
+					end
 				end
 			end
-		end		
+		end
+		particleDuration = LocalOSClock() - t
 	end
 	
 	--Cache Missiles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if (#self.OnMissileCreateCallbacks > 0 or #self.OnMissileDestroyCallbacks > 0) and GetTickCount() > self.NextCacheMissiles then
+		local t = LocalOSClock()
 		self.NextCacheMissiles = GetTickCount() + MISSILE_CACHE_DELAY
 		for _, missile in LocalPairs(self.CachedMissiles) do
 			if not missile or not missile.data or missile.dead or not missile.valid then
@@ -539,39 +560,44 @@ function __ObjectManager:Tick()
 					self:MissileDestroyed(missile)
 				end
 				self.CachedMissiles[_] = nil
-			else		
+			else
 				missile.valid = false
 			end
-		end	
+		end
 		
-		for i = 1, LocalGameMissileCount() do 
-			local missile = LocalGameMissile(i)
-			if missile ~= nil and LocalType(missile) == "userdata" and missile.missileData then
-				if self.CachedMissiles[missile.networkID] then
-					self.CachedMissiles[missile.networkID].valid = true
-				else
-					--We need a direct reference to the missile so we can query its current position later. If not we'd have to calculate it using speed/start/end data
-					local missileData = 
-					{ 
-						valid = true,
-						name = missile.name,
-						forward = Vector(
-							missile.missileData.endPos.x -missile.missileData.startPos.x,
-							missile.missileData.endPos.y -missile.missileData.startPos.y,
-							missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
-						networkID = missile.networkID,
-						data = missile,							
-						endTime = LocalGameTimer() + Geometry:GetDistance(missile.missileData.endPos, missile.missileData.startPos) / missile.missileData.speed,
-					}
-					if DamageManager.MissileNames[missile.name] and DamageManager.MissileNames[missile.name].MissileTime then
-						missileData.endTime = LocalGameTimer() + DamageManager.MissileNames[missile.name].MissileTime
+		local missileCount = LocalGameMissileCount()
+		if missileCount ~= self.LastMissileCount then
+			self.LastMissileCount = missileCount
+			for i = 1, missileCount do 
+				local missile = LocalGameMissile(i)
+				if missile ~= nil and LocalType(missile) == "userdata" and missile.missileData then
+					if self.CachedMissiles[missile.networkID] then
+						self.CachedMissiles[missile.networkID].valid = true
+					else
+						--We need a direct reference to the missile so we can query its current position later. If not we'd have to calculate it using speed/start/end data
+						local missileData = 
+						{ 
+							valid = true,
+							name = missile.name,
+							forward = Vector(
+								missile.missileData.endPos.x -missile.missileData.startPos.x,
+								missile.missileData.endPos.y -missile.missileData.startPos.y,
+								missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
+							networkID = missile.networkID,
+							data = missile,							
+							endTime = LocalGameTimer() + Geometry:GetDistance(missile.missileData.endPos, missile.missileData.startPos) / missile.missileData.speed,
+						}
+						if DamageManager.MissileNames[missile.name] and DamageManager.MissileNames[missile.name].MissileTime then
+							missileData.endTime = LocalGameTimer() + DamageManager.MissileNames[missile.name].MissileTime
+						end
+						self.CachedMissiles[missile.networkID] =missileData
+						self:MissileCreated(missileData)
 					end
-					self.CachedMissiles[missile.networkID] =missileData
-					self:MissileCreated(missileData)
 				end
 			end
 		end
-	end
+		missileDuration = LocalOSClock() - t
+	end	
 end
 
 function __ObjectManager:CheckIfBlinkParticle(particle)
@@ -611,7 +637,7 @@ end
 class "__DamageManager"
 --Credits LazyXerath for extra dmg reduction methods
 function __DamageManager:__init()
-	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true"}
+	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true", [BUFF_CHARM] = "true"}
 	self.OnIncomingCCCallbacks = {}
 	
 	self.SiegeMinionList = {"Red_Minion_MechCannon", "Blue_Minion_MechCannon"}
@@ -734,6 +760,7 @@ function __DamageManager:__init()
 			HeroName = "Ahri", 
 			SpellName = "Charm",
 			SpellSlot = _E,
+			MissileName="AhriSeduceMissile",
 			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
 			Collision = 1,
@@ -4693,7 +4720,7 @@ function __DamageManager:SpellCast(spell)
 					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, castPos, target.pos)
 					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
-						self:IncomingDamage(owner, target, damage, spellInfo,true)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
 					end
 				end
 			end
@@ -4709,15 +4736,13 @@ function __DamageManager:MissileCreated(missile)
 		if missile.Sort == TARGET_TYPE_CIRCLE then
 			self:OnUntargetedMissileTable(missile)
 		elseif missile.data.missileData.target > 0 then
-			--Unable currently to handle line skillshots that have a target (IE: Oriana E)
-			if LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack") then
-				self:OnAutoAttackMissile(missile)
-			else
-				self:OnTargetedMissileTable(missile)
-			end
+			--Unable currently to handle line skillshots that have a target (IE: Oriana E)			
+			self:OnTargetedMissileTable(missile)			
 		else
 			self:OnUntargetedMissileTable(missile)
 		end
+	elseif missile.data.missileData.target > 0 and (LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack")) then
+		self:OnAutoAttackMissile(missile)			
 	elseif AlphaMenu.PrintMissile:Value() then
 		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width)
 	end
@@ -4734,7 +4759,7 @@ function __DamageManager:OnAutoAttackMissile(missile)
 		if not targetCollection[target.handle] then return end
 		
 		--This missile is already added - ignore it cause something went wrong. 
-		if targetCollection[target.handle][missile.networkID] then print("Duplicate targeted missile creation: " .. missile.name) return end
+		if targetCollection[target.handle][missile.networkID] then return end
 		
 		local damage = owner.totalDamage
 		if LocalStringFind(missile.name, "CritAttack") then
