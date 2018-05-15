@@ -12,7 +12,7 @@ local LocalGameMissileCount 		= Game.MissileCount;
 local LocalGameMissile				= Game.Missile;
 local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
-
+local CastSpell 					= _G.Control.CastSpell
 function Ready(spellSlot)
 	return Game.CanUseSpell(spellSlot) == 0
 end

@@ -5,7 +5,7 @@ R = {	Range = 5300,	Radius = 550,Delay = 0.375,	Speed = 1500	}
 	
 
 function LoadScript()
-	Menu = MenuElement({type = MENU, id = myHero.networkID, name = myHero.charName})
+	Menu = MenuElement({type = MENU, id = myHero.networkID, name = "Ziggs"})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Bouncing Bomb", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
