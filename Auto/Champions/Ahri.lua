@@ -97,7 +97,6 @@ end
 
 
 function OnCC(target, damage, ccType)
-	print("Start")
 	if target.isEnemy and LocalDamageManager.IMMOBILE_TYPES[ccType] then
 		if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and Menu.Skills.Q.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, Q.Range - 100) then
 			NextTick = LocalGameTimer() +.25
