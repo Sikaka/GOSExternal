@@ -1,5 +1,5 @@
 Q = {	Range = 880,	Radius = 90,	Delay = 0.25,	Speed = 1700, 	IsLine = true}
-W = {	Range = 1000,	Delay = 0.25,	Speed = 999999	}
+W = {	Range = 800,	Delay = 0.25,	Speed = 999999	}
 E = {	Range = 975,	Radius = 50,	Delay = 0.25,	Speed = 1600,	Collision = true, 	IsLine = true}
 R = {	Range = 450,	Radius = 600,	Delay = 0.25,	Speed = 999999	}
 	
@@ -83,7 +83,7 @@ function Tick()
 			local hero = LocalGameHero(i)
 			if hero and CanTarget(hero) then
 				local origin = LocalGeometry:PredictUnitPosition(hero, W.Delay)
-				if LocalGeometry:IsInRange(myHero.pos, origin, Menu.Skills.W.Radius:Value()) then
+				if LocalGeometry:IsInRange(myHero.pos, origin, Menu.Skills.W.Radius:Value()) or (LocalGeometry:IsInRange(myHero.pos, origin,W.Range) and Menu.Skills.Combo:Value()) then
 					NextTick = LocalGameTimer() + .25
 					CastSpell(HK_W)
 					return
@@ -97,6 +97,7 @@ end
 
 
 function OnCC(target, damage, ccType)
+	print("Start")
 	if target.isEnemy and LocalDamageManager.IMMOBILE_TYPES[ccType] then
 		if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and Menu.Skills.Q.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, Q.Range - 100) then
 			NextTick = LocalGameTimer() +.25

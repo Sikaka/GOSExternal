@@ -10,8 +10,7 @@ local format             = string.format
 local AUTO_PATH			= 	COMMON_PATH.."Auto/"
 local dotlua			= 	".lua" 
 local coreName			=	"Core.lua"
-local charName			= 	myHero.charName 
-local shouldLoad		= 	{"Alpha"}
+local charName			= 	myHero.charName
 
 local function readAll(file)
 	local f = assert(open(file, "r"))
@@ -48,7 +47,10 @@ local function AutoUpdate()
 	end
 	local function DownloadFile(from, to, filename)
 		DownloadFileAsync(from..filename, to..filename, function() end)
-		repeat until FileExist(to..filename)
+		for i = 1, 10000 do
+			if FileExist(to..filename) then break end
+		end
+		--repeat until FileExist(to..filename)
 		print("Downloading: " .. from.. filename)
 		print("To: " .. to.. filename)
 	end	
@@ -67,7 +69,7 @@ local function AutoUpdate()
 	
 	local function UpdateVersionControl(t)    
 		local str = serializeTable(t, "Data") .. "\n\nreturn Data"    
-		local f = assert(open(versionControl, "w"))
+		local f = assert(open(AUTO_PATH..oldVersion, "w"))
 		f:write(str)
 		f:close()
 	end
@@ -85,25 +87,29 @@ local function AutoUpdate()
 		
 		--Write the core module
 		writeModule(readAll(AUTO_PATH..coreName))
-		writeModule(readAll(AUTO_PATH..charName..dotLua))
+		writeModule(readAll(CHAMP_PATH..charName..dotlua))
 		
 		--Load the active module
 		dofile(AUTO_PATH.."dynamicScript"..dotlua) 
     end	    
 	
 	local function CheckUpdate()
-		print("1")
 		local currentData, latestData = dofile(AUTO_PATH..oldVersion), dofile(AUTO_PATH..newVersion)
 		if currentData.Loader.Version < latestData.Loader.Version then
 			DownloadFile(SCRIPT_URL, SCRIPT_PATH, "A.lua")        
 			currentData.Loader.Version = latestData.Loader.Version
 		end
+		
 		print("2")
 		
 		for k,v in pairs(latestData.Dependencies) do
 			if not currentData.Dependencies[k] or currentData.Dependencies[k].Version < v.Version then
-				DownloadFile(AUTO_URL, AUTO_PATH, k..dotlua)
-				currentData.Dependencies[k].Version = v.Version
+				DownloadFile(AUTO_URL, AUTO_PATH, k..dotlua)				
+				if not currentData.Dependencies[k] then
+					currentData.Dependencies[k] = v
+				else
+					currentData.Dependencies[k].Version = v.Version
+				end
 			end
 		end
 		
@@ -111,7 +117,11 @@ local function AutoUpdate()
 		for k,v in pairs(latestData.Champions) do
 			if not currentData.Champions[k] or currentData.Champions[k].Version < v.Version then
 				DownloadFile(CHAMP_URL, CHAMP_PATH, k..dotlua)
-				currentData.Champions[k].Version = v.Version
+				if not currentData.Champions[k] then
+					currentData.Champions[k] = v
+				else
+					currentData.Champions[k].Version = v.Version
+				end
 			end
 		end
 		
@@ -126,12 +136,10 @@ local function AutoUpdate()
 		
 		print("6")
 		if CheckSupported() then
-			print("loading script")
 			InitializeScript()
 		else
-			print("Champion not supported")
+			print("Champion not supported: ".. myHero.charName)
 		end
-		print("7")
 	end
 	
 	GetVersionControl()

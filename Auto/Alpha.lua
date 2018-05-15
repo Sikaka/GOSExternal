@@ -375,7 +375,7 @@ end
 
 --Register Missile Create Event
 function __ObjectManager:OnMissileCreate(cb)
-	--LocalInsert(ObjectManager.OnMissileCreateCallbacks, cb)
+	LocalInsert(ObjectManager.OnMissileCreateCallbacks, cb)
 end
 
 --Trigger Missile Create Event
@@ -598,6 +598,7 @@ function __ObjectManager:Tick()
 		end
 		missileDuration = LocalOSClock() - t
 	end	
+	
 end
 
 function __ObjectManager:CheckIfBlinkParticle(particle)
@@ -4540,7 +4541,7 @@ function __DamageManager:__init()
 end
 
 --Helper method to enable all the callbacks needed to calculate damage. By default we dont need to track all this shit.
-function __DamageManager:InitializeCallbacks()	
+function __DamageManager:InitializeCallbacks()
 	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
 	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)	
 	ObjectManager:OnBuffAdded(function(owner, buff) self:BuffAdded(owner, buff) end)
@@ -4613,7 +4614,7 @@ function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
 	end
 end
 
-function __DamageManager:CheckLineMissileCollision(skillshot, targetList)	
+function __DamageManager:CheckLineMissileCollision(skillshot, targetList)
 	local distRemaining = Geometry:GetDistance(skillshot.data.pos, skillshot.data.missileData.endPos)	
 	local step = LocalMin(distRemaining, skillshot.data.missileData.speed  * .35)
 	local nextPosition = skillshot.data.pos + skillshot.forward * step

@@ -122,7 +122,7 @@ function Tick()
 						local scaling = 400-LocalGeometry:GetDistance(origin, WPos)
 						local predictedPosition = origin + forward * scaling					
 						if LocalGeometry:IsInRange(myHero.pos, predictedPosition, Q.Range) and Menu.Skills.W.ComboTargets[hero.networkID] and Menu.Skills.W.ComboTargets[hero.networkID]:Value() then
-							NextTick = LocalGameTimer() + .25
+					NextTick = LocalGameTimer() + .25
 							_G.Control.CastSpell(HK_Q, predictedPosition)
 							DelayAction(function()Control.CastSpell(HK_W) end,.15)
 							return
