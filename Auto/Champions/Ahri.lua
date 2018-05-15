@@ -5,8 +5,7 @@ R = {	Range = 450,	Radius = 600,	Delay = 0.25,	Speed = 999999	}
 	
 
 function LoadScript()
-	--if not myHero.charName ~= "Ziggs" then print("This script is only compatible with Ziggs!") return end	
-	Menu = MenuElement({type = MENU, id = myHero.networkID, name = "Ziggs"})
+	Menu = MenuElement({type = MENU, id = myHero.networkID, name = myHero.charName})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Bouncing Bomb", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
