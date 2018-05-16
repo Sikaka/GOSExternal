@@ -4550,17 +4550,19 @@ function __DamageManager:__init()
 				print("Unhandled skill: " .. spellName .. " on " .. target.charName)
 			end
 		end
-	end
+	end	
+	self.CallbacksInitialized = false
 	
 end
 
 --Helper method to enable all the callbacks needed to calculate damage. By default we dont need to track all this shit.
 function __DamageManager:InitializeCallbacks()
-	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
-	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)	
-	ObjectManager:OnBuffAdded(function(owner, buff) self:BuffAdded(owner, buff) end)
-	LocalCallbackAdd('Tick',  function() self:Tick() end)
-	ObjectManager:OnSpellCast(function(args) self:SpellCast(args) end)
+	DamageManager.CallbacksInitialized = true
+	ObjectManager:OnMissileCreate(function(args) DamageManager:MissileCreated(args) end)
+	ObjectManager:OnMissileDestroy(function(args) DamageManager:MissileDestroyed(args) end)	
+	ObjectManager:OnBuffAdded(function(owner, buff) DamageManager:BuffAdded(owner, buff) end)
+	LocalCallbackAdd('Tick',  function() DamageManager:Tick() end)
+	ObjectManager:OnSpellCast(function(args) DamageManager:SpellCast(args) end)
 end
 
 function __DamageManager:LoadSpell(spellName, spellData, target)				
@@ -4907,6 +4909,9 @@ end
 
 --Register Incoming CC Event
 function __DamageManager:OnIncomingCC(cb)
+	if not self.CallbacksInitialized then
+		self.InitializeCallbacks()
+	end
 	LocalInsert(DamageManager.OnIncomingCCCallbacks, cb)
 end
 

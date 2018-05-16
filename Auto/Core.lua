@@ -160,7 +160,6 @@ DelayAction(function()
 	LocalBuffManager = _G.Alpha.BuffManager
 	LocalObjectManager = _G.Alpha.ObjectManager
 	LocalDamageManager = _G.Alpha.DamageManager
-	LocalDamageManager:InitializeCallbacks()
 	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 	LoadScript()
 end, remaining)

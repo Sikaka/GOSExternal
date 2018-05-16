@@ -100,7 +100,8 @@ function Tick()
 					if LocalBuffManager:HasBuff(target, "LuxIlluminatingFraulein",R.Delay) then
 						thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
 					end
-					local predictedHealth = target.health + target.hpRegen * R.Delay - LocalDamageManager:RecordedIncomingDamage(target)					
+					local extraIncoming = LocalDamageManager:RecordedIncomingDamage(target)
+					local predictedHealth = target.health + target.hpRegen * R.Delay - extraIncoming			
 					thisRDamage = LocalDamageManager:CalculateMagicDamage(myHero,target, thisRDamage)
 					if predictedHealth > 0 and thisRDamage > predictedHealth then
 						NextTick = LocalGameTimer() + .25
@@ -156,7 +157,7 @@ function DetonateE()
 					EExpiresAt = 0
 					break
 				else
-					if DamageManager:PredictDamage(myHero, target, "LuxLightStrikeKugel") > target.health then
+					if LocalDamageManager:PredictDamage(myHero, target, "LuxLightStrikeKugel") > target.health then
 						CastSpell(HK_E)
 						EExpiresAt = 0
 						break
