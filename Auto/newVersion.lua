@@ -15,6 +15,10 @@ Data = {
             Changelog = "Lux Changelog Here",
             Version = 1.1,
         },
+        Taliyah = {
+            Changelog = "Taliyah Changelog Here",
+            Version = 1,
+        },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
             Version = 1,
