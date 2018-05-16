@@ -51,8 +51,8 @@ local function AutoUpdate()
 		local startTime = osclock()
 		DownloadFileAsync(from..filename, to..filename, function() end)		
 		repeat until osclock() - startTime > 5 or FileExist(to..filename)
-		print("Downloading: " .. from.. filename)
-		print("To: " .. to.. filename)
+		--print("Downloading: " .. from.. filename)
+		--print("To: " .. to.. filename)
 	end	
 	
 	local function GetVersionControl()
@@ -60,7 +60,7 @@ local function AutoUpdate()
 			DownloadFile(AUTO_URL, AUTO_PATH, oldVersion) 
 		end
 		DownloadFile(AUTO_URL, AUTO_PATH, newVersion)
-	end    
+	end
 			
 	local function CheckSupported()
 		local Data = dofile(AUTO_PATH..newVersion)
@@ -100,8 +100,6 @@ local function AutoUpdate()
 			currentData.Loader.Version = latestData.Loader.Version
 		end
 		
-		print("2")
-		
 		for k,v in pairs(latestData.Dependencies) do
 			if not FileExist(AUTO_PATH..k..dotlua) or not currentData.Dependencies[k] or currentData.Dependencies[k].Version < v.Version then
 				DownloadFile(AUTO_URL, AUTO_PATH, k..dotlua)				
@@ -113,10 +111,9 @@ local function AutoUpdate()
 			end
 		end
 		
-		print("3")
 		for k,v in pairs(latestData.Champions) do
 			if not FileExist(CHAMP_PATH..k..dotlua) or not currentData.Champions[k] or currentData.Champions[k].Version < v.Version then
-				print("Trying champ: " .. k)
+				print("Downloading Champion Script: " .. k)
 				DownloadFile(CHAMP_URL, CHAMP_PATH, k..dotlua)
 				if not currentData.Champions[k] then
 					currentData.Champions[k] = v
@@ -126,16 +123,13 @@ local function AutoUpdate()
 			end
 		end
 		
-		print("4")
 		if currentData.Core.Version < latestData.Core.Version or not FileExist(AUTO_PATH.."Core.lua") then
 			DownloadFile(AUTO_URL, AUTO_PATH, "Core.lua")        
 			currentData.Core.Version = latestData.Core.Version
 		end
 		
-		print("5")
 		UpdateVersionControl(currentData)
 		
-		print("6")
 		if CheckSupported() then
 			InitializeScript()
 		else

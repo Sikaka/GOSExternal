@@ -37,7 +37,6 @@ function LoadScript()
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	Callback.Add("Tick", function() Tick() end)
-	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end
 
 local NextTick = LocalGameTimer()

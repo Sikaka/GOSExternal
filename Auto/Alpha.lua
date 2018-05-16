@@ -133,6 +133,20 @@ function __Geometry:IsInRange(p1, p2, range)
 	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
 end
 
+function __Geometry:GetLineTargetCount(source, aimPos, delay, speed, width, targetAllies)
+	local targetCount = 0
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t and t.pos and t.alive and t.health > 0 and t.visible and t.isTargetable and ( targetAllies or t.isEnemy) then			
+			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)			
+			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
+			if proj1 and isOnSegment and self:IsInRange(predictedPos, proj1, t.boundingRadius + width) then
+				targetCount = targetCount + 1
+			end
+		end
+	end
+	return targetCount
+end
 function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision, isLine)
 	local hitChance = 1
 	if not self:IsInRange(source.pos, target.pos, range) then hitChance = -1 end
@@ -4810,6 +4824,22 @@ function __DamageManager:OnTargetedMissileTable(missile)
 end
 
 
+function __DamageManager:RecordedIncomingDamage(target)
+	local damage = 0
+	
+	local targetCollection = self.EnemyDamage
+	if target.isAlly then
+		targetCollection = self.AlliedDamage
+	end
+	if targetCollection[target.handle] then
+		for _, dmg in LocalPairs(targetCollection[target.handle]) do
+			if dmg then
+				damage = damage + dmg.Damage
+			end
+		end
+	end	
+	return damage
+end
 function __DamageManager:PredictDamage(owner, target, spellName)
 	local damage = 0
 	local skillInfo = self.MasterSkillLookupTable[spellName]
