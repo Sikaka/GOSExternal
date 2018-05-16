@@ -9,7 +9,7 @@ Data = {
         },
         Brand = {
             Changelog = "Brand Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Lux = {
             Changelog = "Lux Changelog Here",
