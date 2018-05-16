@@ -7,6 +7,10 @@ Data = {
             Changelog = "Ahri Changelog Here",
             Version = 1,
         },
+        Brand = {
+            Changelog = "Brand Changelog Here",
+            Version = 1,
+        },
         Lux = {
             Changelog = "Lux Changelog Here",
             Version = 1,
