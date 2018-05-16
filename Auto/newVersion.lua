@@ -8,7 +8,7 @@ Data = {
             Version = 1,
         },
         Lux = {
-            Changelog = "Ziggs Changelog Here",
+            Changelog = "Lux Changelog Here",
             Version = 1,
         },
         Ziggs = {
