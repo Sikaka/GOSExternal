@@ -90,10 +90,16 @@ function Tick()
 		return
 	end
 	local target = GetTarget(R.Range)
-	if target and Ready(_R) and CanTarget(target) and EnemyCount(target.pos, R.Radius) >= Menu.Skills.R.Count:Value() and (Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value())then
-		NextTick = LocalGameTimer() + .25
-		CastSpell(HK_R, target)
-		return
+	if target and Ready(_R) and CanTarget(target) and (Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value())then
+		local radius = R.Radius
+		if LocalBuffManager:HasBuff(target, "BrandAblaze", 1) then
+			radius = 725
+		end
+		if EnemyCount(target.pos, radius) >= Menu.Skills.R.Count:Value() then
+			NextTick = LocalGameTimer() + .25
+			CastSpell(HK_R, target)
+			return
+		end
 	end
 	NextTick = LocalGameTimer() + .1
 end

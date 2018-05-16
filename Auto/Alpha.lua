@@ -4956,13 +4956,15 @@ end
 
 --Remove from local collections on destroy
 function __DamageManager:MissileDestroyed(missile)
-	for _, dmgCollection in LocalPairs(self.AlliedHeroes) do
+	--Check if they need to be destroyed
+	
+	for _, dmgCollection in LocalPairs(self.AlliedDamage) do
 		if dmgCollection[missile.networkID] then
 			dmgCollection[missile.networkID] = nil
 		end
 	end
 	
-	for _, dmgCollection in LocalPairs(self.EnemyHeroes) do
+	for _, dmgCollection in LocalPairs(self.EnemyDamage) do
 		if dmgCollection[missile.networkID] then
 			dmgCollection[missile.networkID] = nil
 		end

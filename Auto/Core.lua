@@ -148,6 +148,11 @@ else
 	print("ERROR: Auto/Alpha.lua is not present in your Scripts/Common folder. Please re open loader.")
 end
 
+if not _G.SDK or not _G.SDK.TargetSelector then
+	print("IC Orbwalker MUST be active in order to use this script.")
+	return
+end
+
 local remaining = 30 - Game.Timer()
 print(myHero.charName .. " will load shortly")
 DelayAction(function()

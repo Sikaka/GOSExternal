@@ -8,12 +8,12 @@ function LoadScript()
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = myHero.charName})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Light Binding", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 6, step = 1 })	
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })	
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Prismatic Barrier", type = MENU})
-	Menu.Skills.W:MenuElement({id = "Damage", name = "Recent Damage Received", value = 15, min = 5, max = 60, step = 5 })
+	Menu.Skills.W:MenuElement({id = "Damage", name = "Minimum Damage", value = 200, min = 100, max = 1000, step = 25 })
 	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 1, min = 1, max = 6, step = 1 })
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 		
@@ -68,6 +68,25 @@ function Tick()
 		DetonateE()
 	end
 	
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+		for i = 1, LocalGameHeroCount() do
+			local target = LocalGameHero(i)
+			if CanTargetAlly(target) and  LocalGeometry:IsInRange(myHero.pos, target.pos, W.Radius) then
+				local incomingDamage = LocalDamageManager:RecordedIncomingDamage(target)
+				if incomingDamage > Menu.Skills.W.Damage:Value() then				
+					local castPosition = LocalGeometry:PredictUnitPosition(target, W.Delay + LocalGeometry:GetDistance(myHero.pos, target.pos)/W.Speed)
+					local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * R.Range			
+					local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, W.Delay, W.Speed, W.Radius,true)
+					if targetCount >= Menu.Skills.W.Count:Value() then
+						NextTick = LocalGameTimer() + .25
+						CastSpell(HK_W, castPosition, true)
+						return
+					end
+				end
+			end
+		end
+	end
+	
 	--Check for killsteal or target count R
 	if Ready(_R) and Menu.Skills.R.Killsteal:Value() then
 		local rDamage= 200 + (myHero:GetSpellData(_R).level) * 100 + myHero.ap * 0.75
@@ -81,7 +100,7 @@ function Tick()
 					if LocalBuffManager:HasBuff(target, "LuxIlluminatingFraulein",R.Delay) then
 						thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
 					end
-					local predictedHealth = target.health + target.hpRegen * R.Delay					
+					local predictedHealth = target.health + target.hpRegen * R.Delay - LocalDamageManager:RecordedIncomingDamage(target)					
 					thisRDamage = LocalDamageManager:CalculateMagicDamage(myHero,target, thisRDamage)
 					if predictedHealth > 0 and thisRDamage > predictedHealth then
 						NextTick = LocalGameTimer() + .25
@@ -137,6 +156,11 @@ function DetonateE()
 					EExpiresAt = 0
 					break
 				else
+					if DamageManager:PredictDamage(myHero, target, "LuxLightStrikeKugel") > target.health then
+						CastSpell(HK_E)
+						EExpiresAt = 0
+						break
+					end
 					local nextPosition = LocalGeometry:PredictUnitPosition(target, .1)
 					if not LocalGeometry:IsInRange(EPos, nextPosition, E.Radius) then
 						CastSpell(HK_E)
