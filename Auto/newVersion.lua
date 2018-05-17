@@ -17,7 +17,7 @@ Data = {
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
