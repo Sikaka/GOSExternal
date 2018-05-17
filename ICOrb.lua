@@ -723,6 +723,11 @@ class "__Damage"
 					args.RawPhysical = args.RawPhysical + LocalMathMin(0.25, 0.1 + 0.05 * LocalMathCeil(Utilities:GetLevel(args.From) / 5)) * (args.Target.maxHealth - args.Target.health);
 				end
 			end,
+			["Lux"] = function(args)
+				if BuffManager:HasBuff(args.Target, "LuxIlluminatingFraulein") then
+					args.RawMagical = 20 + args.From.levelData.lvl * 10 + args.From.ap * 0.2;
+				end
+			end,
 			["Orianna"] = function(args)
 				local level = LocalMathCeil(Utilities:GetLevel(args.From) / 3);
 				args.RawMagical = args.RawMagical + 2 + 8 * level + 0.15 * args.From.ap;
@@ -1705,17 +1710,6 @@ class "__ObjectManager"
 			end
 		end
 		
-		self.IgnoredMinions = {};
-	end
-
-
-	--Used for a script to manually ignore a minion for last hitting.
-		--EG: Cass has already E'd the minion and will kill it, don't try to auto attack that same minion
-	function __ObjectManager:IgnoreMinion(networkID, expiration)
-		if not expiration then
-			expiration = GetTickCount() + 1000
-		end
-		self.IgnoredMinions[networkID] = expiration
 	end
 	
 	function __ObjectManager:GetMinionType(minion)
@@ -1758,7 +1752,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION and (self.IgnoredMinions[minion.networkID] == nil or GetTickCount() > self.IgnoredMinions[minion.networkID]) then
+			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
 				if Utilities:IsInRange(myHero, minion, range) then
 					Linq:Add(result, minion);
 				end
@@ -1771,7 +1765,7 @@ class "__ObjectManager"
 		local result = {};
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i);
-			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION and (self.IgnoredMinions[minion.networkID] == nil or GetTickCount() > self.IgnoredMinions[minion.networkID]) then
+			if Utilities:IsValidTarget(minion) and minion.isEnemy and self:GetMinionType(minion) == MINION_TYPE_LANE_MINION then
 				if Utilities:IsInAutoAttackRange(myHero, minion) then
 					Linq:Add(result, minion);
 				end

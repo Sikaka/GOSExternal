@@ -136,8 +136,8 @@ function NearestAlly(origin, range)
 	for i = 1,LocalGameHeroCount()  do
 		local hero = LocalGameHero(i)
 		if hero and hero ~= myHero and CanTargetAlly(hero) then
-			local d =  LocalGeometry:GetDistanceSqr(origin, hero.pos)
-			if d < range and d < distance * distance then
+			local d =  LocalGeometry:GetDistance(origin, hero.pos)
+			if d < range and d < distance then
 				distance = d
 				ally = hero
 			end
@@ -154,8 +154,8 @@ function NearestEnemy(origin, range)
 	for i = 1,LocalGameHeroCount()  do
 		local hero = LocalGameHero(i)
 		if hero and CanTarget(hero) then
-			local d =  LocalGeometry:GetDistanceSqr(origin, hero.pos)
-			if d < range and d < distance * distance then
+			local d =  LocalGeometry:GetDistance(origin, hero.pos)
+			if d < range  and d < distance  then
 				distance = d
 				enemy = hero
 			end
