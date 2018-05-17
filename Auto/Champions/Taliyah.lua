@@ -70,7 +70,7 @@ function Tick()
 	end
 	
 	local target = GetTarget(Q.Range)
-	if target then
+	if target and Ready(_Q) then
 		local accuracyRequired = 6
 		if Menu.Skills.Q.Auto:Value() then accuracyRequired =  4 end
 		if Menu.Skills.Combo:Value() then accuracyRequired = Menu.Skills.Q.Accuracy:Value() end	
