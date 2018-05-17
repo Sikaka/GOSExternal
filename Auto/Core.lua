@@ -75,28 +75,40 @@ function EnableOrb(bool)
     end
 end
 
+
+local vectorCast = {}
+local mouseReturnPos = mousePos
+local mouseCurrentPos = mousePos
 local nextVectorCast = 0
 function CastVectorSpell(key, pos1, pos2)
 	if nextVectorCast > LocalGameTimer() then return end
-	nextVectorCast = LocalGameTimer() + 1
+	nextVectorCast = LocalGameTimer() + 1.5
 	EnableOrb(false)
-	local returnPos = mousePos
-	DelayAction(function()		
+	vectorCast[#vectorCast + 1] = function () 
+		mouseReturnPos = mousePos
+		mouseCurrentPos = pos1
 		Control.SetCursorPos(pos1)
+	end
+	vectorCast[#vectorCast + 1] = function () 
 		Control.KeyDown(key)
-	end,.05)	
-	DelayAction(function()		
+	end
+	vectorCast[#vectorCast + 1] = function () 
+		local deltaMousePos =  mousePos-mouseCurrentPos
+		mouseReturnPos = mouseReturnPos + deltaMousePos
 		Control.SetCursorPos(pos2)
-	end,.1)
-	DelayAction(function()
+		mouseCurrentPos = pos2
+	end
+	vectorCast[#vectorCast + 1] = function ()
 		Control.KeyUp(key)
-	end,.15)
-	DelayAction(function()
-		Control.SetCursorPos(returnPos)
-	end,.2)		
-	DelayAction(function()
+	end
+	vectorCast[#vectorCast + 1] = function ()	
+		local deltaMousePos =  mousePos -mouseCurrentPos
+		mouseReturnPos = mouseReturnPos + deltaMousePos
+		Control.SetCursorPos(mouseReturnPos)
+	end
+	vectorCast[#vectorCast + 1] = function () 
 		EnableOrb(true)
-	end,.25)			
+	end		
 end
 
 function CastSpell(key, pos, isLine)
