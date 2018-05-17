@@ -17,7 +17,7 @@ Data = {
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
-            Version = 1.1,
+            Version = 1.2,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
@@ -26,11 +26,11 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.1,
+        Version = 1.2,
     },
     Dependencies = {
         Alpha = {
-            Version = 1.1,
+            Version = 1.2,
         },
     },
 }

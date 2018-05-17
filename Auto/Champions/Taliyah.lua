@@ -81,7 +81,18 @@ function Tick()
 			CastSpell(HK_Q, castPosition)
 			return
 		end
-	end	
+	end
+	
+	local target = GetTarget(W.Range)
+	if Ready(_W) and target and Menu.Skills.Combo:Value() then		
+		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, W.Range, W.Delay,W.Speed, W.Radius, W.Collision, W.IsLine)
+		if castPosition and accuracy >= Menu.Skills.W.Accuracy:Value() and LocalGeometry:IsInRange(myHero.pos, castPosition, W.Range) then
+			NextTick = LocalGameTimer() + .15
+			CastVectorSpell(HK_W, castPosition, myHero.pos)
+			return
+		end
+	end
+	
 	NextTick = LocalGameTimer() + .05
 end
 

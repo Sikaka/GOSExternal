@@ -177,12 +177,13 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		end
 		
 		local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
-		if movementRadius - target.boundingRadius <= radius /2 then
-			origin,movementRadius = self:UnitMovementBounds(target, interceptTime, 0)
-			if movementRadius - target.boundingRadius <= radius /2 then
+		if movementRadius - target.boundingRadius <= radius /2 then				
+			hitChance = 3
+		end
+		
+		if target.pathing.hasMovePath and target.pathing.isDashing and target.pathing.dashSpeed>500 then
+			if self:GetDistance(target.pos, target:GetPath(1)) / target.pathing.dashSpeed + .25 > interceptTime then
 				hitChance = 4
-			else		
-				hitChance = 3
 			end
 		end
 		
@@ -5165,9 +5166,9 @@ end
 --Initialization
 AlphaMenu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
 AlphaMenu:MenuElement({id = "Performance", name = "Performance", type = MENU})
-AlphaMenu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = 150, min = 10, max = 1000, step = 10, callback = function(delay) MISSILE_CACHE_DELAY = delay end })
-AlphaMenu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = 250, min = 10, max = 1000, step = 10, callback = function(delay) PARTICLE_CACHE_DELAY = delay end })
-AlphaMenu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 250, min = 10, max = 1000, step = 10, callback = function(delay) BUFF_CACHE_DELAY = delay end })
+AlphaMenu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = _G.missileRecacheTimeOut, min = 10, max = 1000, step = 10, callback = function(delay) MISSILE_CACHE_DELAY = delay end })
+AlphaMenu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = _G.particleRecacheTimeOut, min = 10, max = 1000, step = 10, callback = function(delay) PARTICLE_CACHE_DELAY = delay end })
+AlphaMenu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 150, min = 10, max = 1000, step = 10, callback = function(delay) BUFF_CACHE_DELAY = delay end })
 
 AlphaMenu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = false})
 AlphaMenu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = false})
