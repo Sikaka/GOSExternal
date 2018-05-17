@@ -11,6 +11,10 @@ Data = {
             Changelog = "Brand Changelog Here",
             Version = 1.2,
         },
+        Karthus = {
+            Changelog = "Karthus Changelog Here",
+            Version = 1.0,
+        },
         Lux = {
             Changelog = "Lux Changelog Here",
             Version = 1.1,
