@@ -21,7 +21,9 @@ function LoadScript()
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)
 	Callback.Add("Tick", function() Tick() end)	
-	_G.SDK.Orbwalker:OnPostAttack(function(args) OnPostAttack() end)
+	_G.SDK.Orbwalker:OnPostAttack(function(args) OnPostAttack() end)	
+	LocalObjectManager:OnParticleCreate(function(particleInfo) OnParticleCreate(particleInfo) end)	
+	LocalObjectManager:OnParticleDestroy(function(particleInfo) OnParticleDestroy(particleInfo) end)
 end
 
 
@@ -40,13 +42,13 @@ local _markOffsets =
 	["_SW_FioraOnly"] = Vector(0,0,-_offsetDistance),
 }
 
-LocalObjectManager:OnParticleDestroy(function(particleInfo)
+function OnParticleDestroy(particleInfo)
 	if _marks[particleInfo.networkID] then
 		_marks[particleInfo.networkID] = nil
 	end
-end)
+end
 	
-LocalObjectManager:OnParticleCreate(function(particleInfo)
+function OnParticleCreate(particleInfo)
 	for key, offset in pairs(_markOffsets) do
 		if StringEndsWith(particleInfo.name, key) then
 			if not _marks[particleInfo.networkID] then
@@ -56,7 +58,7 @@ LocalObjectManager:OnParticleCreate(function(particleInfo)
 			end
 		end
 	end
-end)
+end
 
 
 function OnMarkAdded(target, offset)
@@ -72,8 +74,9 @@ function OnPostAttack()
 	local target = LocalObjectManager:GetObjectByHandle(myHero.activeSpell.target)
 	if not target then return end
 		
-	if Ready(_E) and (Menu.Skills.E.Auto:Value() or Menu.Skills.Combo:Value() then
+	if Ready(_E) and (Menu.Skills.E.Auto:Value() or Menu.Skills.Combo:Value()) then	
 		CastSpell(HK_E)
+		_G.SDK.Orbwalker.AutoAttackResetted = true
 		return
 	end	
 end
@@ -86,12 +89,12 @@ function Tick()
 end
 
 function OnCC(target, damage, ccType, canDodge)
-	if target == myHero and LocalDamageManager.IMMOBILE_TYPES[ccType] then
+	if target == myHero then
 		if Menu.Skills.W.Auto:Value() or Menu.Skills.Combo:Value() then
 			local target = GetTarget(W.Range, true)
 			if target then				
 				local predictedPosition = LocalGeometry:PredictUnitPosition(target, W.Delay)
-				if LocalGeometry:IsInRange(myHero.pos, predictedPosition, W.Range) then
+				if LocalGeometry:IsInRange(myHero.pos, predictedPosition, W.Range) or LocalDamageManager.IMMOBILE_TYPES[ccType] then
 					NextTick = LocalGameTimer() +.25
 					CastSpell(HK_W, predictedPosition)
 					return
