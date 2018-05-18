@@ -15,6 +15,11 @@ local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
 local CastSpell 					= _G.Control.CastSpell
 local LocalGameIsChatOpen			= Game.IsChatOpen;
+local LocalStringSub				= string.sub;
+local LocalStringLen				= string.len;
+function StringEndsWith(str, word)
+	return LocalStringSub(str, - LocalStringLen(word)) == word;
+end
 function Ready(spellSlot)
 	return Game.CanUseSpell(spellSlot) == 0
 end
@@ -38,9 +43,13 @@ function CanTargetAlly(target)
 end
 
 
-function GetTarget(range)
+function GetTarget(range, isAD)
 	if forcedTarget and LocalGeometry:IsInRange(myHero.pos, forcedTarget.pos, range) then return forcedTarget end
-	return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
+	if isAD then		
+		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
+	else
+		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
+	end
 end
 
 function WndMsg(msg,key)
