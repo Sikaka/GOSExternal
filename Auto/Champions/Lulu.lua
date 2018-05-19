@@ -1,62 +1,80 @@
-Q = {Range = 1075, Radius = 50,Delay = 0.25, Speed = 1200, Collision = true}
-W = {Range = 1075, Radius = 120,Delay = 0.25, Speed = 1400}
-E = {Range = 1100, Radius = 310,Delay = 0.25, Speed = 1200}
-R = {Range = 3340, Radius = 110, Delay = 1, Speed = 999999}
+Q = {Range = 925, Radius = 45,Delay = 0.25, Speed = 1500, IsLine = true}
+W = {Range = 650, Delay = 0.25, Speed = 1600}
+E = {Range = 650, Delay = 0.25, Speed = 99999}	
+R = {Range = 900, Radius = 400, Delay = 0.25, Speed = 99999}
 	
 
 function LoadScript()
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = myHero.charName})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
-	Menu.Skills:MenuElement({id = "Q", name = "[Q] Light Binding", type = MENU})
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Glitterlance", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 6, step = 1 })	
-	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })	
+	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 		
-	Menu.Skills:MenuElement({id = "W", name = "[W] Prismatic Barrier", type = MENU})
-	Menu.Skills.W:MenuElement({id = "Damage", name = "Minimum Damage", value = 200, min = 100, max = 1000, step = 25 })
-	Menu.Skills.W:MenuElement({id = "Count", name = "Minimum Targets", value = 1, min = 1, max = 6, step = 1 })
-	Menu.Skills.W:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
-		
-	Menu.Skills:MenuElement({id = "E", name = "[E] Lucent Singularity", type = MENU})
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })
-	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
-	Menu.Skills.E:MenuElement({id = "Targets", name = "Burst Targets", type = MENU})	
+	Menu.Skills:MenuElement({id = "W", name = "[W] Whimsy", type = MENU})
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Peel", value = true, toggle = true })
+	Menu.Skills.W:MenuElement({id = "Radius", name = "Peel Radius", value = 350, min = 100, max = 800, step = 50 })
+	Menu.Skills.W:MenuElement({id = "Targets", name = "Target List", type = MENU})
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if hero and hero.isEnemy then
+			Menu.Skills.W.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = true, toggle = true})
+		end
+	end
+	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+		
+		
+	Menu.Skills:MenuElement({id = "E", name = "[E] Help, Pix!", type = MENU})	
+	Menu.Skills.E:MenuElement({id = "Targets", name = "Shield Targets", type = MENU})	
+	for i = 1, LocalGameHeroCount() do
+		local hero = LocalGameHero(i)
+		if hero and hero.isAlly then
 			Menu.Skills.E.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = true })
 		end
 	end
+	Menu.Skills.E:MenuElement({id = "Damage", name = "Block On Damage", value = 125, min = 50, max = 1000, step = 50 })
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Shield", value = true, toggle = true })
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 		
-	Menu.Skills:MenuElement({id = "R", name = "[R] Final Spark", type = MENU})	
-	Menu.Skills.R:MenuElement({id = "Count", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast", value = 2, min = 1, max = 6, step = 1 })	
-	Menu.Skills.R:MenuElement({id = "Killsteal", name = "Auto Killsteal", value = true, toggle = true })
-	Menu.Skills.R:MenuElement({id = "Targets", name = "Burst Targets", type = MENU})	
+		
+	Menu.Skills:MenuElement({id = "R", name = "[R] Wild Growth", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Targets", name = "Targets", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast", value = true, toggle = true })
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
-		if hero and hero.isEnemy then
-			Menu.Skills.R.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = true })
+		if hero and hero.isAlly then
+			Menu.Skills.R.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = 50, min = 0, max = 100, step = 5 })
 		end
 	end
-		
+	Menu.Skills.R:MenuElement({id = "Damage", name = "Minimum Incoming Damage", value = 100, min = 50, max = 1000, step = 50 })
+	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 2, min = 1, max = 6, step = 1 })		
+	
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 	
+	LocalObjectManager:OnBuffAdded(function (target, buff) OnBuffAdded(target,buff) end)
+	LocalObjectManager:OnBuffRemoved(function (target, buff) OnBuffRemoved(target,buff) end)
+	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
-	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
-	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
 end
 
-local EPos = nil
-local EExpiresAt = 0
 
-function OnSpellCast(spell)
-	if spell.data.name == "LuxLightStrikeKugel" then
-		EPos = Vector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)
-		EExpiresAt = LocalGameTimer() + 5
+--This will record the current E owner for enemies - will not work for allies because the buff is not properly removed when it's cast on someone else...
+--I think it's ok for now
+local eTarget = nil
+function OnBuffAdded(target, buff)
+	if target and buff.name == "luluevision" then
+		eTarget = target
 	end
 end
+
+function OnBuffRemoved(target, buff)
+	if target and eTarget and eTarget == target and buff.name == "luluevision" then
+		eTarget = nil
+	end
+end
+
 
 
 local NextTick = LocalGameTimer()
@@ -64,22 +82,20 @@ function Tick()
 	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end	
-	if EPos and EExpiresAt> currentTime  then
-		DetonateE()
-	end
 	
-	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+	if Ready(_R) then
 		for i = 1, LocalGameHeroCount() do
-			local target = LocalGameHero(i)
-			if CanTargetAlly(target) and  LocalGeometry:IsInRange(myHero.pos, target.pos, W.Radius) then
-				local incomingDamage = LocalDamageManager:RecordedIncomingDamage(target)
-				if incomingDamage > Menu.Skills.W.Damage:Value() then				
-					local castPosition = LocalGeometry:PredictUnitPosition(target, W.Delay + LocalGeometry:GetDistance(myHero.pos, target.pos)/W.Speed)
-					local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * R.Range			
-					local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, W.Delay, W.Speed, W.Radius,true)
-					if targetCount >= Menu.Skills.W.Count:Value() then
+			local hero = LocalGameHero(i)
+			if hero and CanTargetAlly(hero) then
+				if Menu.Skills.R.Targets[hero.networkID]  and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then				
+					if Menu.Skills.R.Targets[hero.networkID]:Value() > CurrentPctLife(hero) and LocalDamageManager:RecordedIncomingDamage(hero) >= Menu.Skills.R.Damage:Value() then					
 						NextTick = LocalGameTimer() + .25
-						CastSpell(HK_W, castPosition, true)
+						CastSpell(HK_R, hero)
+						return
+					end
+					if EnemyCount(hero.pos, R.Radius) >= Menu.Skills.R.Count:Value() then
+						NextTick = LocalGameTimer() + .25
+						CastSpell(HK_R, hero)
 						return
 					end
 				end
@@ -87,134 +103,91 @@ function Tick()
 		end
 	end
 	
-	--Check for killsteal or target count R
-	if Ready(_R) and Menu.Skills.R.Killsteal:Value() then
-		local rDamage= 200 + (myHero:GetSpellData(_R).level) * 100 + myHero.ap * 0.75
+	if Ready(_W)  and (Menu.Skills.Combo:Value() or Menu.Skills.W.Auto:Value()) then		
 		for i = 1, LocalGameHeroCount() do
-			local target = LocalGameHero(i)
-			if CanTarget(target) and LocalGeometry:IsInRange(myHero.pos, target.pos, R.Range) then
-				
-				local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, R.Range, R.Delay, R.Speed, R.Radius, R.Collision, R.IsLine)
-				if castPosition and accuracy > 1  then					
-					local thisRDamage = rDamage
-					if LocalBuffManager:HasBuff(target, "LuxIlluminatingFraulein",R.Delay) then
-						thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
-					end
-					local extraIncoming = LocalDamageManager:RecordedIncomingDamage(target)
-					local predictedHealth = target.health + target.hpRegen * R.Delay - extraIncoming			
-					thisRDamage = LocalDamageManager:CalculateMagicDamage(myHero,target, thisRDamage)
-					if predictedHealth > 0 and thisRDamage > predictedHealth then
-						NextTick = LocalGameTimer() + .25
-						CastSpell(HK_R, castPosition, true)
-						return
-					end
+			local hero = LocalGameHero(i)
+			if hero and CanTarget(hero) and Menu.Skills.W.Targets[hero.networkID] and Menu.Skills.W.Targets[hero.networkID]:Value() then				
+				local ally, distance = NearestAlly(hero.pos, Menu.Skills.W.Radius:Value())
+				local d = LocalGeometry:GetDistance(hero.pos, myHero.pos)
+				if d < distance then
+					ally = myHero
+					distance = d					
+				end
+				if ally and CanTargetAlly(ally) and distance < Menu.Skills.W.Radius:Value() then
+					NextTick = LocalGameTimer() + .25
+					CastSpell(HK_W, hero)
+					return
 				end
 			end
 		end
 	end
-	
-	if Menu.Skills.Combo:Value() then
+	if Ready(_Q) then
 		local target = GetTarget(Q.Range)
-		if target and CanTarget(target) then
-			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, R.Range, R.Delay, R.Speed, R.Radius, R.Collision, R.IsLine)
-			if castPosition and LocalGeometry:IsInRange(myHero.pos, castPosition, R.Range) then
-				if accuracy > 1 then
-					local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * R.Range
-					local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, R.Delay, R.Speed, R.Radius)
-					if targetCount >= Menu.Skills.R.Count:Value() then
-						NextTick = LocalGameTimer() + .25
-						CastSpell(HK_R, castPosition)
-						return
-					end
-				end
+		if target then
+			local accuracyRequired = 6
+			if Menu.Skills.Combo:Value() then
+				accuracyRequired = Menu.Skills.Q.Accuracy:Value()
+			elseif Menu.Skills.Q.Auto:Value() then
+				accuracyRequired = 4
 			end
+			
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
-			if castPosition and accuracy >= Menu.Skills.Q.Accuracy:Value() and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
+			if castPosition and accuracy >= accuracyRequired then
 				NextTick = LocalGameTimer() + .25
 				CastSpell(HK_Q, castPosition)
 				return
-			end	
-			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision, E.IsLine)
-			if castPosition and accuracy >= Menu.Skills.E.Accuracy:Value() and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
-				NextTick = LocalGameTimer() + .25
-				CastSpell(HK_E, castPosition)
-				return
-			end	
+			end
 		end
 	end
+	
+	if Ready(_E) then
+		--Loop allies in range
+		for i = 1, LocalGameHeroCount() do
+			local hero = LocalGameHero(i)
+			if hero and CanTargetAlly(hero) then
+				if Menu.Skills.E.Targets[hero.networkID] and Menu.Skills.E.Targets[hero.networkID]:Value() and LocalGeometry:IsInRange(myHero.pos, hero.pos, E.Range) and LocalDamageManager:RecordedIncomingDamage(hero) >= Menu.Skills.E.Damage:Value() then					
+					NextTick = LocalGameTimer() + .25
+					CastSpell(HK_E, hero)
+					return
+				end
+			end
+		end
+		
+		if Menu.Skills.Combo:Value() then
+			local target = GetTarget(E.Range)
+			if CanTarget(target) then
+				NextTick = LocalGameTimer() + .25
+				CastSpell(HK_E, target)
+				return				
+			end
+		end
+	end	
+	
 	NextTick = LocalGameTimer() + .1
 end
 
 
-function DetonateE()
-	local eData = myHero:GetSpellData(_E)
-	if eData.toggleState == 2 then
-		for i = 1, LocalGameHeroCount() do
-			local target = LocalGameHero(i)
-			if CanTarget(target) and LocalGeometry:IsInRange(EPos, target.pos, E.Radius) then
-				if Menu.Skills.E.Targets[target.networkID] and Menu.Skills.E.Targets[target.networkID]:Value() then
-					CastSpell(HK_E)
-					EExpiresAt = 0
-					break
-				else
-					if LocalDamageManager:PredictDamage(myHero, target, "LuxLightStrikeKugel") > target.health then
-						CastSpell(HK_E)
-						EExpiresAt = 0
-						break
-					end
-					local nextPosition = LocalGeometry:PredictUnitPosition(target, .1)
-					if not LocalGeometry:IsInRange(EPos, nextPosition, E.Radius) then
-						CastSpell(HK_E)
-						EExpiresAt = 0
-						break
-					end
-				end
+function OnCC(target, damage, ccType)
+	if target.isAlly then
+		if Ready(_R) and LocalGeometry:IsInRange(myHero.pos, target.pos, R.Range) and Menu.Skills.R.Targets[target.networkID] and Menu.Skills.R.Targets[target.networkID] >= CurrentPctLife(target) then
+			if Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value() then
+				CastSpell(HK_R, target)				
+				NextTick = LocalGameTimer() + .15
+				return
 			end
 		end
-	end
-end
-
-function OnBlink(target)
-	if target.isEnemy and CanTarget(target) and Ready(_Q) and Menu.Skills.Q.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, Q.Range) then
-		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision)
-		if accuracy > 0 then
-			CastSpell(HK_Q, castPosition,true)
-		end	
-	end
-	if target.isEnemy and CanTarget(target) and Ready(_E) and Menu.Skills.E.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, E.Range) then
-		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision)
-		if accuracy > 0 then
-			CastSpell(HK_E, castPosition)
-		end	
-	end
-end
-
-function OnCC(target, damage, ccType)
-	if target.isAlly and Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, W.Range) then
-		local castPosition = mousePos		
-		if target ~= myHero then
-			castPosition = LocalGeometry:PredictUnitPosition(target, W.Delay + LocalGeometry:GetDistance(myHero.pos, target.pos)/W.Speed)
-		else
-			local ally = NearestAlly(myHero.pos, W.Range)
-			if ally then
-				castPosition = LocalGeometry:PredictUnitPosition(ally, W.Delay + LocalGeometry:GetDistance(myHero.pos, ally.pos)/W.Speed)
-			end
+		if Ready(_E) and LocalGeometry:IsInRange(myHero.pos, target.pos, E.Range) and Menu.Skills.E.Allies[target.networkID] and Menu.Skills.E.Allies[target.networkID]:Value() then
+			CastSpell(HK_E, target)
+			NextTick = LocalGameTimer() + .15
+			return
 		end		
-		CastSpell(HK_W, castPosition)
 	end
 	
-	if target.isEnemy and CanTarget(target) and CanTarget(target) and LocalDamageManager.IMMOBILE_TYPES[ccType] then
-		
-		if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and Menu.Skills.Q.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, Q.Range) then
+	if target.isEnemy and CanTarget(target) and LocalDamageManager.IMMOBILE_TYPES[ccType] then		
+		if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and Menu.Skills.Q.Auto:Value() and( LocalGeometry:IsInRange(myHero.pos, target.pos, Q.Range) or (eTarget and LocalGeometry:IsInRange(eTarget.pos, target.pos, Q.Range))) then
 			NextTick = LocalGameTimer() + .25
 			CastSpell(HK_Q, target.pos,true)
 			return
-		end
-		
-		if Ready(_E) and CanTarget(target) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() and Menu.Skills.E.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, E.Range) then
-			NextTick = LocalGameTimer() +.25
-			CastSpell(HK_E, target.pos)
-			return
-		end
+		end		
 	end
 end
