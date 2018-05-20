@@ -4790,6 +4790,7 @@ function __DamageManager:GetSpellHitDetails(spell, target)
 	local spellCastPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
 	local spellSpeed = spell.data.speed or 999999	
 	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance(owner.pos, target.pos))
+	local hitTime = spellwindupEnd - LocalGameTimer() + Geometry:GetDistance(owner.pos, predictedTargetPos) / spellSpeed
 	local willHit = false
 	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then	
 		spellCastPos = spell.data.startPos + (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z) - spell.data.startPos):Normalized() * spell.data.range
@@ -4820,6 +4821,7 @@ function __DamageManager:GetSpellHitDetails(spell, target)
 		Danger = spellInfo.Danger,
 		CC = spellInfo.CCType,
 		Damage = DamageManager:CalculateSkillDamage(owner, target, spellInfo),
+		HitTime = hitTime,
 	}
 end
 
