@@ -5,7 +5,7 @@ Data = {
     Champions = {
         Ahri = {
             Changelog = "Ahri Changelog Here",
-            Version = 1.3,
+            Version = 1.31,
         },
         Brand = {
             Changelog = "Brand Changelog Here",
@@ -33,6 +33,10 @@ Data = {
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
+            Version = 1,
+        },
+        Zilean = {
+            Changelog = "Zilean Changelog Here",
             Version = 1,
         },
     },
