@@ -75,22 +75,13 @@ function OnParticleDestroy(particleInfo)
 end
 	
 function OnParticleCreate(particleInfo)
-	for key, offset in pairs(_markOffsets) do
+	for key, offset in LocalPairs(_markOffsets) do
 		if StringEndsWith(particleInfo.name, key) then
 			if not _marks[particleInfo.networkID] then
 				local owner = LocalObjectManager:GetPlayerByPosition(particleInfo.pos)				
 				_marks[particleInfo.networkID] = { pos = offset, owner = owner}
-				OnMarkAdded(owner, offset)
 			end
 		end
-	end
-end
-
-
-function OnMarkAdded(target, offset)
-	if Ready(_Q) and LocalGeometry:IsInRange(myHero.pos, target.pos + offset, 400) and (Menu.Skills.Q.Auto:Value() or Menu.Skills.Combo:Value()) then
-		CastSpell(HK_Q, target.pos + offset)
-		NextTick = LocalGameTimer() +.25
 	end
 end
 
@@ -110,7 +101,24 @@ end
 local NextTick = LocalGameTimer()
 function Tick()
 	local currentTime = LocalGameTimer()
-	if NextTick > currentTime then return end		
+	if NextTick > currentTime then return end
+
+	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
+	if Ready(_Q) and (Menu.Skills.Combo:Value() or Menu.Skills.Q.Auto:Value()) then
+		local target = GetTarget(Q.Range, true)
+		if CanTarget(target) then
+			for _, mark in LocalPairs(_marks) do
+				if mark.owner ==  target then
+					local markHitPos = LocalGeometry:PredictUnitPosition(target, LocalGeometry:GetDistance(myHero.pos, target.pos) / 800) + mark.pos
+					if LocalGeometry:IsInRange(myHero.pos, markHitPos, Q.Range) then
+						NextTick = LocalGameTimer() +.25
+						CastSpell(HK_Q, markHitPos)
+						return
+					end
+				end
+			end
+		end
+	end
 	NextTick = LocalGameTimer() + .05
 end
 
