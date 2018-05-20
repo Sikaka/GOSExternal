@@ -81,23 +81,22 @@ local NextTick = LocalGameTimer()
 function Tick()
 	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
-	if NextTick > currentTime then return end	
-	
+	if NextTick > currentTime then return end
 	if Ready(_R) then
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
 			if hero and CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then
-				if Menu.Skills.R.Targets[hero.networkID]  and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then				
-					if Menu.Skills.R.Targets[hero.networkID]:Value() > CurrentPctLife(hero) and LocalDamageManager:RecordedIncomingDamage(hero) >= Menu.Skills.R.Damage:Value() then					
-						NextTick = LocalGameTimer() + .25
-						CastSpell(HK_R, hero)
-						return
-					end
-					if EnemyCount(hero.pos, R.Radius) >= Menu.Skills.R.Count:Value() then
-						NextTick = LocalGameTimer() + .25
-						CastSpell(HK_R, hero)
-						return
-					end
+				local incomingDamage = LocalDamageManager:RecordedIncomingDamage(hero)
+				local remainingLifePct = (hero.health - incomingDamage) / hero.maxHealth * 100
+				if Menu.Skills.R.Targets[hero.networkID]:Value() >= remainingLifePct and (incomingDamage > hero.health or incomingDamage / hero.health * 100 > 25) then
+					NextTick = LocalGameTimer() + .25			
+					CastSpell(HK_R, hero)
+					return
+				end
+				if EnemyCount(hero.pos, R.Radius) >= Menu.Skills.R.Count:Value() then
+					NextTick = LocalGameTimer() + .25
+					CastSpell(HK_R, hero)
+					return
 				end
 			end
 		end

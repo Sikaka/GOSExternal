@@ -23,6 +23,8 @@ local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
 local LocalGameMissileCount 		= Game.MissileCount;
 local LocalGameMissile				= Game.Missile;
+local LocalGameTurretCount 			= Game.TurretCount;
+local LocalGameTurret				= Game.Turret;
 local LocalPairs 					= pairs;
 local LocalType						= type;
 
@@ -305,11 +307,11 @@ end
 --Returns all existing path nodes
 function __Geometry:GetPathNodes(unit)
 	local nodes = {}
-	LocalInsert(nodes, unit.pos)
+	nodes[#nodes+1] = unit.pos	
 	if unit.pathing.hasMovePath then
 		for i = unit.pathing.pathIndex, unit.pathing.pathCount do
 			path = unit:GetPath(i)
-			LocalInsert(nodes, path)
+			nodes[#nodes+1] = path
 		end
 	end		
 	return nodes
@@ -361,7 +363,7 @@ end
 
 --Register Buff Added Event
 function __ObjectManager:OnBuffAdded(cb)
-	LocalInsert(ObjectManager.OnBuffAddedCallbacks, cb)
+	ObjectManager.OnBuffAddedCallbacks[#ObjectManager.OnBuffAddedCallbacks+1] = cb
 end
 
 --Trigger Buff Added Event
@@ -373,7 +375,7 @@ end
 
 --Register Buff Removed Event
 function __ObjectManager:OnBuffRemoved(cb)
-	LocalInsert(ObjectManager.OnBuffRemovedCallbacks, cb)
+	ObjectManager.OnBuffRemovedCallbacks[#ObjectManager.OnBuffRemovedCallbacks+1] = cb
 end
 
 --Trigger Buff Removed Event
@@ -386,7 +388,7 @@ end
 
 --Register Missile Create Event
 function __ObjectManager:OnMissileCreate(cb)
-	LocalInsert(ObjectManager.OnMissileCreateCallbacks, cb)
+	ObjectManager.OnMissileCreateCallbacks[#ObjectManager.OnMissileCreateCallbacks+1] = cb
 end
 
 --Trigger Missile Create Event
@@ -398,7 +400,7 @@ end
 
 --Register Missile Destroy Event
 function __ObjectManager:OnMissileDestroy(cb)
-	LocalInsert(ObjectManager.OnMissileDestroyCallbacks, cb)
+	ObjectManager.OnMissileDestroyCallbacks[#ObjectManager.OnMissileDestroyCallbacks+1] = cb
 end
 
 --Trigger Missile Destroyed Event
@@ -410,7 +412,7 @@ end
 
 --Register Particle Create Event
 function __ObjectManager:OnParticleCreate(cb)
-	LocalInsert(ObjectManager.OnParticleCreateCallbacks, cb)
+	ObjectManager.OnParticleCreateCallbacks[#ObjectManager.OnParticleCreateCallbacks+1] = cb
 end
 
 --Trigger Particle Created Event
@@ -423,7 +425,7 @@ end
 
 --Register Particle Destroy Event
 function __ObjectManager:OnParticleDestroy(cb)
-	LocalInsert(ObjectManager.OnParticleDestroyCallbacks, cb)
+	ObjectManager.OnParticleDestroyCallbacks[#ObjectManager.OnParticleDestroyCallbacks+1] = cb
 end
 
 --Trigger particle Destroyed Event
@@ -439,7 +441,7 @@ function __ObjectManager:OnBlink(cb)
 	if #self.OnBlinkCallbacks == 0 then		
 		self:OnParticleCreate(function(particle) self:CheckIfBlinkParticle(particle) end)
 	end
-	LocalInsert(ObjectManager.OnBlinkCallbacks, cb)
+	ObjectManager.OnBlinkCallbacks[#ObjectManager.OnBlinkCallbacks+1] = cb
 end
 
 --Trigger Blink Event
@@ -451,7 +453,7 @@ end
 
 --Register On Spell Cast Event
 function __ObjectManager:OnSpellCast(cb)
-	LocalInsert(ObjectManager.OnSpellCastCallbacks, cb)
+	ObjectManager.OnSpellCastCallbacks[#ObjectManager.OnSpellCastCallbacks+1] = cb
 end
 
 --Trigger Spell Cast Event
@@ -613,10 +615,12 @@ function __ObjectManager:Tick()
 end
 
 function __ObjectManager:CheckIfBlinkParticle(particle)
-	if table.contains(self.BlinkParticleLookupTable,particle.name) then
-		local target = self:GetPlayerByPosition(particle.pos)
-		if target then 
-			self:Blinked(target)
+	for i = 1, #self.BlinkParticleLookupTable do
+		if self.BlinkParticleLookupTable[i] == particle.name then
+			local target = self:GetPlayerByPosition(particle.pos)
+			if target then 
+				self:Blinked(target)
+			end
 		end
 	end
 end
@@ -649,6 +653,12 @@ function __ObjectManager:GetObjectByHandle(handle)
 	end
 	for i = 1, LocalGameMinionCount() do
 		local target = LocalGameMinion(i)
+		if target and target.handle == handle then
+			return target
+		end
+	end
+	for i = 1, LocalGameTurretCount() do
+		local target = LocalGameTurret(i)
 		if target and target.handle == handle then
 			return target
 		end
@@ -4775,7 +4785,7 @@ function __DamageManager:DodgeSpell(spell, target, danger, dist)
 	local nextTargetPos = Geometry:PredictUnitPosition(target, .25)
 	
 	--TODO: Re-add offsetting dodge based on mouse position... this is messy AF
-	local castPos = LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z)	
+	local castPos = LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z)
 	local dodgePos = nextTargetPos + (castPos - spell.startPos):Normalized():Rotated(0,0, math.random(75, 90)) * LocalMax(Dist or 0, (spellInfo.Radius or 100 + target.boundingRadius) * 2)
 	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
 		castPos = spell.startPos + (LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z) - spell.startPos):Normalized() * spell.range				
@@ -4817,7 +4827,7 @@ function __DamageManager:MissileCreated(missile)
 	end
 end
 
-function __DamageManager:OnAutoAttackMissile(missile)	
+function __DamageManager:OnAutoAttackMissile(missile)
 	local owner = ObjectManager:GetObjectByHandle(missile.data.missileData.owner)
 	local target = ObjectManager:GetObjectByHandle(missile.data.missileData.target)
 	if owner and target then
@@ -4834,7 +4844,7 @@ function __DamageManager:OnAutoAttackMissile(missile)
 		if LocalStringFind(missile.name, "CritAttack") then
 			damage = damage * 1.5
 		end
-		damage = self:CalculatePhysicalDamage(owner, target, damage)	
+		damage = self:CalculatePhysicalDamage(owner, target, damage)
 		targetCollection[target.handle][missile.networkID] = 
 		{
 			Name = missile.name,
@@ -4964,7 +4974,8 @@ function __DamageManager:OnIncomingCC(cb)
 	if not self.CallbacksInitialized then
 		self.InitializeCallbacks()
 	end
-	LocalInsert(DamageManager.OnIncomingCCCallbacks, cb)
+	
+	DamageManager.OnIncomingCCCallbacks[#DamageManager.OnIncomingCCCallbacks+1] = cb
 end
 
 --Trigger Incoming CC Event

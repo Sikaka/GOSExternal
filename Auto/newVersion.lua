@@ -25,7 +25,7 @@ Data = {
         },
         Lulu = {
             Changelog = "Lulu Changelog Here",
-            Version = 1.3,
+            Version = 1.31,
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
@@ -37,7 +37,7 @@ Data = {
         },
         Zilean = {
             Changelog = "Zilean Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
     },
     Core = {
@@ -46,7 +46,7 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.3,
+            Version = 1.31,
         },
     },
 }
