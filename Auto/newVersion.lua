@@ -5,7 +5,7 @@ Data = {
     Champions = {
         Ahri = {
             Changelog = "Ahri Changelog Here",
-            Version = 1.32,
+            Version = 1.33,
         },
         Brand = {
             Changelog = "Brand Changelog Here",
