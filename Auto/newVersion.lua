@@ -13,7 +13,7 @@ Data = {
         },
         Fiora = {
             Changelog = "Fiora Changelog Here",
-            Version = 1.1,
+            Version = 1.2,
         },
         Karthus = {
             Changelog = "Karthus Changelog Here",

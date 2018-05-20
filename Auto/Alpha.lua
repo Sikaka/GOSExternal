@@ -631,6 +631,15 @@ function __ObjectManager:GetPlayerByPosition(position)
 	end
 end
 
+function __ObjectManager:GetHeroByHandle(handle)
+	for i = 1, LocalGameHeroCount() do
+		local target = LocalGameHero(i)
+		if target and target.handle == handle then
+			return target
+		end
+	end
+end
+
 function __ObjectManager:GetObjectByHandle(handle)
 	for i = 1, LocalGameHeroCount() do
 		local target = LocalGameHero(i)
@@ -4641,8 +4650,9 @@ function __DamageManager:CheckLineMissileCollision(skillshot, targetList)
 	local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)
 	for _, target in LocalPairs(targetList) do
 		if target~= nil and LocalType(target) == "userdata" then
-			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(skillshot.data.pos, nextPosition, target.pos)
-			if isOnSegment and Geometry:IsInRange(target.pos, pointLine, skillshot.data.missileData.width + target.boundingRadius) then
+			local nextTargetPos = Geometry:PredictUnitPosition(target, .25)
+			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(skillshot.data.pos, nextPosition, nextTargetPos)
+			if isOnSegment and Geometry:IsInRange(nextTargetPos, pointLine, skillshot.data.missileData.width + target.boundingRadius) then
 				local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
 				self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
 				self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
@@ -4656,7 +4666,8 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 		local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)		
 		for _, target in LocalPairs(targetList) do
 			if target~= nil and LocalType(target) == "userdata" then
-				if Geometry:IsInRange(target.pos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
+				local nextTargetPos = Geometry:PredictUnitPosition(target, .2)
+				if Geometry:IsInRange(nextTargetPos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
 					local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
 					self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
 				self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
@@ -4752,29 +4763,38 @@ function __DamageManager:SpellCast(spell)
 	end
 end
 
-function __DamageManager:WillSpellHit(spell, target)
-	if not self.AllSkills[spell.name] then return end
-	local spellInfo = self.AllSkills[spell.name]	
+function __DamageManager:DodgeSpell(spell, target, danger, dist)
+	if not self.AllSkills[spell.name] then  return end
+	local spellInfo = self.AllSkills[spell.name]
+	if spellInfo.Danger < danger then
+		--calculate damage it will deal and if it will kill then check if we want to dodge on kill. 
+			--Note: to do that we need the source as well.. Leave it for now.
+		return
+	end
+		
+	local nextTargetPos = Geometry:PredictUnitPosition(target, .25)
+	
+	--TODO: Re-add offsetting dodge based on mouse position... this is messy AF
 	local castPos = LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z)	
+	local dodgePos = nextTargetPos + (castPos - spell.startPos):Normalized():Rotated(0,0, math.random(75, 90)) * LocalMax(Dist or 0, (spellInfo.Radius or 100 + target.boundingRadius) * 2)
 	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
-		castPos = spell.startPos + (LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z) - spell.startPos):Normalized() * spell.range
-		local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.startPos, castPos, target.pos)
-		--TODO: Extend point line based on spell max range
-		if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
-			return true
+		castPos = spell.startPos + (LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z) - spell.startPos):Normalized() * spell.range				
+		local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.startPos, castPos, nextTargetPos)		
+		if isOnSegment and Geometry:IsInRange(nextTargetPos, pointLine, spellInfo.Radius + target.boundingRadius) then
+			return true, dodgePos
 		end
 	end
 	if spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
-		if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius + target.boundingRadius) then
-			return true
+		if Geometry:IsInRange(castPos, nextTargetPos, spellInfo.Radius + target.boundingRadius) then						
+			return true, dodgePos
 		end
 	end
 	if spellInfo.TargetType == TARGET_TYPE_ARC  then
 		local arcAngle = spellInfo.Angle or spell.data.coneAngle
 		local arcDistance = spellInfo.Radius or spell.data.coneDistance
 		local angleOffset = Geometry:Angle(spell.startPos,castPos)
-		if LocalAbs(Geometry:Angle(spell.startPos, target.pos) - angleOffset) < arcAngle and Geometry:IsInRange(spell.startPos, target.pos, arcDistance) then
-			return true
+		if LocalAbs(Geometry:Angle(spell.startPos, nextTargetPos) - angleOffset) < arcAngle and Geometry:IsInRange(spell.startPos, nextTargetPos, arcDistance) then			
+			return true, dodgePos
 		end
 	end
 end

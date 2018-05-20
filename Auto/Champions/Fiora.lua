@@ -7,7 +7,10 @@ function LoadScript()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Lunge", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Hit Vitals", value = true})
+	Menu.Skills.Q:MenuElement({id = "DodgeAuto", name = "Dodge Danger Level (Auto)", value = 3, min = 1, max = 6, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "DodgeCombo", name = "Dodge Danger Level (Combo) ", value = 2, min = 1, max = 6, step = 1 })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Riposte", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Reflect", value = true})
@@ -24,8 +27,31 @@ function LoadScript()
 	_G.SDK.Orbwalker:OnPostAttack(function(args) OnPostAttack() end)	
 	LocalObjectManager:OnParticleCreate(function(particleInfo) OnParticleCreate(particleInfo) end)	
 	LocalObjectManager:OnParticleDestroy(function(particleInfo) OnParticleDestroy(particleInfo) end)
+	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 end
 
+
+function OnSpellCast(spell)
+	if spell.isEnemy and Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
+		local danger = Menu.Skills.Q.DodgeAuto:Value()
+		if Menu.Skills.Combo:Value() and Menu.Skills.Q.DodgeCombo:Value() > danger then
+			danger = Menu.Skills.Q.DodgeCombo:Value()
+		end
+		if LocalDamageManager:DodgeSpell(spell.data, myHero, danger) then
+			local dashPos = mousePos
+			local target = LocalObjectManager:GetHeroByHandle(spell.owner)
+			if CanTarget(target) then
+				local rotation = math.random(60,90)
+				if LocalGeometry:Angle(myHero.pos, target.pos) - LocalGeometry:Angle(myHero.pos, mousePos) < 0 then
+					rotation = - rotation
+				end
+				dashPos = myHero.pos + (target.pos - myHero.pos):Normalized():Rotated(0, 0, rotation) * Q.Range
+				CastSpell(HK_Q, dodgePos)
+				NextTick = LocalGameTimer() +.25
+			end
+		end
+	end
+end
 
 
 local _offsetDistance = 100
@@ -62,7 +88,7 @@ end
 
 
 function OnMarkAdded(target, offset)
-	if LocalGeometry:IsInRange(myHero.pos, target.pos + offset, 400) and (Menu.Skills.Q.Auto:Value() or Menu.Skills.Combo:Value()) then
+	if Ready(_Q) and LocalGeometry:IsInRange(myHero.pos, target.pos + offset, 400) and (Menu.Skills.Q.Auto:Value() or Menu.Skills.Combo:Value()) then
 		CastSpell(HK_Q, target.pos + offset)
 		NextTick = LocalGameTimer() +.25
 	end
@@ -71,7 +97,7 @@ end
 function OnPostAttack()
 	--Check for E AA reset
 	if not myHero.activeSpell.target then return end
-	local target = LocalObjectManager:GetObjectByHandle(myHero.activeSpell.target)
+	local target = LocalObjectManager:GetHeroByHandle(myHero.activeSpell.target)
 	if not target then return end
 		
 	if Ready(_E) and (Menu.Skills.E.Auto:Value() or Menu.Skills.Combo:Value()) then	
