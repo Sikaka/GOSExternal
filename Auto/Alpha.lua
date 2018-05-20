@@ -167,17 +167,13 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 			if pathVector.x + pathVector.z ~= 0 then
 				pathVector = pathVector:Normalized()
 				if pathVector:DotProduct(castVector) < -.85 or pathVector:DotProduct(castVector) > .85 then
-					if speed > 3000 then
-						hitChance = 3
-					else
-						hitChance = 2
-					end
+					hitChance = 3
 				end
 			end
 		end
 		
 		local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
-		if movementRadius - target.boundingRadius <= radius /2 then				
+		if movementRadius - target.boundingRadius <= radius  then				
 			hitChance = 3
 		end
 		
@@ -518,7 +514,7 @@ function __ObjectManager:Tick()
 			if target and LocalType(target) == "userdata" then    
 				if target.activeSpell and target.activeSpell.valid then
 					if not self.CachedSpells[target.networkID] or self.CachedSpells[target.networkID].name ~= target.activeSpell.name then
-						local spellData = {owner = target.networkID, handle = target.handle, name = target.activeSpell.name, data = target.activeSpell, windupEnd = target.activeSpell.startTime + target.activeSpell.windup}
+						local spellData = {owner = target.networkID, isEnemy = target.isEnemy,handle = target.handle, name = target.activeSpell.name, data = target.activeSpell, windupEnd = target.activeSpell.startTime + target.activeSpell.windup}
 						self.CachedSpells[target.networkID] =spellData
 						self:SpellCast(spellData)
 					end
@@ -705,6 +701,9 @@ function __DamageManager:__init()
 	
 	--Simple table for skills we want to track
 	self.Skills = {}
+	
+	--Collection for all skills loaded
+	self.AllSkills = {}
 	
 	--Master lookup table. NOT WHAT IS USED FOR ACTUAL MATCHING. It's used for loading
 	self.MasterSkillLookupTable =
@@ -929,7 +928,7 @@ function __DamageManager:__init()
 			Damage = {50,75,100,125,150},
 			APScaling = .5,
 			BuffScaling = 2.0,
-			BuffName = "aniviaiced",
+			BuffScalingName = "aniviaiced",
 			Danger = 3,
 		},
 		
@@ -1133,7 +1132,7 @@ function __DamageManager:__init()
 			
 			--Damage is multiplied by 1.5 when the target has BrandAblaze buff applied. This is OPTIONAL but appreciated for accuracy
 			BuffScaling = 1.5,
-			BuffName = "BrandAblaze",
+			BuffScalingName = "BrandAblaze",
 		},
 		["BrandE"] = 
 		{
@@ -4584,6 +4583,10 @@ function __DamageManager:LoadSpell(spellName, spellData, target)
 	else
 		self.Skills[spellName] = spellData
 	end
+	
+	if not self.AllSkills[spellName] then
+		self.AllSkills[spellName] = spellData
+	end
 	print("Loaded skill: " .. spellName .. " on " .. target.charName)
 end
 
@@ -4665,6 +4668,7 @@ end
 
 function __DamageManager:SpellCast(spell)
 	if AlphaMenu.PrintSkill:Value() then print(spell.name) end
+	
 	if self.Skills[spell.name] then
 		local owner = ObjectManager:GetObjectByHandle(spell.handle)
 		if owner == nil then return end
@@ -4745,6 +4749,33 @@ function __DamageManager:SpellCast(spell)
 		else
 			print("Unhandled targeting type: " .. spellInfo.TargetType)
 		end		
+	end
+end
+
+function __DamageManager:WillSpellHit(spell, target)
+	if not self.AllSkills[spell.name] then return end
+	local spellInfo = self.AllSkills[spell.name]	
+	local castPos = LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z)	
+	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
+		castPos = spell.startPos + (LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z) - spell.startPos):Normalized() * spell.range
+		local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.startPos, castPos, target.pos)
+		--TODO: Extend point line based on spell max range
+		if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
+			return true
+		end
+	end
+	if spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
+		if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius + target.boundingRadius) then
+			return true
+		end
+	end
+	if spellInfo.TargetType == TARGET_TYPE_ARC  then
+		local arcAngle = spellInfo.Angle or spell.data.coneAngle
+		local arcDistance = spellInfo.Radius or spell.data.coneDistance
+		local angleOffset = Geometry:Angle(spell.startPos,castPos)
+		if LocalAbs(Geometry:Angle(spell.startPos, target.pos) - angleOffset) < arcAngle and Geometry:IsInRange(spell.startPos, target.pos, arcDistance) then
+			return true
+		end
 	end
 end
 
@@ -4888,7 +4919,7 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			damage = self:CalculatePhysicalDamage(owner, target, damage)				
 		end
 		
-		if skillInfo.BuffName and BuffManager:HasBuff(target, skillInfo.BuffName) then
+		if skillInfo.BuffScalingName and BuffManager:HasBuff(target, skillInfo.BuffScalingName) then
 			damage = damage * skillInfo.BuffScaling
 		end
 	end

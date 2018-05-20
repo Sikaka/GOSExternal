@@ -17,29 +17,41 @@ function LoadScript()
 	Menu.Skills.W:MenuElement({id = "Radius", name = "Use Radius", value = 250, min = 0, max = 1000, step = 50 })
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 
-	Menu.Skills:MenuElement({id = "E", name = "[E] Hexplosive Minefield", type = MENU})
+	Menu.Skills:MenuElement({id = "E", name = "[E] Charm", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 
-	Menu.Skills:MenuElement({id = "R", name = "[R] Mega Inferno Bomb", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Targets", name = "Target List", type = MENU})
-	for i = 1, LocalGameHeroCount() do
-		local hero = LocalGameHero(i)
-		if hero and hero.isEnemy then
-			Menu.Skills.R.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = true})
-		end
-	end
-	Menu.Skills.R:MenuElement({id = "Dist", name = "Maximum Ally Range", value = 800, min = 100, max = 2000, step = 100 })
-	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 3, min = 1, max = 6, step = 1 })
+	Menu.Skills:MenuElement({id = "R", name = "[R] Spirit Rush", type = MENU})
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Dodge In Combo", value = true, toggle = true })
 
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
+	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
 end
 
+function OnSpellCast(spell)
+	if spell.isEnemy and Ready(_R) and Menu.Skills.Combo:Value() and Menu.Skills.R.Auto:Value() then
+		if LocalDamageManager:WillSpellHit( spell.data,myHero) then
+			--Calculate safe position?
+			local target = GetTarget(Q.Range)
+			local dashPos = mousePos
+			if CanTarget(target) then
+				local rotation = math.random(30,70)
+				if LocalGeometry:Angle(myHero.pos, target.pos) - LocalGeometry:Angle(myHero.pos, mousePos) < 0 then
+					rotation = - rotation
+				end
+				dashPos = myHero.pos + (target.pos - myHero.pos):Normalized():Rotated(0, 0, rotation) * R.Range
+			end
+			CastSpell(HK_R, dashPos)
+		end
+	end
+end
+
 local NextTick = LocalGameTimer()
+local NextR = LocalGameTimer()
 function Tick()
 	if NextTick > LocalGameTimer() then return end
 	
