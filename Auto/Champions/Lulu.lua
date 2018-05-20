@@ -108,6 +108,10 @@ function Tick()
 			local hero = LocalGameHero(i)
 			if hero and CanTarget(hero) and Menu.Skills.W.Targets[hero.networkID] and Menu.Skills.W.Targets[hero.networkID]:Value() then				
 				local ally, distance = NearestAlly(hero.pos, Menu.Skills.W.Radius:Value())
+				if not ally then
+					ally = myHero
+					distance = Menu.Skills.W.Radius:Value()
+				end
 				local d = LocalGeometry:GetDistance(hero.pos, myHero.pos)
 				if d < distance then
 					ally = myHero
@@ -117,7 +121,7 @@ function Tick()
 					NextTick = LocalGameTimer() + .25
 					CastSpell(HK_W, hero)
 					return
-				end
+				end				
 			end
 		end
 	end
