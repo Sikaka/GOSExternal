@@ -8,7 +8,7 @@ function LoadScript()
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = myHero.charName})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Glitterlance", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 6, step = 1 })	
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast On Immobile Targets", value = true, toggle = true })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 		
@@ -117,7 +117,7 @@ function Tick()
 					ally = myHero
 					distance = d					
 				end
-				if ally and CanTargetAlly(ally) and distance < Menu.Skills.W.Radius:Value() then
+				if ally and CanTargetAlly(ally) and distance < Menu.Skills.W.Radius:Value() and LocalGeometry:IsInRange(myHero.pos, hero.pos, W.Range) then
 					NextTick = LocalGameTimer() + .25
 					CastSpell(HK_W, hero)
 					return
@@ -140,6 +140,14 @@ function Tick()
 				NextTick = LocalGameTimer() + .25
 				CastSpell(HK_Q, castPosition)
 				return
+			end
+			if eTarget then
+				local castPosition, accuracy = LocalGeometry:GetCastPosition(eTarget, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
+				if castPosition and accuracy >= accuracyRequired then
+					NextTick = LocalGameTimer() + .25
+					CastSpell(HK_Q, castPosition)
+					return
+				end
 			end
 		end
 	end

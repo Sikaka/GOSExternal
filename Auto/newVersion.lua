@@ -25,7 +25,7 @@ Data = {
         },
         Lulu = {
             Changelog = "Lulu Changelog Here",
-            Version = 1.21,
+            Version = 1.3,
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
