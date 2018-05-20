@@ -86,7 +86,7 @@ function Tick()
 	if Ready(_R) then
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
-			if hero and CanTargetAlly(hero) then
+			if hero and CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then
 				if Menu.Skills.R.Targets[hero.networkID]  and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then				
 					if Menu.Skills.R.Targets[hero.networkID]:Value() > CurrentPctLife(hero) and LocalDamageManager:RecordedIncomingDamage(hero) >= Menu.Skills.R.Damage:Value() then					
 						NextTick = LocalGameTimer() + .25
@@ -148,7 +148,7 @@ function Tick()
 		--Loop allies in range
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
-			if hero and CanTargetAlly(hero) then
+			if hero and CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, E.Range) then
 				if Menu.Skills.E.Targets[hero.networkID] and Menu.Skills.E.Targets[hero.networkID]:Value() and LocalGeometry:IsInRange(myHero.pos, hero.pos, E.Range) and LocalDamageManager:RecordedIncomingDamage(hero) >= Menu.Skills.E.Damage:Value() then					
 					NextTick = LocalGameTimer() + .25
 					CastSpell(HK_E, hero)
@@ -173,14 +173,14 @@ end
 
 function OnCC(target, damage, ccType)
 	if target.isAlly then
-		if Ready(_R) and LocalGeometry:IsInRange(myHero.pos, target.pos, R.Range) and Menu.Skills.R.Targets[target.networkID] and Menu.Skills.R.Targets[target.networkID] >= CurrentPctLife(target) then
+		if Ready(_R) and LocalGeometry:IsInRange(myHero.pos, target.pos, R.Range) and Menu.Skills.R.Targets[target.networkID] and Menu.Skills.R.Targets[target.networkID]:Value() >= CurrentPctLife(target) then
 			if Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value() then
 				CastSpell(HK_R, target)				
 				NextTick = LocalGameTimer() + .15
 				return
 			end
 		end
-		if Ready(_E) and LocalGeometry:IsInRange(myHero.pos, target.pos, E.Range) and Menu.Skills.E.Allies[target.networkID] and Menu.Skills.E.Allies[target.networkID]:Value() then
+		if Ready(_E) and LocalGeometry:IsInRange(myHero.pos, target.pos, E.Range) and Menu.Skills.E.Targets[target.networkID] and Menu.Skills.E.Targets[target.networkID]:Value() then
 			CastSpell(HK_E, target)
 			NextTick = LocalGameTimer() + .15
 			return
