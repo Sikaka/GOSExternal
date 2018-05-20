@@ -4783,8 +4783,9 @@ function __DamageManager:SpellCast(spell)
 	end
 end
 
-function __DamageManager:GetSpellHitDetails(spell, target)	
-	if not target or not self.AllSkills[spell.name] then return end
+function __DamageManager:GetSpellHitDetails(spell, target)
+	local hitDetails = {Hit = false}
+	if not target or not self.AllSkills[spell.name] then return hitDetails end
 	local spellInfo = self.AllSkills[spell.name]
 	local owner = ObjectManager:GetHeroByID(spell.owner)
 	local spellCastPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
@@ -4811,7 +4812,7 @@ function __DamageManager:GetSpellHitDetails(spell, target)
 		local arcDistance = spellInfo.Radius or spell.data.coneDistance
 		local angleOffset = Geometry:Angle(spell.data.startPos,spellCastPos)
 		if LocalAbs(Geometry:Angle(spell.data.startPos, predictedTargetPos) - angleOffset) < arcAngle and Geometry:IsInRange(spell.startPos, predictedTargetPos, arcDistance) then			
-			return true, dodgePos
+			willHit = true
 		end
 	end
 	
