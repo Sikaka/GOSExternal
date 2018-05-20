@@ -46,7 +46,7 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.31,
+            Version = 1.32,
         },
     },
 }

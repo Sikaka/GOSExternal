@@ -635,6 +635,15 @@ function __ObjectManager:GetPlayerByPosition(position)
 	end
 end
 
+function __ObjectManager:GetHeroByID(id)
+	for i = 1, LocalGameHeroCount() do
+		local target = LocalGameHero(i)
+		if target and target.networkID == id then
+			return target
+		end
+	end
+end
+
 function __ObjectManager:GetHeroByHandle(handle)
 	for i = 1, LocalGameHeroCount() do
 		local target = LocalGameHero(i)
@@ -863,7 +872,7 @@ function __DamageManager:__init()
 			SpellSlot = _Q,
 			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_CIRCLE,
-			Radius = 300,
+			Radius = 365,
 			Damage = {60,105,150,195,240},
 			APScaling = .5,
 			Danger = 4,
@@ -4420,52 +4429,6 @@ function __DamageManager:__init()
             CCType = BUFF_KNOCKUP,
             Danger = 5,
         },
-		
-		--[Viktor Skills]--
-		["ViktorPowerTransfer"] = 
-        {    HeroName = "Viktor",
-            SpellName = "Siphon Power",
-            SpellSlot = _Q,
-            DamageType = DAMAGE_TYPE_MAGICAL,
-            TargetType = TARGET_TYPE_SINGLE,
-            Damage = {60,80,100,120,140},
-            APScaling = .4,
-            Danger = 2,
-        },
-		["ViktorGravitonField"] = 
-        {    HeroName = "Viktor",
-            SpellName = "Gravity Field",
-            SpellSlot = _W,
-            DamageType = DAMAGE_TYPE_MAGICAL,
-            TargetType = TARGET_TYPE_CIRCLE,
-			Radius = 300,
-            Danger = 2,
-			CCType = BUFF_SLOW,
-        },
-		["ViktorDeathRay"] = 
-        {    HeroName = "Viktor",
-            SpellName = "Death Ray",
-            SpellSlot = _E,
-            DamageType = DAMAGE_TYPE_MAGICAL,
-            TargetType = TARGET_TYPE_LINE,
-            Damage = {70,110,150,190,230},
-			MissileName = {"ViktorDeathRayMissile","ViktorEAugMissile", "ViktorDeathRayMissile2"},
-            APScaling = .5,
-			Radius = 80,
-            Danger = 2,
-        },
-		["ViktorChaosStorm"] = 
-        {    HeroName = "Viktor",
-            SpellName = "ChaosStorm",
-            SpellSlot = _R,
-            DamageType = DAMAGE_TYPE_MAGICAL,
-            TargetType = TARGET_TYPE_CIRCLE,
-            Damage = {100,175,250},
-            APScaling = .5,
-			Radius = 300,
-            Danger = 4,
-			CCType = BUFF_SILENCE,
-        },
 		--[ZIGGS SKILLS]--
         ["ZiggsQ"] = 
         {
@@ -4754,10 +4717,7 @@ function __DamageManager:SpellCast(spell)
 				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
-			local castPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)
-			if spellInfo.Offset then
-				castPos = castPos + spellInfo.Offset * owner.dir
-			end
+			local castPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)			
 			for _, target in LocalPairs(collection) do
 				if target ~= nil and LocalType(target) == "userdata" then
 					if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius + target.boundingRadius) then
@@ -4823,14 +4783,46 @@ function __DamageManager:SpellCast(spell)
 	end
 end
 
-function __DamageManager:GetSpellHitDetails(spell, target)
-	if not self.AllSkills[spell.name] then return end
+function __DamageManager:GetSpellHitDetails(spell, target)	
+	if not target or not self.AllSkills[spell.name] then return end
 	local spellInfo = self.AllSkills[spell.name]
+	local owner = ObjectManager:GetHeroByID(spell.owner)
 	local spellCastPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
-	local spellSpeed = spell.data.speed or 999999
+	local spellSpeed = spell.data.speed or 999999	
+	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance(owner.pos, target.pos))
+	local willHit = false
+	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then	
+		spellCastPos = spell.data.startPos + (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z) - spell.data.startPos):Normalized() * spell.data.range
+		local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, spellCastPos, predictedTargetPos)		
+		if isOnSegment and Geometry:IsInRange(predictedTargetPos, pointLine, spellInfo.Radius + target.boundingRadius) then
+			willHit = true
+		end
+	end
 	
-	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance())
+	if spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
+		if Geometry:IsInRange(spellCastPos, predictedTargetPos, spellInfo.Radius + target.boundingRadius) then
+			willHit = true
+		end
+	end
+	
+	if spellInfo.TargetType == TARGET_TYPE_ARC  then
+		local arcAngle = spellInfo.Angle or spell.data.coneAngle
+		local arcDistance = spellInfo.Radius or spell.data.coneDistance
+		local angleOffset = Geometry:Angle(spell.data.startPos,spellCastPos)
+		if LocalAbs(Geometry:Angle(spell.data.startPos, predictedTargetPos) - angleOffset) < arcAngle and Geometry:IsInRange(spell.startPos, predictedTargetPos, arcDistance) then			
+			return true, dodgePos
+		end
+	end
+	
+	return 
+	{
+		Hit = willHit, 
+		Danger = spellInfo.Danger,
+		CC = spellInfo.CCType,
+		Damage = DamageManager:CalculateSkillDamage(owner, target, spellInfo),
+	}
 end
+
 function __DamageManager:DodgeSpell(spell, target, danger, dist)
 	if not self.AllSkills[spell.name] then  return end
 	local spellInfo = self.AllSkills[spell.name]

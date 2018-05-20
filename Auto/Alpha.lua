@@ -635,6 +635,15 @@ function __ObjectManager:GetPlayerByPosition(position)
 	end
 end
 
+function __ObjectManager:GetHeroByID(id)
+	for i = 1, LocalGameHeroCount() do
+		local target = LocalGameHero(i)
+		if target and target.networkID == id then
+			return target
+		end
+	end
+end
+
 function __ObjectManager:GetHeroByHandle(handle)
 	for i = 1, LocalGameHeroCount() do
 		local target = LocalGameHero(i)
@@ -738,7 +747,8 @@ function __DamageManager:__init()
 			Radius = 275,
 			Damage = {25,50,80,110,150},
 			ADScaling = 1.10,
-			Danger = 3,			
+			Danger = 3,	
+			BuffName = "AatroxQDescent"
 		},
 		["AatroxE"] = 
 		{
@@ -4773,17 +4783,45 @@ function __DamageManager:SpellCast(spell)
 	end
 end
 
-
-function __DamageManager:GetSpellHitDetails(spell, target)
-	if not self.AllSkills[spell.name] then return end
+function __DamageManager:GetSpellHitDetails(spell, target)	
+	if not target or not self.AllSkills[spell.name] then return end
 	local spellInfo = self.AllSkills[spell.name]
+	local owner = ObjectManager:GetHeroByID(spell.owner)
 	local spellCastPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
 	local spellSpeed = spell.data.speed or 999999	
-	local attacker = ObjectManager:GetPlayerByHandle(spell.owner)
+	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance(owner.pos, target.pos))
+	local willHit = false
+	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then	
+		spellCastPos = spell.data.startPos + (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z) - spell.data.startPos):Normalized() * spell.data.range
+		local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, spellCastPos, predictedTargetPos)		
+		if isOnSegment and Geometry:IsInRange(predictedTargetPos, pointLine, spellInfo.Radius + target.boundingRadius) then
+			willHit = true
+		end
+	end
 	
-	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance())
+	if spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
+		if Geometry:IsInRange(spellCastPos, predictedTargetPos, spellInfo.Radius + target.boundingRadius) then
+			willHit = true
+		end
+	end
+	
+	if spellInfo.TargetType == TARGET_TYPE_ARC  then
+		local arcAngle = spellInfo.Angle or spell.data.coneAngle
+		local arcDistance = spellInfo.Radius or spell.data.coneDistance
+		local angleOffset = Geometry:Angle(spell.data.startPos,spellCastPos)
+		if LocalAbs(Geometry:Angle(spell.data.startPos, predictedTargetPos) - angleOffset) < arcAngle and Geometry:IsInRange(spell.startPos, predictedTargetPos, arcDistance) then			
+			return true, dodgePos
+		end
+	end
+	
+	return 
+	{
+		Hit = willHit, 
+		Danger = spellInfo.Danger,
+		CC = spellInfo.CCType,
+		Damage = DamageManager:CalculateSkillDamage(owner, target, spellInfo),
+	}
 end
-
 
 function __DamageManager:DodgeSpell(spell, target, danger, dist)
 	if not self.AllSkills[spell.name] then  return end
