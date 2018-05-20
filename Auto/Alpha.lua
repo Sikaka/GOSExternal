@@ -4773,6 +4773,18 @@ function __DamageManager:SpellCast(spell)
 	end
 end
 
+
+function __DamageManager:GetSpellHitDetails(spell, target)
+	if not self.AllSkills[spell.name] then return end
+	local spellInfo = self.AllSkills[spell.name]
+	local spellCastPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
+	local spellSpeed = spell.data.speed or 999999	
+	local attacker = ObjectManager:GetPlayerByHandle(spell.owner)
+	
+	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance())
+end
+
+
 function __DamageManager:DodgeSpell(spell, target, danger, dist)
 	if not self.AllSkills[spell.name] then  return end
 	local spellInfo = self.AllSkills[spell.name]

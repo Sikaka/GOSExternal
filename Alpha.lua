@@ -1,5 +1,6 @@
 if _G.Alpha then return end
-_G.Alpha = 
+	print("ALPHA LOADED")
+_G.Alpha =
 {
 	Menu = nil,
 	Geometry = nil,
@@ -22,6 +23,8 @@ local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
 local LocalGameMissileCount 		= Game.MissileCount;
 local LocalGameMissile				= Game.Missile;
+local LocalGameTurretCount 			= Game.TurretCount;
+local LocalGameTurret				= Game.Turret;
 local LocalPairs 					= pairs;
 local LocalType						= type;
 
@@ -132,6 +135,20 @@ function __Geometry:IsInRange(p1, p2, range)
 	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
 end
 
+function __Geometry:GetLineTargetCount(source, aimPos, delay, speed, width, targetAllies)
+	local targetCount = 0
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t and t.pos and t.alive and t.health > 0 and t.visible and t.isTargetable and ( targetAllies or t.isEnemy) then			
+			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)			
+			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
+			if proj1 and isOnSegment and self:IsInRange(predictedPos, proj1, t.boundingRadius + width) then
+				targetCount = targetCount + 1
+			end
+		end
+	end
+	return targetCount
+end
 function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision, isLine)
 	local hitChance = 1
 	if not self:IsInRange(source.pos, target.pos, range) then hitChance = -1 end
@@ -152,22 +169,19 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 			if pathVector.x + pathVector.z ~= 0 then
 				pathVector = pathVector:Normalized()
 				if pathVector:DotProduct(castVector) < -.85 or pathVector:DotProduct(castVector) > .85 then
-					if speed > 3000 then
-						hitChance = 3
-					else
-						hitChance = 2
-					end
+					hitChance = 3
 				end
 			end
 		end
 		
 		local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
-		if movementRadius - target.boundingRadius <= radius /2 then
-			origin,movementRadius = self:UnitMovementBounds(target, interceptTime, 0)
-			if movementRadius - target.boundingRadius <= radius /2 then
+		if movementRadius - target.boundingRadius <= radius  then				
+			hitChance = 3
+		end
+		
+		if target.pathing.hasMovePath and target.pathing.isDashing and target.pathing.dashSpeed>500 then
+			if self:GetDistance(target.pos, target:GetPath(1)) / target.pathing.dashSpeed + .25 > interceptTime then
 				hitChance = 4
-			else		
-				hitChance = 3
 			end
 		end
 		
@@ -293,11 +307,11 @@ end
 --Returns all existing path nodes
 function __Geometry:GetPathNodes(unit)
 	local nodes = {}
-	LocalInsert(nodes, unit.pos)
+	nodes[#nodes+1] = unit.pos	
 	if unit.pathing.hasMovePath then
 		for i = unit.pathing.pathIndex, unit.pathing.pathCount do
 			path = unit:GetPath(i)
-			LocalInsert(nodes, path)
+			nodes[#nodes+1] = path
 		end
 	end		
 	return nodes
@@ -312,7 +326,9 @@ end
 class "__ObjectManager"
 --Initialize the object manager
 function __ObjectManager:__init()
+	
 	LocalCallbackAdd('Tick',  function() self:Tick() end)
+	--LocalCallbackAdd('Draw',  function() self:Draw() end)
 	
 	self.CachedBuffs = {}
 	self.OnBuffAddedCallbacks = {}
@@ -339,13 +355,15 @@ function __ObjectManager:__init()
 	self.OnSpellCastCallbacks = {}
 	
 	self.NextCacheMissiles = GetTickCount()
+	self.LastMissileCount = 0
 	self.NextCacheParticles = GetTickCount()
+	self.LastParticleCount = 0
 	self.NextCacheBuffs = GetTickCount()
 end
 
 --Register Buff Added Event
 function __ObjectManager:OnBuffAdded(cb)
-	LocalInsert(ObjectManager.OnBuffAddedCallbacks, cb)
+	ObjectManager.OnBuffAddedCallbacks[#ObjectManager.OnBuffAddedCallbacks+1] = cb
 end
 
 --Trigger Buff Added Event
@@ -357,7 +375,7 @@ end
 
 --Register Buff Removed Event
 function __ObjectManager:OnBuffRemoved(cb)
-	LocalInsert(ObjectManager.OnBuffRemovedCallbacks, cb)
+	ObjectManager.OnBuffRemovedCallbacks[#ObjectManager.OnBuffRemovedCallbacks+1] = cb
 end
 
 --Trigger Buff Removed Event
@@ -370,7 +388,7 @@ end
 
 --Register Missile Create Event
 function __ObjectManager:OnMissileCreate(cb)
-	LocalInsert(ObjectManager.OnMissileCreateCallbacks, cb)
+	ObjectManager.OnMissileCreateCallbacks[#ObjectManager.OnMissileCreateCallbacks+1] = cb
 end
 
 --Trigger Missile Create Event
@@ -382,7 +400,7 @@ end
 
 --Register Missile Destroy Event
 function __ObjectManager:OnMissileDestroy(cb)
-	LocalInsert(ObjectManager.OnMissileDestroyCallbacks, cb)
+	ObjectManager.OnMissileDestroyCallbacks[#ObjectManager.OnMissileDestroyCallbacks+1] = cb
 end
 
 --Trigger Missile Destroyed Event
@@ -394,7 +412,7 @@ end
 
 --Register Particle Create Event
 function __ObjectManager:OnParticleCreate(cb)
-	LocalInsert(ObjectManager.OnParticleCreateCallbacks, cb)
+	ObjectManager.OnParticleCreateCallbacks[#ObjectManager.OnParticleCreateCallbacks+1] = cb
 end
 
 --Trigger Particle Created Event
@@ -407,7 +425,7 @@ end
 
 --Register Particle Destroy Event
 function __ObjectManager:OnParticleDestroy(cb)
-	LocalInsert(ObjectManager.OnParticleDestroyCallbacks, cb)
+	ObjectManager.OnParticleDestroyCallbacks[#ObjectManager.OnParticleDestroyCallbacks+1] = cb
 end
 
 --Trigger particle Destroyed Event
@@ -423,7 +441,7 @@ function __ObjectManager:OnBlink(cb)
 	if #self.OnBlinkCallbacks == 0 then		
 		self:OnParticleCreate(function(particle) self:CheckIfBlinkParticle(particle) end)
 	end
-	LocalInsert(ObjectManager.OnBlinkCallbacks, cb)
+	ObjectManager.OnBlinkCallbacks[#ObjectManager.OnBlinkCallbacks+1] = cb
 end
 
 --Trigger Blink Event
@@ -435,7 +453,7 @@ end
 
 --Register On Spell Cast Event
 function __ObjectManager:OnSpellCast(cb)
-	LocalInsert(ObjectManager.OnSpellCastCallbacks, cb)
+	ObjectManager.OnSpellCastCallbacks[#ObjectManager.OnSpellCastCallbacks+1] = cb
 end
 
 --Trigger Spell Cast Event
@@ -445,13 +463,21 @@ function __ObjectManager:SpellCast(data)
 	end
 end
 
-local lookupTable = {"one", "two", "three", "four", "five"}
+local particleDuration = 0
+local missileDuration= 0
+local buffDuration= 0
+function __ObjectManager:Draw()
+	Draw.Text("PARTICLES: " .. particleDuration, 14, 200, 100)
+	Draw.Text("MISSILES: " .. missileDuration, 14, 200, 125)
+	Draw.Text("BUFFS: " .. buffDuration, 14, 200, 150)
+end
 
 --Search for changes in particle or missiles in game. trigger the appropriate events.
-function __ObjectManager:Tick()
+function __ObjectManager:Tick()	
 	--Check if we have any buff added/removed callbacks before querying
 	if (#self.OnBuffAddedCallbacks > 0 or #self.OnBuffRemovedCallbacks  > 0) and GetTickCount() > self.NextCacheBuffs then
-		self.NextCacheBuffs = GetTickCount() + Menu.Performance.BuffCache:Value()
+		local t = LocalOSClock()
+		self.NextCacheBuffs = GetTickCount() + BUFF_CACHE_DELAY
 		--KNOWN ISSUE: Certain skills use buffs... but constantly tweak their start/end time: EG Aatrox Q. I have no way to reliably handle this currently.
 		for _, buff in LocalPairs(self.CachedBuffs) do
 			if not buff or not buff.valid then
@@ -481,6 +507,7 @@ function __ObjectManager:Tick()
 				end
 			end
 		end
+		buffDuration = LocalOSClock() - t;
 	end
 	
 	if #self.OnSpellCastCallbacks > 0 then
@@ -489,7 +516,7 @@ function __ObjectManager:Tick()
 			if target and LocalType(target) == "userdata" then    
 				if target.activeSpell and target.activeSpell.valid then
 					if not self.CachedSpells[target.networkID] or self.CachedSpells[target.networkID].name ~= target.activeSpell.name then
-						local spellData = {owner = target.networkID, handle = target.handle, name = target.activeSpell.name, data = target.activeSpell, windupEnd = target.activeSpell.startTime + target.activeSpell.windup}
+						local spellData = {owner = target.networkID, isEnemy = target.isEnemy,handle = target.handle, name = target.activeSpell.name, data = target.activeSpell, windupEnd = target.activeSpell.startTime + target.activeSpell.windup}
 						self.CachedSpells[target.networkID] =spellData
 						self:SpellCast(spellData)
 					end
@@ -502,10 +529,12 @@ function __ObjectManager:Tick()
 
 	--Cache Particles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if (#self.OnParticleCreateCallbacks > 0 or #self.OnParticleDestroyCallbacks > 0) and GetTickCount() > self.NextCacheParticles then
-		self.NextCacheParticles = GetTickCount() + Menu.Performance.ParticleCache:Value()
+		
+		local t = LocalOSClock()
+		self.NextCacheParticles = GetTickCount() + PARTICLE_CACHE_DELAY
 		for _, particle in LocalPairs(self.CachedParticles) do
 			if not particle or not particle.valid then
-				if particle then					
+				if particle then
 					self:ParticleDestroyed(particle)
 				end
 				self.CachedParticles[_] = nil
@@ -514,69 +543,84 @@ function __ObjectManager:Tick()
 			end
 		end	
 		
-		for i = 1, LocalGameParticleCount() do 
-			local particle = LocalGameParticle(i)
-			if particle ~= nil and LocalType(particle) == "userdata" then
-				if self.CachedParticles[particle.networkID] then
-					self.CachedParticles[particle.networkID].valid = true
-				else
-					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
-					self.CachedParticles[particle.networkID] =particleData
-					self:ParticleCreated(particleData)
+		local particleCount = LocalGameParticleCount()
+		
+		if particleCount ~= self.LastParticleCount then
+			self.LastParticleCount = particleCount
+			for i = 1, particleCount do 
+				local particle = LocalGameParticle(i)
+				if particle ~= nil and LocalType(particle) == "userdata" then
+					if self.CachedParticles[particle.networkID] then
+						self.CachedParticles[particle.networkID].valid = true
+					else
+						local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
+						self.CachedParticles[particle.networkID] =particleData
+						self:ParticleCreated(particleData)
+					end
 				end
 			end
-		end		
+		end
+		particleDuration = LocalOSClock() - t
 	end
 	
 	--Cache Missiles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if (#self.OnMissileCreateCallbacks > 0 or #self.OnMissileDestroyCallbacks > 0) and GetTickCount() > self.NextCacheMissiles then
-		self.NextCacheMissiles = GetTickCount() + Menu.Performance.MissileCache:Value()
+		local t = LocalOSClock()
+		self.NextCacheMissiles = GetTickCount() + MISSILE_CACHE_DELAY
 		for _, missile in LocalPairs(self.CachedMissiles) do
 			if not missile or not missile.data or missile.dead or not missile.valid then
 				if missile and missile.data then
 					self:MissileDestroyed(missile)
 				end
 				self.CachedMissiles[_] = nil
-			else		
+			else
 				missile.valid = false
 			end
-		end	
+		end
 		
-		for i = 1, LocalGameMissileCount() do 
-			local missile = LocalGameMissile(i)
-			if missile ~= nil and LocalType(missile) == "userdata" and missile.missileData then
-				if self.CachedMissiles[missile.networkID] then
-					self.CachedMissiles[missile.networkID].valid = true
-				else
-					--We need a direct reference to the missile so we can query its current position later. If not we'd have to calculate it using speed/start/end data
-					local missileData = 
-					{ 
-						valid = true,
-						name = missile.name,
-						forward = Vector(
-							missile.missileData.endPos.x -missile.missileData.startPos.x,
-							missile.missileData.endPos.y -missile.missileData.startPos.y,
-							missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
-						networkID = missile.networkID,
-						data = missile,							
-						endTime = LocalGameTimer() + Geometry:GetDistance(missile.missileData.endPos, missile.missileData.startPos) / missile.missileData.speed,
-					}
-					if DamageManager.MissileNames[missile.name] and DamageManager.MissileNames[missile.name].MissileTime then
-						missileData.endTime = LocalGameTimer() + DamageManager.MissileNames[missile.name].MissileTime
+		local missileCount = LocalGameMissileCount()
+		if missileCount ~= self.LastMissileCount then
+			self.LastMissileCount = missileCount
+			for i = 1, missileCount do 
+				local missile = LocalGameMissile(i)
+				if missile ~= nil and LocalType(missile) == "userdata" and missile.missileData then
+					if self.CachedMissiles[missile.networkID] then
+						self.CachedMissiles[missile.networkID].valid = true
+					else
+						--We need a direct reference to the missile so we can query its current position later. If not we'd have to calculate it using speed/start/end data
+						local missileData = 
+						{ 
+							valid = true,
+							name = missile.name,
+							forward = Vector(
+								missile.missileData.endPos.x -missile.missileData.startPos.x,
+								missile.missileData.endPos.y -missile.missileData.startPos.y,
+								missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
+							networkID = missile.networkID,
+							data = missile,							
+							endTime = LocalGameTimer() + Geometry:GetDistance(missile.missileData.endPos, missile.missileData.startPos) / missile.missileData.speed,
+						}
+						if DamageManager.MissileNames[missile.name] and DamageManager.MissileNames[missile.name].MissileTime then
+							missileData.endTime = LocalGameTimer() + DamageManager.MissileNames[missile.name].MissileTime
+						end
+						self.CachedMissiles[missile.networkID] =missileData
+						self:MissileCreated(missileData)
 					end
-					self.CachedMissiles[missile.networkID] =missileData
-					self:MissileCreated(missileData)
 				end
 			end
 		end
-	end
+		missileDuration = LocalOSClock() - t
+	end	
+	
 end
 
 function __ObjectManager:CheckIfBlinkParticle(particle)
-	if table.contains(self.BlinkParticleLookupTable,particle.name) then
-		local target = self:GetPlayerByPosition(particle.pos)
-		if target then 
-			self:Blinked(target)
+	for i = 1, #self.BlinkParticleLookupTable do
+		if self.BlinkParticleLookupTable[i] == particle.name then
+			local target = self:GetPlayerByPosition(particle.pos)
+			if target then 
+				self:Blinked(target)
+			end
 		end
 	end
 end
@@ -586,6 +630,15 @@ function __ObjectManager:GetPlayerByPosition(position)
 	for i = 1, LocalGameHeroCount() do
 		local target = LocalGameHero(i)
 		if target and target.pos and Geometry:IsInRange(position, target.pos,50) then
+			return target
+		end
+	end
+end
+
+function __ObjectManager:GetHeroByHandle(handle)
+	for i = 1, LocalGameHeroCount() do
+		local target = LocalGameHero(i)
+		if target and target.handle == handle then
 			return target
 		end
 	end
@@ -604,12 +657,18 @@ function __ObjectManager:GetObjectByHandle(handle)
 			return target
 		end
 	end
+	for i = 1, LocalGameTurretCount() do
+		local target = LocalGameTurret(i)
+		if target and target.handle == handle then
+			return target
+		end
+	end
 end
 
 class "__DamageManager"
 --Credits LazyXerath for extra dmg reduction methods
 function __DamageManager:__init()
-	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true"}
+	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true", [BUFF_CHARM] = "true"}
 	self.OnIncomingCCCallbacks = {}
 	
 	self.SiegeMinionList = {"Red_Minion_MechCannon", "Blue_Minion_MechCannon"}
@@ -662,6 +721,9 @@ function __DamageManager:__init()
 	--Simple table for skills we want to track
 	self.Skills = {}
 	
+	--Collection for all skills loaded
+	self.AllSkills = {}
+	
 	--Master lookup table. NOT WHAT IS USED FOR ACTUAL MATCHING. It's used for loading
 	self.MasterSkillLookupTable =
 	{	
@@ -676,7 +738,8 @@ function __DamageManager:__init()
 			Radius = 275,
 			Damage = {25,50,80,110,150},
 			ADScaling = 1.10,
-			Danger = 3,			
+			Danger = 3,	
+			BuffName = "AatroxQDescent"
 		},
 		["AatroxE"] = 
 		{
@@ -710,7 +773,7 @@ function __DamageManager:__init()
 			SpellSlot = _Q,
 			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
-			Radius = 80,
+			Radius = 100,
 			Damage = {40,65,90,115,140},
 			APScaling = .35,
 			Danger = 2,
@@ -732,6 +795,7 @@ function __DamageManager:__init()
 			HeroName = "Ahri", 
 			SpellName = "Charm",
 			SpellSlot = _E,
+			MissileName="AhriSeduceMissile",
 			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,
 			Collision = 1,
@@ -799,7 +863,7 @@ function __DamageManager:__init()
 			SpellSlot = _Q,
 			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_CIRCLE,
-			Radius = 365,
+			Radius = 300,
 			Damage = {60,105,150,195,240},
 			APScaling = .5,
 			Danger = 4,
@@ -884,7 +948,7 @@ function __DamageManager:__init()
 			Damage = {50,75,100,125,150},
 			APScaling = .5,
 			BuffScaling = 2.0,
-			BuffName = "aniviaiced",
+			BuffScalingName = "aniviaiced",
 			Danger = 3,
 		},
 		
@@ -1088,7 +1152,7 @@ function __DamageManager:__init()
 			
 			--Damage is multiplied by 1.5 when the target has BrandAblaze buff applied. This is OPTIONAL but appreciated for accuracy
 			BuffScaling = 1.5,
-			BuffName = "BrandAblaze",
+			BuffScalingName = "BrandAblaze",
 		},
 		["BrandE"] = 
 		{
@@ -4356,6 +4420,52 @@ function __DamageManager:__init()
             CCType = BUFF_KNOCKUP,
             Danger = 5,
         },
+		
+		--[Viktor Skills]--
+		["ViktorPowerTransfer"] = 
+        {    HeroName = "Viktor",
+            SpellName = "Siphon Power",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {60,80,100,120,140},
+            APScaling = .4,
+            Danger = 2,
+        },
+		["ViktorGravitonField"] = 
+        {    HeroName = "Viktor",
+            SpellName = "Gravity Field",
+            SpellSlot = _W,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 300,
+            Danger = 2,
+			CCType = BUFF_SLOW,
+        },
+		["ViktorDeathRay"] = 
+        {    HeroName = "Viktor",
+            SpellName = "Death Ray",
+            SpellSlot = _E,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_LINE,
+            Damage = {70,110,150,190,230},
+			MissileName = {"ViktorDeathRayMissile","ViktorEAugMissile", "ViktorDeathRayMissile2"},
+            APScaling = .5,
+			Radius = 80,
+            Danger = 2,
+        },
+		["ViktorChaosStorm"] = 
+        {    HeroName = "Viktor",
+            SpellName = "ChaosStorm",
+            SpellSlot = _R,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Damage = {100,175,250},
+            APScaling = .5,
+			Radius = 300,
+            Danger = 4,
+			CCType = BUFF_SILENCE,
+        },
 		--[ZIGGS SKILLS]--
         ["ZiggsQ"] = 
         {
@@ -4506,17 +4616,19 @@ function __DamageManager:__init()
 				print("Unhandled skill: " .. spellName .. " on " .. target.charName)
 			end
 		end
-	end
+	end	
+	self.CallbacksInitialized = false
 	
 end
 
 --Helper method to enable all the callbacks needed to calculate damage. By default we dont need to track all this shit.
-function __DamageManager:InitializeCallbacks()	
-	ObjectManager:OnMissileCreate(function(args) self:MissileCreated(args) end)
-	ObjectManager:OnMissileDestroy(function(args) self:MissileDestroyed(args) end)	
-	ObjectManager:OnBuffAdded(function(owner, buff) self:BuffAdded(owner, buff) end)
-	LocalCallbackAdd('Tick',  function() self:Tick() end)
-	ObjectManager:OnSpellCast(function(args) self:SpellCast(args) end)
+function __DamageManager:InitializeCallbacks()
+	DamageManager.CallbacksInitialized = true
+	ObjectManager:OnMissileCreate(function(args) DamageManager:MissileCreated(args) end)
+	ObjectManager:OnMissileDestroy(function(args) DamageManager:MissileDestroyed(args) end)	
+	ObjectManager:OnBuffAdded(function(owner, buff) DamageManager:BuffAdded(owner, buff) end)
+	LocalCallbackAdd('Tick',  function() DamageManager:Tick() end)
+	ObjectManager:OnSpellCast(function(args) DamageManager:SpellCast(args) end)
 end
 
 function __DamageManager:LoadSpell(spellName, spellData, target)				
@@ -4536,6 +4648,10 @@ function __DamageManager:LoadSpell(spellName, spellData, target)
 		self.BuffNames[spellData.BuffName] = spellData
 	else
 		self.Skills[spellName] = spellData
+	end
+	
+	if not self.AllSkills[spellName] then
+		self.AllSkills[spellName] = spellData
 	end
 	print("Loaded skill: " .. spellName .. " on " .. target.charName)
 end
@@ -4571,7 +4687,7 @@ end
 
 function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
 	
-	if Menu.PrintDmg:Value() then
+	if AlphaMenu.PrintDmg:Value() then
 		if owner and target then
 			print(owner.charName .. " will hit " .. target.charName .. " for " .. damage .. " Damage")
 		else
@@ -4584,15 +4700,16 @@ function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
 	end
 end
 
-function __DamageManager:CheckLineMissileCollision(skillshot, targetList)	
+function __DamageManager:CheckLineMissileCollision(skillshot, targetList)
 	local distRemaining = Geometry:GetDistance(skillshot.data.pos, skillshot.data.missileData.endPos)	
 	local step = LocalMin(distRemaining, skillshot.data.missileData.speed  * .35)
 	local nextPosition = skillshot.data.pos + skillshot.forward * step
 	local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)
 	for _, target in LocalPairs(targetList) do
 		if target~= nil and LocalType(target) == "userdata" then
-			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(skillshot.data.pos, nextPosition, target.pos)
-			if isOnSegment and Geometry:IsInRange(target.pos, pointLine, skillshot.data.missileData.width + target.boundingRadius) then
+			local nextTargetPos = Geometry:PredictUnitPosition(target, .25)
+			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(skillshot.data.pos, nextPosition, nextTargetPos)
+			if isOnSegment and Geometry:IsInRange(nextTargetPos, pointLine, skillshot.data.missileData.width + target.boundingRadius) then
 				local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
 				self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
 				self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
@@ -4606,7 +4723,8 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 		local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)		
 		for _, target in LocalPairs(targetList) do
 			if target~= nil and LocalType(target) == "userdata" then
-				if Geometry:IsInRange(target.pos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
+				local nextTargetPos = Geometry:PredictUnitPosition(target, .2)
+				if Geometry:IsInRange(nextTargetPos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
 					local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
 					self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
 				self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
@@ -4617,7 +4735,8 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 end
 
 function __DamageManager:SpellCast(spell)
-	if Menu.PrintSkill:Value() then print(spell.name) end
+	if AlphaMenu.PrintSkill:Value() then print(spell.name) end
+	
 	if self.Skills[spell.name] then
 		local owner = ObjectManager:GetObjectByHandle(spell.handle)
 		if owner == nil then return end
@@ -4635,7 +4754,10 @@ function __DamageManager:SpellCast(spell)
 				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
-			local castPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)			
+			local castPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)
+			if spellInfo.Offset then
+				castPos = castPos + spellInfo.Offset * owner.dir
+			end
 			for _, target in LocalPairs(collection) do
 				if target ~= nil and LocalType(target) == "userdata" then
 					if Geometry:IsInRange(castPos, target.pos, spellInfo.Radius + target.boundingRadius) then
@@ -4691,7 +4813,7 @@ function __DamageManager:SpellCast(spell)
 					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, castPos, target.pos)
 					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
-						self:IncomingDamage(owner, target, damage, spellInfo,true)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
 					end
 				end
 			end
@@ -4701,27 +4823,69 @@ function __DamageManager:SpellCast(spell)
 	end
 end
 
+function __DamageManager:GetSpellHitDetails(spell, target)
+	if not self.AllSkills[spell.name] then return end
+	local spellInfo = self.AllSkills[spell.name]
+	local spellCastPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
+	local spellSpeed = spell.data.speed or 999999
+	
+	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance())
+end
+function __DamageManager:DodgeSpell(spell, target, danger, dist)
+	if not self.AllSkills[spell.name] then  return end
+	local spellInfo = self.AllSkills[spell.name]
+	if spellInfo.Danger < danger then
+		--calculate damage it will deal and if it will kill then check if we want to dodge on kill. 
+			--Note: to do that we need the source as well.. Leave it for now.
+		return
+	end
+		
+	local nextTargetPos = Geometry:PredictUnitPosition(target, .25)
+	
+	--TODO: Re-add offsetting dodge based on mouse position... this is messy AF
+	local castPos = LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z)
+	local dodgePos = nextTargetPos + (castPos - spell.startPos):Normalized():Rotated(0,0, math.random(75, 90)) * LocalMax(Dist or 0, (spellInfo.Radius or 100 + target.boundingRadius) * 2)
+	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
+		castPos = spell.startPos + (LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z) - spell.startPos):Normalized() * spell.range				
+		local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.startPos, castPos, nextTargetPos)		
+		if isOnSegment and Geometry:IsInRange(nextTargetPos, pointLine, spellInfo.Radius + target.boundingRadius) then
+			return true, dodgePos
+		end
+	end
+	if spellInfo.TargetType == TARGET_TYPE_CIRCLE and spellInfo.Radius then
+		if Geometry:IsInRange(castPos, nextTargetPos, spellInfo.Radius + target.boundingRadius) then						
+			return true, dodgePos
+		end
+	end
+	if spellInfo.TargetType == TARGET_TYPE_ARC  then
+		local arcAngle = spellInfo.Angle or spell.data.coneAngle
+		local arcDistance = spellInfo.Radius or spell.data.coneDistance
+		local angleOffset = Geometry:Angle(spell.startPos,castPos)
+		if LocalAbs(Geometry:Angle(spell.startPos, nextTargetPos) - angleOffset) < arcAngle and Geometry:IsInRange(spell.startPos, nextTargetPos, arcDistance) then			
+			return true, dodgePos
+		end
+	end
+end
+
 function __DamageManager:MissileCreated(missile)
 	if self.MissileNames[missile.name] then
 		missile.Sort = self.MissileNames[missile.name].TargetType
 		if missile.Sort == TARGET_TYPE_CIRCLE then
 			self:OnUntargetedMissileTable(missile)
 		elseif missile.data.missileData.target > 0 then
-			--Unable currently to handle line skillshots that have a target (IE: Oriana E)
-			if LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack") then
-				self:OnAutoAttackMissile(missile)
-			else
-				self:OnTargetedMissileTable(missile)
-			end
+			--Unable currently to handle line skillshots that have a target (IE: Oriana E)			
+			self:OnTargetedMissileTable(missile)			
 		else
 			self:OnUntargetedMissileTable(missile)
 		end
-	elseif Menu.PrintMissile:Value() then
+	elseif missile.data.missileData.target > 0 and (LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack")) then
+		self:OnAutoAttackMissile(missile)			
+	elseif AlphaMenu.PrintMissile:Value() then
 		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width)
 	end
 end
 
-function __DamageManager:OnAutoAttackMissile(missile)	
+function __DamageManager:OnAutoAttackMissile(missile)
 	local owner = ObjectManager:GetObjectByHandle(missile.data.missileData.owner)
 	local target = ObjectManager:GetObjectByHandle(missile.data.missileData.target)
 	if owner and target then
@@ -4732,13 +4896,13 @@ function __DamageManager:OnAutoAttackMissile(missile)
 		if not targetCollection[target.handle] then return end
 		
 		--This missile is already added - ignore it cause something went wrong. 
-		if targetCollection[target.handle][missile.networkID] then print("Duplicate targeted missile creation: " .. missile.name) return end
+		if targetCollection[target.handle][missile.networkID] then return end
 		
 		local damage = owner.totalDamage
 		if LocalStringFind(missile.name, "CritAttack") then
 			damage = damage * 1.5
 		end
-		damage = self:CalculatePhysicalDamage(owner, target, damage)	
+		damage = self:CalculatePhysicalDamage(owner, target, damage)
 		targetCollection[target.handle][missile.networkID] = 
 		{
 			Name = missile.name,
@@ -4782,6 +4946,22 @@ function __DamageManager:OnTargetedMissileTable(missile)
 end
 
 
+function __DamageManager:RecordedIncomingDamage(target)
+	local damage = 0
+	
+	local targetCollection = self.EnemyDamage
+	if target.isAlly then
+		targetCollection = self.AlliedDamage
+	end
+	if targetCollection[target.handle] then
+		for _, dmg in LocalPairs(targetCollection[target.handle]) do
+			if dmg then
+				damage = damage + dmg.Damage
+			end
+		end
+	end	
+	return damage
+end
 function __DamageManager:PredictDamage(owner, target, spellName)
 	local damage = 0
 	local skillInfo = self.MasterSkillLookupTable[spellName]
@@ -4827,7 +5007,7 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			damage = self:CalculatePhysicalDamage(owner, target, damage)				
 		end
 		
-		if skillInfo.BuffName and BuffManager:HasBuff(target, skillInfo.BuffName) then
+		if skillInfo.BuffScalingName and BuffManager:HasBuff(target, skillInfo.BuffScalingName) then
 			damage = damage * skillInfo.BuffScaling
 		end
 	end
@@ -4849,7 +5029,11 @@ end
 
 --Register Incoming CC Event
 function __DamageManager:OnIncomingCC(cb)
-	LocalInsert(DamageManager.OnIncomingCCCallbacks, cb)
+	if not self.CallbacksInitialized then
+		self.InitializeCallbacks()
+	end
+	
+	DamageManager.OnIncomingCCCallbacks[#DamageManager.OnIncomingCCCallbacks+1] = cb
 end
 
 --Trigger Incoming CC Event
@@ -4891,20 +5075,22 @@ function __DamageManager:BuffAdded(owner, buff)
 			print("Unhandled buff targeting type: " .. spellInfo.TargetType)
 		end		
 	end
-	if #buff.name < 64 and Menu.PrintBuff:Value() then
+	if #buff.name < 64 and AlphaMenu.PrintBuff:Value() then
 		print(owner.charName .. " Gained Buff: " .. buff.name)
 	end
 end
 
 --Remove from local collections on destroy
 function __DamageManager:MissileDestroyed(missile)
-	for _, dmgCollection in LocalPairs(self.AlliedHeroes) do
+	--Check if they need to be destroyed
+	
+	for _, dmgCollection in LocalPairs(self.AlliedDamage) do
 		if dmgCollection[missile.networkID] then
 			dmgCollection[missile.networkID] = nil
 		end
 	end
 	
-	for _, dmgCollection in LocalPairs(self.EnemyHeroes) do
+	for _, dmgCollection in LocalPairs(self.EnemyDamage) do
 		if dmgCollection[missile.networkID] then
 			dmgCollection[missile.networkID] = nil
 		end
@@ -5097,20 +5283,21 @@ function __BuffManager:HasBuffType(target, buffType, minimumDuration)
 	end
 end
 
-
-
 --Initialization
-Menu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
-Menu:MenuElement({id = "Performance", name = "Performance", type = MENU})
-Menu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = 100, min = 10, max = 1000, step = 10 })
-Menu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = 200, min = 10, max = 1000, step = 10 })
-Menu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 100, min = 10, max = 1000, step = 10 })
-	
-	
-Menu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = true})
-Menu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = true})
-Menu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = true})
-Menu:MenuElement({id = "PrintSkill", name = "Print Skill Used", value = true})
+AlphaMenu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
+AlphaMenu:MenuElement({id = "Performance", name = "Performance", type = MENU})
+AlphaMenu.Performance:MenuElement({id = "MissileCache", name = "Missile Cache Time", value = _G.missileRecacheTimeOut, min = 10, max = 1000, step = 10, callback = function(delay) MISSILE_CACHE_DELAY = delay end })
+AlphaMenu.Performance:MenuElement({id = "ParticleCache", name = "Particle Cache Time", value = _G.particleRecacheTimeOut, min = 10, max = 1000, step = 10, callback = function(delay) PARTICLE_CACHE_DELAY = delay end })
+AlphaMenu.Performance:MenuElement({id = "BuffCache", name = "Buff Cache Time", value = 150, min = 10, max = 1000, step = 10, callback = function(delay) BUFF_CACHE_DELAY = delay end })
+
+AlphaMenu:MenuElement({id = "PrintDmg", name = "Print Damage Warnings", value = false})
+AlphaMenu:MenuElement({id = "PrintBuff", name = "Print Buff Create", value = false})
+AlphaMenu:MenuElement({id = "PrintMissile", name = "Print Missile Create", value = false})
+AlphaMenu:MenuElement({id = "PrintSkill", name = "Print Skill Used", value = false})
+
+MISSILE_CACHE_DELAY =AlphaMenu.Performance.BuffCache:Value()
+PARTICLE_CACHE_DELAY =AlphaMenu.Performance.ParticleCache:Value()
+BUFF_CACHE_DELAY =AlphaMenu.Performance.BuffCache:Value()
 
 _G.Alpha.Menu = Menu
 	
