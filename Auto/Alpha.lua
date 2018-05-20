@@ -4288,7 +4288,6 @@ function __DamageManager:__init()
 			Danger = 1,
 		},
 		
-		
 		--[Syndra Skills]--
 		["SyndraQ"] = 
 		{
@@ -4303,6 +4302,7 @@ function __DamageManager:__init()
 			APScaling ={.65, .65, .65, .65, .65, .7475},
 			Danger = 1,
 		},
+		
 		["SyndraE"] = 
 		{
 			HeroName = "Syndra",
@@ -4316,12 +4316,13 @@ function __DamageManager:__init()
 			Danger = 3,
 			CCType = BUFF_KNOCKBACK,
 		},
+		
 		["SyndraEMis"] = 
 		{
 			HeroName = "Syndra",
 			SpellName = "Scatter the Weak",
 			SpellSlot = _E,
-			DamageType = DAMAGE_TYPE_MAGICAL,			
+			DamageType = DAMAGE_TYPE_MAGICAL,
 			TargetType = TARGET_TYPE_LINE,		
 			MissileName = "SyndraESphereMissile",
 			Radius = 75,
@@ -4330,6 +4331,7 @@ function __DamageManager:__init()
 			Danger = 4,
 			CCType = BUFF_STUN,
 		},
+		
 		["SyndraR"] = 
 		{
 			HeroName = "Syndra",
@@ -4358,8 +4360,6 @@ function __DamageManager:__init()
 			APScaling = .9,
 			Danger = 3,
 		},
-		
-		
 		--[Veigar Skills]--
 		
 		["VeigarBalefulStrike"] = 
@@ -4744,10 +4744,10 @@ function __DamageManager:CheckCircleMissileCollision(skillshot, targetList)
 		for _, target in LocalPairs(targetList) do
 			if target~= nil and LocalType(target) == "userdata" then
 				local nextTargetPos = Geometry:PredictUnitPosition(target, .2)
-				if Geometry:IsInRange(nextTargetPos, skillshot.data.missileData.endPos, skillshot.data.missileData.width + target.boundingRadius) then
+				if Geometry:IsInRange(nextTargetPos, skillshot.data.missileData.endPos, skillshot.Radius or( skillshot.data.missileData.width + target.boundingRadius)) then
 					local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
 					self:IncomingDamage(owner, target, damage, self.MissileNames[skillshot.name].CCType,true)
-				self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
+					self.IgnoredCollisions[skillshot.networkID] = LocalGameTimer() + 1
 				end
 			end
 		end
@@ -4922,6 +4922,7 @@ end
 function __DamageManager:MissileCreated(missile)
 	if self.MissileNames[missile.name] then
 		missile.Sort = self.MissileNames[missile.name].TargetType
+		missile.Radius = self.MissileNames[missile.name].Radius
 		if missile.Sort == TARGET_TYPE_CIRCLE then
 			self:OnUntargetedMissileTable(missile)
 		elseif missile.data.missileData.target > 0 then
