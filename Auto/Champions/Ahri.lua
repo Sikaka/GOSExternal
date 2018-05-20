@@ -23,7 +23,8 @@ function LoadScript()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 
 	Menu.Skills:MenuElement({id = "R", name = "[R] Spirit Rush", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Auto", name = "Dodge In Combo", value = true, toggle = true })
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Danger Level (Combo)", value = 2, min = 1, max = 6, step = 1 })
+	Menu.Skills.R:MenuElement({id = "Combo", name = "Danger Level (Auto) Accuracy", value = 4, min = 1, max = 6, step = 1 })
 
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
@@ -33,11 +34,14 @@ function LoadScript()
 end
 
 function OnSpellCast(spell)
-	if spell.isEnemy and Ready(_R) and Menu.Skills.Combo:Value() and Menu.Skills.R.Auto:Value() then
-		if LocalDamageManager:WillSpellHit( spell.data,myHero) then
-			--Calculate safe position?
-			local target = GetTarget(Q.Range)
+	if spell.isEnemy and Ready(_R) then
+		local danger = Menu.Skills.R.Auto:Value()
+		if Menu.Skills.Combo:Value() and Menu.Skills.R.Combo:Value() > danger then
+			danger = Menu.Skills.R.Combo:Value()
+		end
+		if LocalDamageManager:DodgeSpell(spell.data,myHero, danger) then			
 			local dashPos = mousePos
+			local target = GetTarget(R.Range + R.Radius)
 			if CanTarget(target) then
 				local rotation = math.random(30,70)
 				if LocalGeometry:Angle(myHero.pos, target.pos) - LocalGeometry:Angle(myHero.pos, mousePos) < 0 then
