@@ -4287,6 +4287,63 @@ function __DamageManager:__init()
 			APScaling = .3,
 			Danger = 1,
 		},
+		
+		
+		--[Syndra Skills]--
+		["SyndraQ"] = 
+		{
+			HeroName = "Syndra",
+			SpellName = "Dark Sphere",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,			
+			MissileName = "SyndraQSpell",
+			Radius = 200,
+			Damage = {50,95,140,185,230, 264.5},
+			APScaling ={.65, .65, .65, .65, .65, .7475},
+			Danger = 1,
+		},
+		["SyndraE"] = 
+		{
+			HeroName = "Syndra",
+			Alternate = {"SyndraEMis"},
+			SpellName = "Scatter the Weak",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_ARC,
+			Damage = {70,115,160,205,250},
+			APScaling =.6,
+			Danger = 3,
+			CCType = BUFF_KNOCKBACK,
+		},
+		["SyndraEMis"] = 
+		{
+			HeroName = "Syndra",
+			SpellName = "Scatter the Weak",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,		
+			MissileName = "SyndraESphereMissile",
+			Radius = 75,
+			Damage = {70,115,160,205,250},
+			APScaling =.6,
+			Danger = 4,
+			CCType = BUFF_STUN,
+		},
+		["SyndraR"] = 
+		{
+			HeroName = "Syndra",
+			Alias = "SyndraRCastTime",
+			SpellName = "Unleashed Power",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {270,405,540},
+			APScaling =.6,
+			Danger = 4,
+		},
+		
+		
 		--[ZILEAN SKILLS]--
 		["ZileanQ"] = 
 		{
