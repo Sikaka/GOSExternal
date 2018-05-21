@@ -42,7 +42,7 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.31,
+        Version = 1.32,
     },
     Dependencies = {
         Alpha = {

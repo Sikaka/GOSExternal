@@ -17,6 +17,8 @@ local CastSpell 					= _G.Control.CastSpell
 local LocalGameIsChatOpen			= Game.IsChatOpen;
 local LocalStringSub				= string.sub;
 local LocalStringLen				= string.len;
+local LocalPairs					= pairs;
+
 function StringEndsWith(str, word)
 	return LocalStringSub(str, - LocalStringLen(word)) == word;
 end
