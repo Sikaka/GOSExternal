@@ -85,10 +85,18 @@ local function AutoUpdate()
         --        
         writeModule()
 		
+		--Load all dependencies
+		local currentData = dofile(AUTO_PATH..oldVersion)		
+		for k,v in pairs(currentData.Dependencies) do
+			if FileExist(AUTO_PATH..k..dotlua) then
+				dofile(AUTO_PATH..k..dotlua) 
+			end
+		end		
+		
 		--Write the core module
 		writeModule(readAll(AUTO_PATH..coreName))
 		writeModule(readAll(CHAMP_PATH..charName..dotlua))
-		
+				
 		--Load the active module
 		dofile(AUTO_PATH.."dynamicScript"..dotlua) 
     end	    

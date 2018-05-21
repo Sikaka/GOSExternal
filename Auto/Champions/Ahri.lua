@@ -23,8 +23,8 @@ function LoadScript()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Minimum Mana", value = 20, min = 1, max = 100, step = 1 })
 
 	Menu.Skills:MenuElement({id = "R", name = "[R] Spirit Rush", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Auto", name = "Danger Level (Combo)", value = 2, min = 1, max = 6, step = 1 })
-	Menu.Skills.R:MenuElement({id = "Combo", name = "Danger Level (Auto) Accuracy", value = 4, min = 1, max = 6, step = 1 })
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Danger Level (Auto)", value = 4, min = 1, max = 6, step = 1 })
+	Menu.Skills.R:MenuElement({id = "Combo", name = "Danger Level (Combo)", value = 1, min = 1, max = 6, step = 1 })
 
 	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
@@ -33,23 +33,22 @@ function LoadScript()
 	Callback.Add("Tick", function() Tick() end)
 end
 
+
+function Rotate(vector, angle)
+	print("Start: " .. vector.x.. ", ".. vector.y .. ", ".. vector.z)
+	vector.x = vector.x *  math.cos(angle) - vector.z *  math.sin(angle)
+	vector.z = vector.x * math.sin(angle) + vector.z * math.cos(angle)
+	print("End: " .. vector.x.. ", ".. vector.y .. ", ".. vector.z)
+	return vector
+end
 function OnSpellCast(spell)
 	if spell.isEnemy and Ready(_R) then
-		local danger = Menu.Skills.R.Auto:Value()
-		if Menu.Skills.Combo:Value() and Menu.Skills.R.Combo:Value() > danger then
-			danger = Menu.Skills.R.Combo:Value()
-		end
-		if LocalDamageManager:DodgeSpell(spell.data,myHero, danger) then			
-			local dashPos = mousePos
-			local target = GetTarget(R.Range + R.Radius)
-			if CanTarget(target) then
-				local rotation = math.random(30,70)
-				if LocalGeometry:Angle(myHero.pos, target.pos) - LocalGeometry:Angle(myHero.pos, mousePos) < 0 then
-					rotation = - rotation
-				end
-				dashPos = myHero.pos + (target.pos - myHero.pos):Normalized():Rotated(0, 0, rotation) * R.Range
-			end
-			CastSpell(HK_R, dashPos)
+		local hitDetails = LocalDamageManager:GetSpellHitDetails(spell,myHero)
+		if hitDetails.Hit and hitDetails.Path then
+			if hitDetails.Danger >= Menu.Skills.R.Auto:Value() or (Menu.Skills.Combo:Value() and hitDetails.Danger >= Menu.Skills.R.Combo:Value()) then	
+				local dashPos = myHero.pos + hitDetails.Path * R.Range				
+				CastSpell(HK_R, dashPos)
+			end				
 		end
 	end
 end
@@ -62,9 +61,10 @@ function Tick()
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 		local target = GetTarget(E.Range)
 		--Get cast position for target
-		if target and CanTarget(target) and Menu.Skills.Combo:Value() then
+		if target and CanTarget(target) then
+			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision, E.IsLine)
-			if castPosition and accuracy >= Menu.Skills.E.Accuracy:Value() and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
+			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
 				NextTick = LocalGameTimer() + .25
 				CastSpell(HK_E, castPosition)
 				return
@@ -77,8 +77,8 @@ function Tick()
 		--Get cast position for target
 		if target and CanTarget(target) then		
 			--Check the damage we will deal to the target
-			local targetQDamage = 2 * _G.Alpha.DamageManager:CalculateMagicDamage(myHero, target, myHero.ap * .65 + ({75,120,165,210,255})[myHero:GetSpellData(_Q).level])
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.Q.Accuracy:Value() or 6
+			local targetQDamage = 2 * _G.Alpha.DamageManager:CalculateMagicDamage(myHero, target, myHero.ap * .65 + ({75,120,165,210,255})[myHero:GetSpellData(_Q).level])			
+			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
 			if targetQDamage > target.health and accuracyRequired > Menu.Skills.Q.KSAccuracy:Value() then
 				accuracyRequired = Menu.Skills.Q.KSAccuracy:Value()
 			end

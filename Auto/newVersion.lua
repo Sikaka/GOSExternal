@@ -1,11 +1,11 @@
 Data = {
     Loader = {
-        Version = 1,
+        Version = 1.1,
     },
     Champions = {
         Ahri = {
             Changelog = "Ahri Changelog Here",
-            Version = 1.33,
+            Version = 1.34,
         },
         Brand = {
             Changelog = "Brand Changelog Here",
@@ -13,7 +13,7 @@ Data = {
         },
         Fiora = {
             Changelog = "Fiora Changelog Here",
-            Version = 1.21,
+            Version = 1.3,
         },
         Karthus = {
             Changelog = "Karthus Changelog Here",
@@ -42,11 +42,14 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.32,
+        Version = 1.33,
     },
     Dependencies = {
         Alpha = {
-            Version = 1.32,
+            Version = 1.4,
+        },
+        Activator = {
+            Version = 1.1,
         },
     },
 }

@@ -32,22 +32,25 @@ end
 
 
 function OnSpellCast(spell)
-	if spell.isEnemy and Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
-		local danger = Menu.Skills.Q.DodgeAuto:Value()
-		if Menu.Skills.Combo:Value() and Menu.Skills.Q.DodgeCombo:Value() > danger then
-			danger = Menu.Skills.Q.DodgeCombo:Value()
-		end
-		if LocalDamageManager:DodgeSpell(spell.data, myHero, danger) then
-			local dashPos = mousePos
-			local target = LocalObjectManager:GetHeroByHandle(spell.owner)
-			if CanTarget(target) then
-				local rotation = math.random(60,90)
-				if LocalGeometry:Angle(myHero.pos, target.pos) - LocalGeometry:Angle(myHero.pos, mousePos) < 0 then
-					rotation = - rotation
+	if spell.isEnemy then
+		local hitDetails = LocalDamageManager:GetSpellHitDetails(spell,myHero)
+		if hitDetails.Hit and hitDetails.Path then
+			if hitDetails.CC and Ready(_W) and hitDetails.HitTime < .7 then				
+				local target = GetTarget(W.Range, true)
+				if target then
+					local aimPosition = LocalGeometry:PredictUnitPosition(target, .75)
+					if LocalGeometry:IsInRange(myHero.pos, aimPosition, W.Range) then
+						CastSpell(HK_W, aimPosition)
+						return
+					end
 				end
-				dashPos = myHero.pos + (target.pos - myHero.pos):Normalized():Rotated(0, 0, rotation) * Q.Range
-				CastSpell(HK_Q, dodgePos)
-				NextTick = LocalGameTimer() +.25
+			end
+			if Ready(_Q) then
+				if hitDetails.Danger >= Menu.Skills.Q.DodgeAuto:Value() or (Menu.Skills.Combo:Value() and hitDetails.Danger >= Menu.Skills.Q.DodgeCombo:Value()) then	
+					local dashPos = myHero.pos + hitDetails.Path * Q.Range				
+					CastSpell(HK_Q, dashPos)
+					NextTick = LocalGameTimer() +.25
+				end	
 			end
 		end
 	end

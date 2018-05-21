@@ -1,5 +1,4 @@
 if _G.Alpha then return end
-	print("ALPHA LOADED")
 _G.Alpha =
 {
 	Menu = nil,
@@ -41,6 +40,9 @@ local LocalPi						= math.pi
 local LocalMax						= math.max
 local LocalMin						= math.min
 local LocalFloor					= math.floor
+local LocalRandom					= math.random
+local LocalCos						= math.cos
+local LocalSin						= math.sin	
 
 
 local DAMAGE_TYPE_TRUE				= 0
@@ -90,6 +92,13 @@ function __Geometry:VectorPointProjectionOnLineSegment(v1, v2, v)
 	local isOnSegment = rS == rL
 	local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
 	return pointSegment, pointLine, isOnSegment
+end
+
+function __Geometry:RotateAroundPoint(v1,v2, angle)
+	local c, s = LocalCos(angle), LocalSin(angle)
+	local x = ((v1.x - v2.x) * c) - ((v1.z - v2.z) * s) + v2.x
+	local z = ((v1.z - v2.z) * c) + ((v1.x - v2.x) * s) + v2.z
+	return Vector(x, v1.y, z or 0)
 end
 
 function __Geometry:GetDistanceSqr(p1, p2)
@@ -543,20 +552,15 @@ function __ObjectManager:Tick()
 			end
 		end	
 		
-		local particleCount = LocalGameParticleCount()
-		
-		if particleCount ~= self.LastParticleCount then
-			self.LastParticleCount = particleCount
-			for i = 1, particleCount do 
-				local particle = LocalGameParticle(i)
-				if particle ~= nil and LocalType(particle) == "userdata" then
-					if self.CachedParticles[particle.networkID] then
-						self.CachedParticles[particle.networkID].valid = true
-					else
-						local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
-						self.CachedParticles[particle.networkID] =particleData
-						self:ParticleCreated(particleData)
-					end
+		for i = 1, LocalGameParticleCount() do 
+			local particle = LocalGameParticle(i)
+			if particle ~= nil and LocalType(particle) == "userdata" then
+				if self.CachedParticles[particle.networkID] then
+					self.CachedParticles[particle.networkID].valid = true
+				else
+					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
+					self.CachedParticles[particle.networkID] =particleData
+					self:ParticleCreated(particleData)
 				end
 			end
 		end
@@ -578,34 +582,30 @@ function __ObjectManager:Tick()
 			end
 		end
 		
-		local missileCount = LocalGameMissileCount()
-		if missileCount ~= self.LastMissileCount then
-			self.LastMissileCount = missileCount
-			for i = 1, missileCount do 
-				local missile = LocalGameMissile(i)
-				if missile ~= nil and LocalType(missile) == "userdata" and missile.missileData then
-					if self.CachedMissiles[missile.networkID] then
-						self.CachedMissiles[missile.networkID].valid = true
-					else
-						--We need a direct reference to the missile so we can query its current position later. If not we'd have to calculate it using speed/start/end data
-						local missileData = 
-						{ 
-							valid = true,
-							name = missile.name,
-							forward = Vector(
-								missile.missileData.endPos.x -missile.missileData.startPos.x,
-								missile.missileData.endPos.y -missile.missileData.startPos.y,
-								missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
-							networkID = missile.networkID,
-							data = missile,							
-							endTime = LocalGameTimer() + Geometry:GetDistance(missile.missileData.endPos, missile.missileData.startPos) / missile.missileData.speed,
-						}
-						if DamageManager.MissileNames[missile.name] and DamageManager.MissileNames[missile.name].MissileTime then
-							missileData.endTime = LocalGameTimer() + DamageManager.MissileNames[missile.name].MissileTime
-						end
-						self.CachedMissiles[missile.networkID] =missileData
-						self:MissileCreated(missileData)
+		for i = 1, LocalGameMissileCount() do 
+			local missile = LocalGameMissile(i)
+			if missile ~= nil and LocalType(missile) == "userdata" and missile.missileData then
+				if self.CachedMissiles[missile.networkID] then
+					self.CachedMissiles[missile.networkID].valid = true
+				else
+					--We need a direct reference to the missile so we can query its current position later. If not we'd have to calculate it using speed/start/end data
+					local missileData = 
+					{ 
+						valid = true,
+						name = missile.name,
+						forward = Vector(
+							missile.missileData.endPos.x -missile.missileData.startPos.x,
+							missile.missileData.endPos.y -missile.missileData.startPos.y,
+							missile.missileData.endPos.z -missile.missileData.startPos.z):Normalized(),
+						networkID = missile.networkID,
+						data = missile,							
+						endTime = LocalGameTimer() + Geometry:GetDistance(missile.missileData.endPos, missile.missileData.startPos) / missile.missileData.speed,
+					}
+					if DamageManager.MissileNames[missile.name] and DamageManager.MissileNames[missile.name].MissileTime then
+						missileData.endTime = LocalGameTimer() + DamageManager.MissileNames[missile.name].MissileTime
 					end
+					self.CachedMissiles[missile.networkID] =missileData
+					self:MissileCreated(missileData)
 				end
 			end
 		end
@@ -736,6 +736,34 @@ function __DamageManager:__init()
 	--Master lookup table. NOT WHAT IS USED FOR ACTUAL MATCHING. It's used for loading
 	self.MasterSkillLookupTable =
 	{	
+		--[Item calculations]--
+		
+		--Bilgewater Cutlass: 3144
+		[3144] =
+		{
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = 100,
+			Range = 550,
+		},
+		--Blade of the Ruined King: 3153
+		[3153] =
+		{
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = 100,
+			Range = 550,
+		},
+		--Hextech Gunblade: 3146
+		[3146] =
+		{
+			DamageType = DAMAGE_TYPE_MAGICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {175,180,184,189,193,198,203,207,212,216,221,225,230,235,239,244,248,253},
+			APScaling = .3,
+			Range = 700,
+		},
+		
 		--[AATROX SKILLS]--
 		--AatroxQ can't be handled properly. It's dealt with using a BUFF (to make him untargetable I guess) AatroxQDescent triggers when he's attacking
 		["AatroxQ"] = 
@@ -1741,7 +1769,7 @@ function __DamageManager:__init()
 			MissileName = "EzrealTrueshotBarrage",
 			Radius = 160,
 			Damage = {350,500,650},
-			ADScaling = 1,
+			BonusADScaling = 1,
 			APScaling = .9,
 			Danger = 3,
 		},
@@ -4873,13 +4901,31 @@ function __DamageManager:GetSpellHitDetails(spell, target)
 		end
 	end
 	
+	local Avoid = nil
+	if target.isMe then
+		local deltaAngle = Geometry:Angle(target.pos, spell.data.startPos) - Geometry:Angle(target.pos, mousePos)
+		Avoid = (spell.data.startPos-target.pos):Normalized()		
+		if deltaAngle < 0 then
+			Avoid = Geometry:RotateAroundPoint(Avoid, Vector(), -45)
+		else
+			Avoid = Geometry:RotateAroundPoint(Avoid, Vector(), 45)
+		end
+	end
+	
 	return 
 	{
 		Hit = willHit, 
 		Danger = spellInfo.Danger,
+		
+		Forward = (spellCastPos-spell.data.startPos):Normalized(),
+		
 		CC = spellInfo.CCType,
+		
 		Damage = DamageManager:CalculateSkillDamage(owner, target, spellInfo),
+		
 		HitTime = hitTime,
+		
+		Path = Avoid
 	}
 end
 
@@ -4896,7 +4942,7 @@ function __DamageManager:DodgeSpell(spell, target, danger, dist)
 	
 	--TODO: Re-add offsetting dodge based on mouse position... this is messy AF
 	local castPos = LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z)
-	local dodgePos = nextTargetPos + (castPos - spell.startPos):Normalized():Rotated(0,0, math.random(75, 90)) * LocalMax(Dist or 0, (spellInfo.Radius or 100 + target.boundingRadius) * 2)
+	local dodgePos = nextTargetPos + (castPos - spell.startPos):Normalized():Rotated(0,math.random(75, 90),0) * LocalMax(Dist or 0, (spellInfo.Radius or 100 + target.boundingRadius) * 2)
 	if spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
 		castPos = spell.startPos + (LocalVector(spell.placementPos.x, spell.placementPos.y,spell.placementPos.z) - spell.startPos):Normalized() * spell.range				
 		local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.startPos, castPos, nextTargetPos)		
@@ -5036,9 +5082,12 @@ end
 
 function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 	local damage = 0
+	if not skillInfo then return damage end
 	if skillInfo.Damage or skillInfo.SpecialDamage or skillInfo.CurrentHealth then
 		if skillInfo.SpecialDamage then
 			damage = skillInfo.SpecialDamage(owner, target)
+		elseif not skillInfo.SpellSlot and skillInfo.Damage then
+			damage = LocalType(skillInfo.Damage) == "table" and skillInfo.Damage[owner.levelData.lvl] or skillInfo.Damage
 		else
 			--TODO: Make sure this handles nil values like a champ
 			
@@ -5336,6 +5385,7 @@ function __BuffManager:HasBuffType(target, buffType, minimumDuration)
 	end
 end
 
+print("Loaded Auto3.0: Alpha")
 --Initialization
 AlphaMenu = MenuElement({type = MENU, id = "Alpha", name = "[ALPHA]"})
 AlphaMenu:MenuElement({id = "Performance", name = "Performance", type = MENU})
