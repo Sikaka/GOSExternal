@@ -121,7 +121,6 @@ end
 
 function __Geometry:IsPointInArc(source, origin, target, angle, range)
 	local deltaAngle = LocalAbs(self:Angle(origin, target) - self:Angle(source, origin))
-	print(deltaAngle)
 	if deltaAngle < angle and self:IsInRange(origin,target,range) then
 		return true
 	end
@@ -184,7 +183,7 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		end
 		
 		local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
-		if movementRadius - target.boundingRadius <= radius  then				
+		if movementRadius <= radius  then				
 			hitChance = 3
 		end
 		
@@ -222,12 +221,12 @@ end
 function __Geometry:PredictReactionTime(unit, minimumReactionTime)
 	if not minimumReactionTime then minimumReactionTime = .15 end
 	local reactionTime = minimumReactionTime
-	if unit.activeSpell and unit.activeSpell.valid then		
+	if unit.activeSpell and unit.activeSpell.valid then
 		local windupRemaining = unit.activeSpell.startTime + unit.activeSpell.windup - Game.Timer()
 		if windupRemaining > 0 then
 			reactionTime = windupRemaining
 			if unit.activeSpell.isAutoAttack then
-				reactionTime = reactionTime / 3
+				reactionTime = reactionTime / 2
 			end
 		end
 	end
@@ -678,6 +677,7 @@ class "__DamageManager"
 --Credits LazyXerath for extra dmg reduction methods
 function __DamageManager:__init()
 	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true", [BUFF_CHARM] = "true"}
+	self.OnIncomingDamageCallbacks = {}
 	self.OnIncomingCCCallbacks = {}
 	
 	self.SiegeMinionList = {"Red_Minion_MechCannon", "Blue_Minion_MechCannon"}
@@ -761,6 +761,34 @@ function __DamageManager:__init()
 			TargetType = TARGET_TYPE_SINGLE,
 			Damage = {175,180,184,189,193,198,203,207,212,216,221,225,230,235,239,244,248,253},
 			APScaling = .3,
+			Range = 700,
+		},
+		--Tiamat: 3077
+		[3077] =
+		{
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Damage = 0,
+			ADScaling = .6,
+			Range = 400,
+		},
+		--Ravenous Hydra: 3074
+		[3074] =
+		{
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Damage = 0,
+			ADScaling = .6,
+			Range = 400,
+		},
+		
+		--Titanic Hydra: 3748
+		[3748] =
+		{
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_ARC,
+			Damage = 40,
+			MaximumHealth = .1,
 			Range = 700,
 		},
 		
@@ -4704,8 +4732,12 @@ function __DamageManager:LoadSpell(spellName, spellData, target)
 	print("Loaded skill: " .. spellName .. " on " .. target.charName)
 end
 
+local nextDamageTick = LocalGameTimer()
 function __DamageManager:Tick()
 	local currentTime = LocalGameTimer()	
+	if nextDamageTick > currentTime then return end
+	nextDamageTick = currentTime + .1
+	
 	for _, expires in LocalPairs(self.IgnoredCollisions) do
 		if currentTime > expires then
 			self.IgnoredCollisions[_] = nil
@@ -4742,6 +4774,11 @@ function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
 			print("No owner/target __DamageManager:IncomingDamage")
 		end
 	end
+	
+	if #self.OnIncomingDamageCallbacks then
+		self:DamageIncoming(target, damage, ccType, canDodge)
+	end
+	
 	--Trigger any registered OnCC callbacks. Send them the target, damage and type of cc so we can choose our actions
 	if ccType and #self.OnIncomingCCCallbacks then
 		self:IncomingCC(target, damage, ccType, canDodge)
@@ -4755,7 +4792,7 @@ function __DamageManager:CheckLineMissileCollision(skillshot, targetList)
 	local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)
 	for _, target in LocalPairs(targetList) do
 		if target~= nil and LocalType(target) == "userdata" then
-			local nextTargetPos = Geometry:PredictUnitPosition(target, .25)
+			local nextTargetPos = Geometry:PredictUnitPosition(target, .5)
 			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(skillshot.data.pos, nextPosition, nextTargetPos)
 			if isOnSegment and Geometry:IsInRange(nextTargetPos, pointLine, skillshot.data.missileData.width + target.boundingRadius) then
 				local damage = self:CalculateSkillDamage(owner, target, self.MissileNames[skillshot.name])
@@ -4925,7 +4962,9 @@ function __DamageManager:GetSpellHitDetails(spell, target)
 		
 		HitTime = hitTime,
 		
-		Path = Avoid
+		Path = Avoid,
+		
+		Collision = spellInfo.Collision,
 	}
 end
 
@@ -5010,6 +5049,7 @@ function __DamageManager:OnAutoAttackMissile(missile)
 			--Barrier/seraph/etc can still do it based on incoming dmg calculation though!
 			Danger = 0,
 		}
+		self:IncomingDamage(owner, target, damage)
 	end
 end
 
@@ -5128,6 +5168,23 @@ function __DamageManager:OnUntargetedMissileTable(missile)
 		end
 	end
 end
+
+--Register Incoming Damage Event
+function __DamageManager:OnIncomingDamage(cb)
+	if not self.CallbacksInitialized then
+		self.InitializeCallbacks()
+	end	
+	DamageManager.OnIncomingDamageCallbacks[#DamageManager.OnIncomingDamageCallbacks+1] = cb
+end
+
+--Trigger Incoming Damage Event
+function __DamageManager:DamageIncoming(target, damage, ccType, canDodge)
+	for i = 1, #self.OnIncomingDamageCallbacks do
+		self.OnIncomingDamageCallbacks[i](target, damage, ccType, canDodge);
+	end
+end
+
+
 
 --Register Incoming CC Event
 function __DamageManager:OnIncomingCC(cb)

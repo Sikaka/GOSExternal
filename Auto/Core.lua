@@ -142,11 +142,15 @@ function CastSpell(key, pos, isLine)
 	EnableOrb(true)		
 end
 
-function EnemyCount(origin, range)
+function EnemyCount(origin, range, delay)
 	local count = 0
 	for i  = 1,LocalGameHeroCount(i) do
 		local enemy = LocalGameHero(i)
-		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemy.pos, range) then
+		local enemyPos = enemy.pos
+		if delay then
+			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
+		end
+		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
 			count = count + 1
 		end			
 	end

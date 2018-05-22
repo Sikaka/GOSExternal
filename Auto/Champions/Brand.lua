@@ -14,6 +14,7 @@ function LoadScript()
 	Menu.Skills:MenuElement({id = "W", name = "[W] Pillar of Flame", type = MENU})
 	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Skills.W:MenuElement({id = "AccuracyAuto", name = "Auto Cast Accuracy", value = 3, min = 1, max = 6, step = 1 })
+	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast On Immobile", value = true })
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Auto Cast Mana", value = 30, min = 1, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Conflagration", type = MENU})
@@ -53,7 +54,8 @@ local NextTick = LocalGameTimer()
 function Tick()
 	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
-	if NextTick > currentTime then return end
+	if NextTick > currentTime then return end	
+	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
 	
 	local target = GetTarget(Q.Range)
 	if target and Ready(_Q) and  CanTarget(target) and (Menu.Skills.Combo:Value() or Menu.Skills.Q.Auto:Value()) then
@@ -95,7 +97,7 @@ function Tick()
 		if LocalBuffManager:HasBuff(target, "BrandAblaze", 1) then
 			radius = 725
 		end
-		if EnemyCount(target.pos, radius) >= Menu.Skills.R.Count:Value() then
+		if EnemyCount(target.pos, radius, LocalGeometry:GetSpellInterceptTime(myHero.pos, target.pos, R.Delay, R.Speed)) >= Menu.Skills.R.Count:Value() then
 			NextTick = LocalGameTimer() + .25
 			CastSpell(HK_R, target)
 			return

@@ -5,11 +5,11 @@ Data = {
     Champions = {
         Ahri = {
             Changelog = "Ahri Changelog Here",
-            Version = 1.34,
+            Version = 1.35,
         },
         Brand = {
             Changelog = "Brand Changelog Here",
-            Version = 1.2,
+            Version = 1.3,
         },
         Fiora = {
             Changelog = "Fiora Changelog Here",
@@ -25,7 +25,7 @@ Data = {
         },
         Lux = {
             Changelog = "Lux Changelog Here",
-            Version = 1.1,
+            Version = 1.2,
         },
         Lulu = {
             Changelog = "Lulu Changelog Here",
@@ -37,7 +37,7 @@ Data = {
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Zilean = {
             Changelog = "Zilean Changelog Here",
@@ -50,10 +50,10 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.4,
+            Version = 1.41,
         },
         Activator = {
-            Version = 1.1,
+            Version = 1.2,
         },
     },
 }
