@@ -15,6 +15,10 @@ Data = {
             Changelog = "Fiora Changelog Here",
             Version = 1.3,
         },
+        Heimerdinger = {
+            Changelog = "Heimerdinger Changelog Here",
+            Version = 1,
+        },
         Karthus = {
             Changelog = "Karthus Changelog Here",
             Version = 1.0,
