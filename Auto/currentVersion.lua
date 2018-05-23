@@ -58,6 +58,10 @@ Data = {
             Changelog = "Karthus Changelog Here",
             Version = 1,
         },
+        Xerath = {
+            Changelog = "Xerath Changelog Here",
+            Version = 1,
+        },
     },
 }
 
