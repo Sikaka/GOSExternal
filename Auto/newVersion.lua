@@ -35,6 +35,10 @@ Data = {
             Changelog = "Taliyah Changelog Here",
             Version = 1.3,
         },
+        Xerath = {
+            Changelog = "Xerath Changelog Here",
+            Version = 1,
+        },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
             Version = 1.1,
