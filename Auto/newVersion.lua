@@ -13,7 +13,7 @@ Data = {
         },
         Fiora = {
             Changelog = "Fiora Changelog Here",
-            Version = 1.3,
+            Version = 1.31,
         },
         Heimerdinger = {
             Changelog = "Heimerdinger Changelog Here",
@@ -46,14 +46,14 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.33,
+        Version = 1.34,
     },
     Dependencies = {
         Alpha = {
-            Version = 1.41,
+            Version = 1.42,
         },
         Activator = {
-            Version = 1.2,
+            Version = 1.21,
         },
     },
 }

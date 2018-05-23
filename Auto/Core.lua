@@ -46,7 +46,6 @@ end
 
 
 function GetTarget(range, isAD)
-	if forcedTarget and LocalGeometry:IsInRange(myHero.pos, forcedTarget.pos, range) then return forcedTarget end
 	if isAD then		
 		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
 	else
@@ -54,24 +53,6 @@ function GetTarget(range, isAD)
 	end
 end
 
-function WndMsg(msg,key)
-	if msg == 513 then
-		local starget = nil
-		local dist = 10000
-		for i  = 1,LocalGameHeroCount(i) do
-			local enemy = LocalGameHero(i)
-			if enemy and enemy.alive and enemy.isEnemy and LocalGeometry:GetDistanceSqr(mousePos, enemy.pos) < dist then
-				starget = enemy
-				dist = LocalGeometry:GetDistanceSqr(mousePos, enemy.pos)
-			end
-		end
-		if starget then
-			forcedTarget = starget
-		else
-			forcedTarget = nil
-		end
-	end	
-end
 
 function EnableOrb(bool)
     if _G.EOWLoaded then
@@ -211,6 +192,5 @@ DelayAction(function()
 	LocalBuffManager = _G.Alpha.BuffManager
 	LocalObjectManager = _G.Alpha.ObjectManager
 	LocalDamageManager = _G.Alpha.DamageManager
-	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 	LoadScript()
 end, remaining)
