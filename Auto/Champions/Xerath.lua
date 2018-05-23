@@ -84,17 +84,18 @@ function Tick()
 				local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, hero, range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 				if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, range - 200) then
 					local thisDmg = LocalDamageManager:CalculateSkillDamage(myHero, hero, "XerathArcanopulseChargeUp")
+					local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
 					--We can killsteal the target. Set them as our priority
-					if thisDmg >= hero.health and Menu.Skills.Q.Killsteal then
+					if incomingDmg < hero.health and incomingDmg +  thisDmg >= hero.health and Menu.Skills.Q.Killsteal then
 						CastSpell(HK_Q, aimPosition)
-						NextTick = LocalGameTimer() + .2					
+						NextTick = LocalGameTimer() + .3
 						return
 					end
 
-					if Menu.Skills.Q.Targets[hero.networkID]:Value() or chargeTime > 1.5 then
+					if Menu.Skills.Q.Targets[hero.networkID]:Value() or chargeTime > 1.75 then
 						if hitChance >= Menu.Skills.Q.Accuracy:Value() then
 							CastSpell(HK_Q, aimPosition)
-							NextTick = LocalGameTimer() + .2	
+							NextTick = LocalGameTimer() + .3
 							return
 						end
 					end

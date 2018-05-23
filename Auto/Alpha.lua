@@ -136,7 +136,7 @@ end
 
 function __Geometry:IsInRange(p1, p2, range)
 	if not p1 or not p2 then
-		local dInfo = debug.getinfo(1)
+		local dInfo = debug.getinfo(2)
 		print("Undefined IsInRange target. Please report. Method: " .. dInfo.name .. "  Line: " .. dInfo.linedefined)
 		return false
 	end
@@ -4648,6 +4648,18 @@ function __DamageManager:__init()
         },
 		
 		--[XERATH SKILLS]--
+        ["XerathArcanopulseChargeUp"] = 
+        {
+            HeroName = "Xerath",
+            SpellName = "Arcanopulse",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_LINE,
+            Radius = 125,
+            Damage = {80,120,160,200,240},
+            APScaling = .75,
+            Danger = 2,
+        },
         ["XerathArcaneBarrage2"] = 
         {
             HeroName = "Xerath",

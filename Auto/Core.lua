@@ -120,7 +120,7 @@ function CastSpell(key, pos, isLine)
 		
 	EnableOrb(false)
 	Control.CastSpell(key, pos)
-	EnableOrb(true)		
+	DelayAction(function() EnableOrb(true)	end, .1)	
 end
 
 function EnemyCount(origin, range, delay)

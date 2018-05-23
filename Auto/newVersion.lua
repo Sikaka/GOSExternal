@@ -37,7 +37,7 @@ Data = {
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
@@ -50,11 +50,11 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.34,
+        Version = 1.35,
     },
     Dependencies = {
         Alpha = {
-            Version = 1.42,
+            Version = 1.43,
         },
         Activator = {
             Version = 1.21,
