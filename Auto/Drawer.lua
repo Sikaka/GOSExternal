@@ -16,6 +16,125 @@ function __Drawer:__init()
             e = true, er = myHero:GetSpellData(_E).range,
             r = true, rr = myHero:GetSpellData(_R).range
       }
+      if myHero.charName == "Aatrox" then
+            self.spellDraw = { q = true, qr = 650, e = true, er = 1000, r = true, rr = 550 }
+      elseif myHero.charName == "Ahri" then
+            self.spellDraw = { q = true, qr = 880, w = true, wr = 700, e = true, er = 975, r = true, rr = 450 }
+      elseif myHero.charName == "Akali" then
+            self.spellDraw = { q = true, qr = 600 + 120, w = true, wr = 475, e = true, er = 300, r = true, rr = 700 + 120 }
+      elseif myHero.charName == "Alistar" then
+            self.spellDraw = { q = true, qr = 365, w = true, wr = 650 + 120, e = true, er = 350 }
+      elseif myHero.charName == "Amumu" then
+            self.spellDraw = { q = true, qr = 1100, w = true, wr = 300, e = true, er = 350, r = true, rr = 550 }
+      elseif myHero.charName == "Anivia" then
+            self.spellDraw = { q = true, qr = 1075, w = true, wr = 1000, e = true, er = 650 + 120, r = true, rr = 750 }
+      elseif myHero.charName == "Annie" then
+            self.spellDraw = { q = true, qr = 625 + 120, w = true, wr = 625, r = true, rr = 600 }
+      elseif myHero.charName == "Ashe" then
+            self.spellDraw = { w = true, wr = 1200 }
+      elseif myHero.charName == "AurelionSol" then
+            self.spellDraw = { q = true, qr = 1075, w = true, wr = 600, e = true, ef = function() local eLvl = myHero:GetSpellData(_E).level; if eLvl == 0 then return 3000 else return 2000 + 1000 * eLvl end end, r = true, rr = 1500 }
+      elseif myHero.charName == "Azir" then
+            self.spellDraw = { q = true, qr = 740, w = true, wr = 500, e = true, er = 1100, r = true, rr = 250 }
+      elseif myHero.charName == "Bard" then
+            self.spellDraw = { q = true, qr = 950, w = true, wr = 800, e = true, er = 900, r = true, rr = 3400 }
+      elseif myHero.charName == "Blitzcrank" then
+            self.spellDraw = { q = true, qr = 925, e = true, er = 300, r = true, rr = 600 }
+      elseif myHero.charName == "Brand" then
+            self.spellDraw = { q = true, qr = 1050, w = true, wr = 900, e = true, er = 625, r = true, rr = 750 }
+      elseif myHero.charName == "Braum" then
+            self.spellDraw = { q = true, qr = 1000, w = true, wr = 650 + 120, r = true, rr = 1250 }
+      elseif myHero.charName == "Caitlyn" then
+            self.spellDraw = { q = true, qr = 1250, w = true, wr = 800, e = true, er = 750, r = true, rf = function() local rLvl = myHero:GetSpellData(_R).level; if rLvl == 0 then return 2000 else return 1500 + 500 * rLvl end end }
+      elseif myHero.charName == "Camille" then
+            self.spellDraw = { q = true, qr = 325, w = true, wr = 610, e = true, er = 800, r = true, rr = 475 }
+      elseif myHero.charName == "Cassiopeia" then
+            self.spellDraw = { q = true, qr = 850, w = true, wr = 800, e = true, er = 700, r = true, rr = 825 }
+      elseif myHero.charName == "Chogath" then
+            self.spellDraw = { q = true, qr = 950, w = true, wr = 650, e = true, er = 500, r = true, rr = 175 + 120 }
+      elseif myHero.charName == "Corki" then
+            self.spellDraw = { q = true, qr = 825, w = true, wr = 600, r = true, rr = 1225 }
+      elseif myHero.charName == "Darius" then
+            self.spellDraw = { q = true, qr = 425, w = true, wr = 300, e = true, er = 535, r = true, rr = 460 + 120 }
+      elseif myHero.charName == "Diana" then
+            self.spellDraw = { q = true, qr = 900, w = true, wr = 200, e = true, er = 450, r = true, rr = 825 }
+      elseif myHero.charName == "DrMundo" then
+            self.spellDraw = { q = true, qr = 975, w = true, wr = 325 }
+      elseif myHero.charName == "Draven" then
+            self.spellDraw = { e = true, er = 1050 }
+      elseif myHero.charName == "Ekko" then
+            self.spellDraw = { q = true, qr = 1075, w = true, wr = 1600, e = true, er = 325 }
+      elseif myHero.charName == "Elise" then
+            -- self.spellDraw = { need check form buff qHuman = 625, qSpider = 475, wHuman = 950, wSpider = math.huge(none), eHuman = 1075, eSpider = 750 }
+      elseif myHero.charName == "Evelynn" then
+            self.spellDraw = { q = true, qr = 800, w = true, wf = function() local wLvl = myHero:GetSpellData(_W).level; if wLvl == 0 then return 1200 else return 1100 + 100 * wLvl end end, e = true, er = 210, r = true, rr = 450 }
+      elseif myHero.charName == "Ezreal" then
+            self.spellDraw = { q = true, qr = 1150, w = true, wr = 1000, e = true, er = 475 }
+      elseif myHero.charName == "Fiddlesticks" then
+            self.spellDraw = { q = true, qr = 575 + 120, w = true, wr = 650, e = true, er = 750 + 120, r = true, rr = 800 }
+      elseif myHero.charName == "Fiora" then
+            self.spellDraw = { q = true, qr = 400, w = true, wr = 750, r = true, rr = 500 + 120 }
+      elseif myHero.charName == "Fizz" then
+            self.spellDraw = { q = true, qr = 550 + 120, e = true, er = 400, r = true, rr = 1300 }
+      elseif myHero.charName == "Galio" then
+            self.spellDraw = { q = true, qr = 825, w = true, wr = 350, e = true, er = 650, r = true, rf = function() local rLvl = myHero:GetSpellData(_R).level; if rLvl == 0 then return 4000 else return 3250 + 750 * rLvl end end }
+      elseif myHero.charName == "Gangplank" then
+            self.spellDraw = { q = true, qr = 625 + 120, w = true, wr = 650, e = true, er = 1000 }
+      elseif myHero.charName == "Garen" then
+            self.spellDraw = { e = true, er = 325, r = true, rr = 400 + 120 }
+      elseif myHero.charName == "Gnar" then
+            self.spellDraw = { q = true, qr = 1100, r = true, rr = 475, w = false, e = false } -- wr (mega gnar) = 550, er (mini gnar) = 475, er (mega gnar) = 600
+      elseif myHero.charName == "Gragas" then
+            self.spellDraw = { q = true, qr = 850, e = true, er = 600, r = true, rr = 1000 }
+      elseif myHero.charName == "Graves" then
+            self.spellDraw = { q = true, qr = 925, w = true, wr = 950, e = true, er = 475, r = true, rr = 1000 }
+      elseif myHero.charName == "Hecarim" then
+            self.spellDraw = { q = true, qr = 350, w = true, wr = 575 + 120, r = true, rr = 1000 }
+      elseif myHero.charName == "Heimerdinger" then
+            self.spellDraw = { q = false, w = true, wr = 1325, e = true, er = 970 } --  qr (noR) = 350, wr (R) = 450
+      elseif myHero.charName == "Illaoi" then
+            self.spellDraw = { q = true, qr = 850, w = true, wr = 350 + 120, e = true, er = 900, r = true, rr = 450 }
+      elseif myHero.charName == "Irelia" then
+            self.spellDraw = { q = true, qr = 625 + 120, w = true, wr = 825, e = true, er = 900, r = true, rr = 1000 }
+      elseif myHero.charName == "Ivern" then
+            self.spellDraw = { q = true, qr = 1075, w = true, wr = 1000, e = true, er = 750 + 120 }
+      elseif myHero.charName == "Janna" then
+            self.spellDraw = { q = true, qf = function() local qt = GameTimer() - self.LastQk;if qt > 3 then return 1000 end local qrange = qt * 250;if qrange > 1750 then return 1750 end return qrange end, w = true, wr = 550 + 120, e = true, er = 800 + 120, r = true, rr = 725 }
+      elseif myHero.charName == "JarvanIV" then
+            self.spellDraw = { q = true, qr = 770, w = true, wr = 625, e = true, er = 860, r = true, rr = 650 + 120 }
+      elseif myHero.charName == "Jax" then
+            self.spellDraw = { q = true, qr = 700 + 120, e = true, er = 300 }
+      elseif myHero.charName == "Jayce" then
+            --self.spellDraw = { q = true, qr = 700 + 120, e = true, er = 300, r = true }  (Mercury Hammer: q=600+120, w=285, e=240+120; Mercury Cannon: q=1050/1470, w=active, e=650
+      elseif myHero.charName == "Jhin" then
+            self.spellDraw = { q = true, qr = 550 + 120, w = true, wr = 3000, e = true, er = 750, r = true, rr = 3500 }
+      elseif myHero.charName == "Jinx" then
+            self.spellDraw = { q = true, qf = function() if self:HasBuff(myHero, "jinxq") then return 525 + myHero.boundingRadius + 35 else local qExtra = 25 * myHero:GetSpellData(_Q).level; return 575 + qExtra + myHero.boundingRadius + 35 end end, w = true, wr = 1450, e = true, er = 900 }
+      elseif myHero.charName == "KogMaw" then
+            self.spellDraw = { q = true, qr = 1175, e = true, er = 1280, r = true, rf = function() local rlvl = myHero:GetSpellData(_R).level; if rlvl == 0 then return 1200 else return 900 + 300 * rlvl end end }
+      elseif myHero.charName == "Lucian" then
+            self.spellDraw = { q = true, qr = 500+120, w = true, wr = 900+350, e = true, er = 425, r = true, rr = 1200 }
+            elseif myHero.charName == "Morgana" then
+            self.spellDraw = { q = true, qr = 1175, w = true, wr = 900, e = true, er = 800, r = true, rr = 625 }
+      elseif myHero.charName == "Nami" then
+            self.spellDraw = { q = true, qr = 875, w = true, wr = 725, e = true, er = 800, r = true, rr = 2750 }
+      elseif myHero.charName == "Sivir" then
+            self.spellDraw = { q = true, qr = 1250, r = true, rr = 1000 }
+      elseif myHero.charName == "Teemo" then
+            self.spellDraw = { q = true, qr = 680, r = true, rf = function() local rLvl = myHero:GetSpellData(_R).level; if rLvl == 0 then rLvl = 1 end return 150 + ( 250 * rLvl ) end }
+      elseif myHero.charName == "Twitch" then
+            self.spellDraw = { w = true, wr = 950, e = true, er = 1200, r = true, rf = function() return myHero.range + 300 + ( myHero.boundingRadius * 2 ) end }
+      elseif myHero.charName == "Tristana" then
+            self.spellDraw = { w = true, wr = 900 }
+      elseif myHero.charName == "Varus" then
+            self.spellDraw = { q = true, qr = 1650, e = true, er = 950, r = true, rr = 1075 }
+      elseif myHero.charName == "Vayne" then
+            self.spellDraw = { q = true, qr = 300, e = true, er = 550 }
+      elseif myHero.charName == "Viktor" then
+            self.spellDraw = { q = true, qr = 600 + 2 * myHero.boundingRadius, w = true, wr = 700, e = true, er = 550 }
+      elseif myHero.charName == "Xayah" then
+            self.spellDraw = { q = true, qr = 1100 }
+      end
       Menu.drawer = MenuElement({name = "[Drawer]", id = "drawer", type = MENU })
       self:Menu()
       Callback.Add('Draw', function()
