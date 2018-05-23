@@ -55,6 +55,9 @@ Data = {
         Activator = {
             Version = 1.21,
         },
+        Drawer = {
+            Version = 1.0,
+        },
     },
 }
 
