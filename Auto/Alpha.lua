@@ -677,7 +677,7 @@ class "__DamageManager"
 --Credits LazyXerath for extra dmg reduction methods
 function __DamageManager:__init()
 	self.IMMOBILE_TYPES = {[BUFF_KNOCKUP]="true",[BUFF_SURPRESS]="true",[BUFF_ROOT]="true",[BUFF_STUN]="true", [BUFF_CHARM] = "true"}
-	self.OnIncomingDamageCallbacks = {}
+	
 	self.OnIncomingCCCallbacks = {}
 	
 	self.SiegeMinionList = {"Red_Minion_MechCannon", "Blue_Minion_MechCannon"}
@@ -2170,10 +2170,11 @@ function __DamageManager:__init()
 			DamageType = DAMAGE_TYPE_MAGICAL,			
 			TargetType = TARGET_TYPE_CIRCLE,
 			MissileName = "HeimerdingerESpell",
-			Radius = 100,
+			Radius = 200,
 			Damage = {60,100,140,180,220},
 			APScaling = .6,
 			Danger = 2,
+			CCType = BUFF_STUN,
 		},
 		
 		["HeimerdingerEUlt"] = 
@@ -2185,10 +2186,11 @@ function __DamageManager:__init()
 			DamageType = DAMAGE_TYPE_MAGICAL,			
 			TargetType = TARGET_TYPE_CIRCLE,
 			MissileName ={ "HeimerdingerESpell_ult", "HeimerdingerESpell_ult2", "HeimerdingerESpell_ult3"},
-			Radius = 100,
+			Radius = 200,
 			Damage = {60,100,140,180,220},
 			APScaling = .6,
 			Danger = 3,
+			CCType = BUFF_STUN,
 		},
 		
 		--[ILLAOI SKILLS]--
@@ -3602,8 +3604,10 @@ function __DamageManager:__init()
 			TargetType = TARGET_TYPE_SINGLE,
 			SpecialDamage = 
 			function (owner, target)
-				local buff = BuffManager:GetBuffByName(myHero, "NasusQStacks")
-				return  buff.stacks + ({30,50,70,90,110})[owner:GetSpellData(SpellSlot).level] + owner.totalDamage
+				local buff = BuffManager:GetBuffByName(owner, "NasusQStacks")
+				local damage = ({30,50,70,90,110})[owner:GetSpellData(SpellSlot).level] + owner.totalDamage
+				if buff then damage = damage + buff.stacks end
+				return damage
 			end,
 			Danger = 1,
 		},
@@ -4344,6 +4348,49 @@ function __DamageManager:__init()
 			Danger = 1,
 		},
 		
+		--[Sejuani Skills]--
+		["SejuaniW"] = 
+		{
+			--wont work because cast position is wrong. Dummy skill is the follow up
+			Alias = "SyndraWDummy",
+			HeroName = "Sejuani",
+			SpellName = "Winter's Wrath",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_ARC,
+			Radius = 65,
+			Length = 600,
+			Damage = {30,65,100,135,170},
+			MaximumHealth = .045,
+			Danger = 1,
+		},
+		["SejuaniE"] = 
+		{
+			Alias = "SejuaniE2",
+			HeroName = "Sejuani",
+			SpellName = "Permafrost",
+			SpellSlot = _E,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {20,30,40,50,60},
+			APScaling = .3,
+			Danger = 3,			
+			CCType = BUFF_STUN,
+		},
+		["SejuaniR"] = 
+		{
+			HeroName = "Sejuani",
+			SpellName = "Glacial Prison",			
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 120,
+			Damage = {100,125,150},
+			APScaling = .4,
+			Danger = 4,			
+			CCType = BUFF_STUN,
+		},
+		
 		--[Syndra Skills]--
 		["SyndraQ"] = 
 		{
@@ -4402,20 +4449,45 @@ function __DamageManager:__init()
 		},
 		
 		
-		--[ZILEAN SKILLS]--
-		["ZileanQ"] = 
+		--[Volibear Skills]--
+		
+		["VolibearQ"] = 
 		{
-			HeroName = "Zilean",
-			SpellName = "Time Bomb",
+			Alias = "VolibearQAttack",
+			HeroName = "Volibear",
+			SpellName = "Rolling Thunder",
 			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {30,60,90,120,150},
+			ADScaling = 1,
+			Danger = 3,
+			CCType = BUFF_KNOCKBACK,
+		},
+		["VolibearW"] = 
+		{
+			HeroName = "Volibear",
+			SpellName = "Frenzy",
+			SpellSlot = _W,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {60,110,160,210,260},
+			BonusHealth = .15,
+			Danger = 1,
+		},
+		["VolibearR"] = 
+		{
+			HeroName = "Volibear",
+			SpellName = "Thunder Claws",
+			SpellSlot = _R,
 			DamageType = DAMAGE_TYPE_MAGICAL,			
 			TargetType = TARGET_TYPE_CIRCLE,
-			MissileName = "ZileanQMissile",
-			Radius = 120,
-			Damage = {75,115,165,230,300},
-			APScaling = .9,
-			Danger = 3,
+			Radius = 500,
+			Damage = {75,115,155},
+			APScaling = .3,
+			Danger = 1,
 		},
+		
 		--[Veigar Skills]--
 		
 		["VeigarBalefulStrike"] = 
@@ -4456,6 +4528,124 @@ function __DamageManager:__init()
 			Danger = 4,
 		},
 		
+		--[Warwick Skills]--
+		
+		["WarwickQ"] =
+        {
+            HeroName = "Warwick",
+            SpellName = "Jaws of the Beast",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {0,0,0,0,0},
+            ADScaling = 1.2,
+			APScaling = .9,
+			MaximumHealth = {.06,.065,.08,.075,.08},
+            Danger = 1,
+        },
+		
+		["WarwickR"] =
+        {
+            HeroName = "Warwick",
+            SpellName = "Infinite Duress",
+            SpellSlot = _R,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+			BuffName = "WarwickR",
+			Radius = 100,
+            Damage = {175,350,525},
+            BonusADScaling = 1.67,
+            Danger = 5,
+			CCType = BUFF_SURPRESS,
+        },
+		
+		--[Wukong Skills]--
+		["MonkeyKingDoubleAttack"] =
+        {
+			Alias = "MonkeyKingQAttack",
+            HeroName = "MonkeyKing",
+            SpellName = "Crushing Blow",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {30,60,90,120,150},
+            ADScaling = {1.10,1.20,1.30,1.40,1.50},
+            Danger = 1,
+        },
+		
+		["MonkeyKingNimbus"] =
+        {
+            HeroName = "MonkeyKing",
+            SpellName = "Nimbus Strike",
+            SpellSlot = _E,
+            BuffName = "MonkeyKingNimbusKick",
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {65,110,155,200,245},
+            BonusADScaling = .8,
+            Danger = 1,
+        },
+		
+		["MonkeyKingSpinToWin"] =
+        {
+            HeroName = "MonkeyKing",
+            SpellName = "Cyclone",
+            SpellSlot = _R,
+            BuffName = "MonkeyKingSpinToWin",
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+            Radius = 375,
+            Damage = {20,120,200},
+            ADScaling = 1.1,
+            CCType = BUFF_KNOCKUP,
+            Danger = 5,
+        },
+		
+		--[Xayah Skills]--
+        ["XayahQ"] = 
+        {
+            HeroName = "Xayah",
+            SpellName = "Double Daggers",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL, 
+            TargetType = TARGET_TYPE_LINE,
+			Length=  1100,
+            Radius = 45,
+            Damage = {90,130,150,210,250},
+            BonusADScaling = 1,
+            Danger = 1,
+        },
+		--Can't work currently because it will not show as correct team. Missile doesnt have proper owner data
+		
+        --["XayahE"] = 
+        --{
+        --    HeroName = "Xayah",
+        --   SpellName = "Bladecaller",
+        --    SpellSlot = _E,
+        --    DamageType = DAMAGE_TYPE_PHYSICAL, 
+        --    TargetType = TARGET_TYPE_LINE,
+		--	MissileName = "XayahEMissile",
+        --    Radius = 45,
+        --    Damage = {55,65,75,85,95},
+        --    BonusADScaling = .6,
+        --    Danger = 2,
+        --},
+        ["XayahR"] = 
+        {
+            HeroName = "Xayah",
+            SpellName = "Featherstorm",
+            SpellSlot = _R,
+            DamageType = DAMAGE_TYPE_PHYSICAL, 
+            TargetType = TARGET_TYPE_ARC,
+			BuffName = "XayahR",
+			--MissileName = "XayahRMissile",
+            --Radius = 45,
+			Angle = 30,
+			Radius = 1100,
+            Damage = {100,150,200},
+            BonusADScaling = 1,
+            Danger = 3,
+        },
 		
 		--[XERATH SKILLS]--
         ["XerathArcaneBarrage2"] = 
@@ -4501,47 +4691,228 @@ function __DamageManager:__init()
 			MissileTime = .5
         },
 		
-		--[Wukong Skills]--
-		["MonkeyKingDoubleAttack"] =
+		--[Xin Zhao Skills]--
+		["XinZhaoQ"] = 
         {
-			Alias = "MonkeyKingQAttack",
-            HeroName = "MonkeyKing",
-            SpellName = "Crushing Blow",
+			Alias = "XinZhaoQThrust1",
+			Alternate = {"XinZhaoQThrust2","XinZhaoQThrust3"},
+            HeroName = "XinZhao",
+            SpellName = "Three Talon Strike",
             SpellSlot = _Q,
             DamageType = DAMAGE_TYPE_PHYSICAL,
             TargetType = TARGET_TYPE_SINGLE,
-            Damage = {30,60,90,120,150},
-            ADScaling = {1.10,1.20,1.30,1.40,1.50},
+            Damage = {20,25,30,35,40},
+			BonusADScaling = .4,
+			ADScaling = 1,
             Danger = 1,
         },
-		
-		["MonkeyKingNimbus"] =
+		["XinZhaoQThrust2"] = 
         {
-            HeroName = "MonkeyKing",
-            SpellName = "Nimbus Strike",
-            SpellSlot = _E,
-            BuffName = "MonkeyKingNimbusKick",
+            HeroName = "XinZhao",
+            SpellName = "Three Talon Strike",
+            SpellSlot = _Q,
             DamageType = DAMAGE_TYPE_PHYSICAL,
             TargetType = TARGET_TYPE_SINGLE,
-            Damage = {65,110,155,200,245},
-            ADScaling = .8,
+            Damage = {20,25,30,35,40},
+			BonusADScaling = .4,
+			ADScaling = 1,
             Danger = 1,
         },
-		
-		["MonkeyKingSpinToWin"] =
+		["XinZhaoQThrust3"] = 
         {
-            HeroName = "MonkeyKing",
-            SpellName = "Cyclone",
+            HeroName = "XinZhao",
+            SpellName = "Three Talon Strike",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {20,25,30,35,40},
+			BonusADScaling = .4,
+			ADScaling = 1,
+            Danger = 3,
+			CCType = BUFF_KNOCKUP,
+        },
+		["XinZhaoW"] = 
+        {
+            HeroName = "XinZhao",
+            SpellName = "Wind Becomes Lightning",
+            SpellSlot = _W,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+			Radius = 45,
+            Damage = {30,40,50,60,70},
+			ADScaling = .31,
+            Danger = 2,
+			CCType = BUFF_SLOW,
+        },
+		["XinZhaoR"] = 
+        {
+            HeroName = "XinZhao",
+            SpellName = "Crescent Guard",
             SpellSlot = _R,
-            BuffName = "MonkeyKingSpinToWin",
             DamageType = DAMAGE_TYPE_PHYSICAL,
             TargetType = TARGET_TYPE_CIRCLE,
-            Radius = 375,
-            Damage = {20,120,200},
-            ADScaling = 1.1,
-            CCType = BUFF_KNOCKUP,
+			Radius = 550,
+            Damage = {70,175,275},
+			BonusADScaling = 1,
+			CurrentHealth = .15,
+            Danger = 2,
+			CCType = BUFF_KNOCKBACK,
+        },
+		
+		--[Yasuo Skills]--
+		["YasuoQW"] = 
+        {
+			Alias = "YasuoQ",
+			Alternate = {"YasuoQ2", "YasuoQ3","YasuoQ3Mis"},
+            HeroName = "Yasuo",
+            SpellName = "Steel Tempest",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+			Radius = 50,
+            Damage = {20,45,75,95,120},
+			ADScaling = 1,
+            Danger = 1,
+        },
+		["YasuoQ2"] = 
+        {
+            HeroName = "Yasuo",
+            SpellName = "Steel Tempest",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+			Radius = 45,
+            Damage = {20,45,75,95,120},
+			ADScaling = 1,
+            Danger = 1,
+        },
+		["YasuoQ3"] = 
+        {
+            HeroName = "Yasuo",
+            SpellName = "Steel Tempest",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+			Radius = 45,
+            Damage = {20,45,75,95,120},
+			ADScaling = 1,
+            Danger = 3,
+			CCType = BUFF_KNOCKUP,
+        },
+		["YasuoQ3Mis"] = 
+        {
+            HeroName = "Yasuo",
+            SpellName = "Steel Tempest",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+			MissileName = "YasuoQ3Mis",
+			Radius = 90,
+            Damage = {20,45,75,95,120},
+			ADScaling = 1,
+            Danger = 3,
+			CCType = BUFF_KNOCKUP,
+        },
+		["YasuoRKnockUpComboW"] = 
+        {
+            HeroName = "Yasuo",
+            SpellName = "Steel Tempest",
+            SpellSlot = _R,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+			MissileName = "TempYasuoRMissile",
+            Damage = {200,300,400},
+			BonusADScaling = 1.5,
+            Danger = 3,
+        },
+		["YorickE"] = 
+        {
+            HeroName = "Yorick",
+            SpellName = "Mourning Mist",
+            SpellSlot = _E,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_ARC,
+			Radius = 600,
+            Damage = {70,105,140,175,210},
+			CurrentHealth = .15,
+            APScaling = .7,
+            Danger = 3,
+			CCType = BUFF_KNOCKUP,
+        },
+		
+		--[Zac Skills]--
+		["ZacQ"] = 
+        {
+            HeroName = "Zac",
+            SpellName = "Stretching Strikes",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_LINE,
+            Radius = 80,
+            Damage = {30,40,50,60,70},
+			MyHealth = .025, 
+            APScaling = .3,
+            Danger = 2,
+			CCType = BUFF_SLOW,
+        },
+		["ZacE"] = 
+        {
+            HeroName = "Zac",
+            SpellName = "Elastic Slingshot",
+            SpellSlot = _E,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+			BuffName = "zacemove",
+            Radius = 300,
+            Damage = {60,110,160,210,260},
+            APScaling = .9,
+            Danger = 3,
+			CCType = BUFF_KNOCKUP,
+        },
+		["ZacR"] = 
+        {
+            HeroName = "Zac",
+            SpellName = "Let's Bounce!",
+            SpellSlot = _R,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_CIRCLE,
+			BuffName = "ZacR",
+            Radius = 300,
+            Damage = {150,250,350},
+            APScaling = .9,
+            Danger = 3,
+			CCType = BUFF_KNOCKUP,
+        },
+		
+		
+		--[ZED SKILLS]--
+        ["ZedQ"] = 
+        {
+            HeroName = "Zed",
+            SpellName = "Razor Shuriken",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_LINE,
+            MissileName = "ZedQMissile",
+            Radius = 50,
+            Damage = {80,115,150,185,220},
+            APScaling = .9,
+            Danger = 2,
+        },
+        ["ZedR"] = 
+        {
+            HeroName = "Zed",
+            SpellName = "Death Mark",
+            SpellSlot = _R,
+            DamageType = DAMAGE_TYPE_PHYSICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            BuffName = "ZedR2",
+            Damage = {0,0,0},
+            ADScaling = 1,
             Danger = 5,
         },
+		
+		
 		--[ZIGGS SKILLS]--
         ["ZiggsQ"] = 
         {
@@ -4595,32 +4966,77 @@ function __DamageManager:__init()
             APScaling = .733,
             Danger = 5,
         },
-		--[ZED SKILLS]--
-        ["ZedQ"] = 
-        {
-            HeroName = "Zed",
-            SpellName = "Razor Shuriken",
+		
+		
+		--[ZILEAN SKILLS]--
+		["ZileanQ"] = 
+		{
+			HeroName = "Zilean",
+			SpellName = "Time Bomb",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_MAGICAL,			
+			TargetType = TARGET_TYPE_CIRCLE,
+			MissileName = "ZileanQMissile",
+			Radius = 120,
+			Damage = {75,115,165,230,300},
+			APScaling = .9,
+			Danger = 3,
+		},
+		
+		--[Zoe Skills]--
+		["ZoeBasicAttackSpecial"] = 
+		{
+            HeroName = "Zoe",
+            SpellName = "More Sparkles!",
             SpellSlot = _Q,
-            DamageType = DAMAGE_TYPE_PHYSICAL,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_SINGLE,
+            Damage = {0,0,0,0,0},
+			ADScaling = 1,
+            APScaling = .325,
+            Danger = 1,
+        },
+		["ZoeQ"] = 
+		{
+			Alias = "ZoeQMissile",
+			Alternate = {"ZoeBasicAttackSpecial"},
+            HeroName = "Zoe",
+            SpellName = "PaddleStar",
+            SpellSlot = _Q,
+            DamageType = DAMAGE_TYPE_MAGICAL,
             TargetType = TARGET_TYPE_LINE,
-            MissileName = "ZedQMissile",
-            Radius = 50,
-            Damage = {80,115,150,185,220},
-            APScaling = .9,
+			Radius = 70,
+            MissileName = {"ZoeQMissile","ZoeQMis2"},
+            Damage = {50,75,100,125,150},
+            APScaling = .6,
             Danger = 2,
         },
-        ["ZedR"] = 
-        {
-            HeroName = "Zed",
-            SpellName = "Death Mark",
-            SpellSlot = _R,
-            DamageType = DAMAGE_TYPE_PHYSICAL,
+		["ZoeW"] = 
+		{
+            HeroName = "Zoe",
+            SpellName = "Spell Thief",
+            SpellSlot = _W,
+            DamageType = DAMAGE_TYPE_MAGICAL,
             TargetType = TARGET_TYPE_SINGLE,
-            BuffName = "ZedR2",
-            Damage = {0,0,0},
-            ADScaling = 1,
-            Danger = 5,
+			BuffName = "ZoeWPassive",
+            Damage = {75,120,165,210,255},
+            APScaling = .75,
+            Danger = 1,
         },
+		["ZoeE"] = 
+		{
+            HeroName = "Zoe",
+            SpellName = "Sleepy Trouble Bubble",
+            SpellSlot = _E,
+            DamageType = DAMAGE_TYPE_MAGICAL,
+            TargetType = TARGET_TYPE_LINE,
+			Radius = 70,
+			MissileName = {"ZoeEMis"},
+            Damage = {120,200,280,350,360,440},
+            APScaling = .4,
+            Danger = 4,
+        },
+		
 		
 		--[Zyra Skills]--
 		["ZyraQ"] = 
@@ -4765,20 +5181,14 @@ function __DamageManager:Tick()
 end
 
 
-function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)
-	
+function __DamageManager:IncomingDamage(owner, target, damage, ccType, canDodge)		
 	if AlphaMenu.PrintDmg:Value() then
 		if owner and target then
 			print(owner.charName .. " will hit " .. target.charName .. " for " .. damage .. " Damage")
 		else
 			print("No owner/target __DamageManager:IncomingDamage")
 		end
-	end
-	
-	if #self.OnIncomingDamageCallbacks then
-		self:DamageIncoming(target, damage, ccType, canDodge)
-	end
-	
+	end		
 	--Trigger any registered OnCC callbacks. Send them the target, damage and type of cc so we can choose our actions
 	if ccType and #self.OnIncomingCCCallbacks then
 		self:IncomingCC(target, damage, ccType, canDodge)
@@ -4787,7 +5197,7 @@ end
 
 function __DamageManager:CheckLineMissileCollision(skillshot, targetList)
 	local distRemaining = Geometry:GetDistance(skillshot.data.pos, skillshot.data.missileData.endPos)	
-	local step = LocalMin(distRemaining, skillshot.data.missileData.speed  * .35)
+	local step = LocalMin(distRemaining, skillshot.data.missileData.speed  * .5)
 	local nextPosition = skillshot.data.pos + skillshot.forward * step
 	local owner = ObjectManager:GetObjectByHandle(skillshot.data.missileData.owner)
 	for _, target in LocalPairs(targetList) do
@@ -4861,8 +5271,7 @@ function __DamageManager:SpellCast(spell)
 					end
 				end
 			end
-		elseif spellInfo.TargetType == TARGET_TYPE_BOX and spellInfo.Length then
-		
+		elseif spellInfo.TargetType == TARGET_TYPE_BOX and spellInfo.Length then		
 			--This is the direction between the box and our hero. We can then use Perpendicular to get the offsets we need
 			local origin = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)
 			local directionVector = (origin- spell.data.startPos):Normalized():Perpendicular()			
@@ -4889,9 +5298,14 @@ function __DamageManager:SpellCast(spell)
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
-			local castPos = spell.data.startPos + (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z) - spell.data.startPos):Normalized() * spell.data.range		
+			local dirVector = (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)-spell.data.startPos):Normalized()
+			if dirVector.x ~= dirVector.x then
+				dirVector = owner.dir
+			end
+			local castPos = spell.data.startPos + dirVector * (spellInfo.Length or spell.data.range)
+			
 			for _, target in LocalPairs(collection) do
-					if target ~= nil and LocalType(target) == "userdata" then			
+					if target ~= nil and LocalType(target) == "userdata" then
 					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, castPos, target.pos)
 					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
@@ -4901,7 +5315,9 @@ function __DamageManager:SpellCast(spell)
 			end
 		else
 			print("Unhandled targeting type: " .. spellInfo.TargetType)
-		end		
+		end
+	elseif spell.data.target > 0 then
+		--We need to filter if its a melee auto attack vs ranged or we will double the dmg when the missile is created.		
 	end
 end
 
@@ -5122,7 +5538,7 @@ end
 
 function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 	local damage = 0
-	if not skillInfo then return damage end
+	if not skillInfo or not owner or not target then return damage end
 	if skillInfo.Damage or skillInfo.SpecialDamage or skillInfo.CurrentHealth then
 		if skillInfo.SpecialDamage then
 			damage = skillInfo.SpecialDamage(owner, target)
@@ -5139,6 +5555,7 @@ function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 			(skillInfo.CurrentHealthAPScaling and (target.maxHealth-target.health) * skillInfo.CurrentHealthAPScaling * owner.ap/100 or 0) + 
 			(skillInfo.MissingHealth and (LocalType(skillInfo.MissingHealth) == "table" and skillInfo.MissingHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MissingHealth) * (target.maxHealth -target.health) or 0) +
 			(skillInfo.MissingHealthAPScaling and (target.maxHealth-target.health) * skillInfo.MissingHealthAPScaling * owner.ap/100 or 0) + 	
+			(skillInfo.MyHealth and (LocalType(skillInfo.MyHealth) == "table" and skillInfo.MyHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MyHealth) * owner.maxHealth or 0) +
 			(skillInfo.MaximumHealth and (LocalType(skillInfo.MaximumHealth) == "table" and skillInfo.MaximumHealth[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealth) * target.maxHealth or 0) +
 			(skillInfo.MaximumHealthAPScaling and (LocalType(skillInfo.MaximumHealthAPScaling) == "table" and skillInfo.MaximumHealthAPScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealthAPScaling) * target.maxHealth or 0)* owner.ap/100 +
 			(skillInfo.MaximumHealthADScaling and (LocalType(skillInfo.MaximumHealthADScaling) == "table" and skillInfo.MaximumHealthADScaling[owner:GetSpellData(skillInfo.SpellSlot).level] or skillInfo.MaximumHealthADScaling) * target.maxHealth or 0)* owner.totalDamage/100
@@ -5168,22 +5585,6 @@ function __DamageManager:OnUntargetedMissileTable(missile)
 		end
 	end
 end
-
---Register Incoming Damage Event
-function __DamageManager:OnIncomingDamage(cb)
-	if not self.CallbacksInitialized then
-		self.InitializeCallbacks()
-	end	
-	DamageManager.OnIncomingDamageCallbacks[#DamageManager.OnIncomingDamageCallbacks+1] = cb
-end
-
---Trigger Incoming Damage Event
-function __DamageManager:DamageIncoming(target, damage, ccType, canDodge)
-	for i = 1, #self.OnIncomingDamageCallbacks do
-		self.OnIncomingDamageCallbacks[i](target, damage, ccType, canDodge);
-	end
-end
-
 
 
 --Register Incoming CC Event
@@ -5221,6 +5622,29 @@ function __DamageManager:BuffAdded(owner, buff)
 					if Geometry:IsInRange(origin, target.pos, spellInfo.Radius) then
 						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
 						self:IncomingDamage(owner, target, damage, spellInfo.CCType)
+					end
+				end
+			end
+		elseif spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
+			
+			for _, target in LocalPairs(collection) do
+				if target ~= nil and LocalType(target) == "userdata" then
+					local endPos = origin + (origin - owner.pos):Normalized() * (spellInfo.Radius + owner.boundingRadius)
+					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(owner.pos, endPos, target.pos)
+					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
+							local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
+					end
+				end
+			end
+		elseif spellInfo.TargetType == TARGET_TYPE_ARC and spellInfo.Angle and spellInfo.Radius then
+			local angleOffset = Geometry:Angle(owner.pos, owner.pos+owner.dir)
+			for _, target in LocalPairs(collection) do
+				if target ~= nil and LocalType(target) == "userdata" then
+					local deltaAngle = LocalAbs(Geometry:Angle(owner.pos,target.pos) - angleOffset)
+					if deltaAngle < spellInfo.Angle and Geometry:IsInRange(owner.pos, target.pos, spellInfo.Radius) then
+						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
+						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
 					end
 				end
 			end

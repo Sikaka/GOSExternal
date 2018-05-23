@@ -49,7 +49,7 @@ function OnSpellCast(spell)
 				if hitDetails.Danger >= Menu.Skills.Q.DodgeAuto:Value() or (Menu.Skills.Combo:Value() and hitDetails.Danger >= Menu.Skills.Q.DodgeCombo:Value()) then	
 					local dashPos = myHero.pos + hitDetails.Path * Q.Range				
 					CastSpell(HK_Q, dashPos)
-					NextTick = LocalGameTimer() +.25
+					NextTick = LocalGameTimer() +.15
 				end	
 			end
 		end
@@ -57,7 +57,7 @@ function OnSpellCast(spell)
 end
 
 
-local _offsetDistance = 100
+local _offsetDistance = 50
 local _marks = {}
 local _markOffsets = 
 {
