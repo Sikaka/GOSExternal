@@ -73,11 +73,11 @@ function Tick()
 	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		for i = 1, LocalGameHeroCount() do
 			local target = LocalGameHero(i)
-			if CanTargetAlly(target) and  LocalGeometry:IsInRange(myHero.pos, target.pos, W.Radius) then
+			if CanTargetAlly(target) and  LocalGeometry:IsInRange(myHero.pos, target.pos, W.Range) then
 				local incomingDamage = LocalDamageManager:RecordedIncomingDamage(target)
 				if incomingDamage > Menu.Skills.W.Damage:Value() then				
 					local castPosition = LocalGeometry:PredictUnitPosition(target, W.Delay + LocalGeometry:GetDistance(myHero.pos, target.pos)/W.Speed)
-					local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * R.Range			
+					local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * W.Range			
 					local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, W.Delay, W.Speed, W.Radius,true)
 					if targetCount >= Menu.Skills.W.Count:Value() then
 						NextTick = LocalGameTimer() + .25
@@ -103,7 +103,7 @@ function Tick()
 						thisRDamage = thisRDamage + 20 + myHero.levelData.lvl * 10 + myHero.ap * 0.2
 					end
 					local extraIncoming = LocalDamageManager:RecordedIncomingDamage(target)
-					local predictedHealth = target.health + target.hpRegen * R.Delay - extraIncoming			
+					local predictedHealth = target.health + target.hpRegen * 2 - extraIncoming			
 					thisRDamage = LocalDamageManager:CalculateMagicDamage(myHero,target, thisRDamage)
 					if predictedHealth > 0 and thisRDamage > predictedHealth then
 						NextTick = LocalGameTimer() + .25
