@@ -41,7 +41,7 @@ Data = {
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
-            Version = 1.1,
+            Version = 1.11,
         },
         Zilean = {
             Changelog = "Zilean Changelog Here",

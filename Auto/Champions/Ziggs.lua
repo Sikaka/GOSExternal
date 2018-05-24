@@ -45,7 +45,6 @@ function LoadScript()
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
-	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end
 
 local WPos = nil
