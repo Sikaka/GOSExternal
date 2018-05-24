@@ -45,6 +45,7 @@ function LoadScript()
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
+	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end
 
 local WPos = nil
@@ -146,10 +147,10 @@ function Tick()
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
 			if hero and CanTarget(hero) then
-				if Menu.Skills.R.Targets[hero.networkID] and Menu.Skills.R.Targets[hero.networkID]:Value() and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Radius) then
+				if Menu.Skills.R.Targets[hero.networkID] and Menu.Skills.R.Targets[hero.networkID]:Value() and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then
 					local interceptTime = LocalGeometry:GetSpellInterceptTime(myHero.pos, hero.pos, R.Delay, R.Speed)
 					local origin = LocalGeometry:PredictUnitPosition(hero, interceptTime)
-					if LocalGeometry:IsInRange(myHero.pos, origin, R.Radius) then
+					if LocalGeometry:IsInRange(myHero.pos, origin, R.Range) then
 						--We finally have a target and know we want to try to target them.. Check how many enemies are within this cast radius						
 						local nearbyEnemies = EnemyCount(origin, R.Radius, interceptTime)
 						if nearbyEnemies >= Menu.Skills.R.Count:Value() then
