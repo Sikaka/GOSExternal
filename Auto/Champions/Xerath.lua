@@ -114,10 +114,11 @@ function Tick()
 			if aimPosition and hitChance >= accuracyRequired then
 				CastSpell(HK_R, aimPosition)
 				if Menu.Skills.R.Assist:Value() then
-					NextTick = LocalGameTimer() + .2	
+					NextTick = LocalGameTimer() + .2
 				else					
-					NextTick = LocalGameTimer() + Menu.Skills.R.Frequency:Value()			
+					NextTick = LocalGameTimer() + Menu.Skills.R.Frequency:Value() + math.random(-.25, .25)
 				end
+				return
 			end			
 		end
 	end

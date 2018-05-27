@@ -15,6 +15,10 @@ Data = {
             Changelog = "Fiora Changelog Here",
             Version = 1.31,
         },
+        Soraka = {
+            Changelog = "Soraka Changelog Here",
+            Version = 1.1,
+        },
         Heimerdinger = {
             Changelog = "Heimerdinger Changelog Here",
             Version = 1.1,
@@ -37,11 +41,11 @@ Data = {
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
-            Version = 1.1,
+            Version = 1.2,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
-            Version = 1.12,
+            Version = 1.13,
         },
         Zilean = {
             Changelog = "Zilean Changelog Here",
