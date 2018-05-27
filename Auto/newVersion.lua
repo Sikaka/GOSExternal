@@ -37,7 +37,7 @@ Data = {
         },
         Morgana = {
             Changelog = "Morgana Changelog Here",
-            Version = 1.0,
+            Version = 1.1,
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",

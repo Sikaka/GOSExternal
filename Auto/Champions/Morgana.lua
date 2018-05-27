@@ -308,7 +308,7 @@ function Tick()
 			(_G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] and Menu.Skills.W.ComHar.Combo:Value()) or
 				(_G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_HARASS] and Menu.Skills.W.ComHar.Harass:Value())
 		 then
-			if EnemyCount(myHero.pos, Menu.Skills.R.ComHar.Xrange, R.Delay) >= Menu.Skills.R.ComHar.Xenemies:Value() then
+			if EnemyCount(myHero.pos, Menu.Skills.R.ComHar.Xrange:Value(), R.Delay) >= Menu.Skills.R.ComHar.Xenemies:Value() then
 				NextTick = LocalGameTimer() + .25
 				CastSpell(HK_R)
 				return
@@ -316,7 +316,7 @@ function Tick()
 		end
 		-- Auto
 		if Menu.Skills.R.Auto.Enabled:Value() then
-			if EnemyCount(myHero.pos, Menu.Skills.R.Auto.Xrange, R.Delay) >= Menu.Skills.R.Auto.Xenemies:Value() then
+			if EnemyCount(myHero.pos, Menu.Skills.R.Auto.Xrange:Value(), R.Delay) >= Menu.Skills.R.Auto.Xenemies:Value() then
 				NextTick = LocalGameTimer() + .25
 				CastSpell(HK_R)
 				return
