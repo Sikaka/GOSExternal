@@ -75,7 +75,7 @@ function Tick()
 	if Ready(_Q) and myMana >= Menu.Skills.Q.Mana:Value() then
 		local target = GetTarget(Q.Range, true)
 		if target and CanTarget(target) then
-			if Menu.Skills.Q.Killsteal:Value() and GetQDamage(target) >= target.health then
+			if Menu.Skills.Combo:Value() or (Menu.Skills.Q.Killsteal:Value() and GetQDamage(target) >= target.health) then
 				CastSpell(HK_Q, target)
 				NextTick = LocalGameTimer() + .25
 				return				
@@ -90,8 +90,8 @@ function Tick()
 					return				
 				end
 				
-				--Check for 2x hero combo auto cast
-				if Menu.Skills.Q.Hero:Value() and Menu.Skills.Combo:Value() then
+				--Check for 2x hero bounce cast
+				if Menu.Skills.Q.Hero:Value() then
 					CastSpell(HK_Q, target)
 					NextTick = LocalGameTimer() + .25
 					return				
@@ -99,8 +99,8 @@ function Tick()
 			end			
 		end
 		
-		--Minion bounce
-		if Menu.Skills.Q.Auto:Value() then
+		--Minion bounce: only calculate if there are enemies we could bounce to
+		if Menu.Skills.Q.Auto:Value() and NearestEnemy(myHero.pos, 1300) ~= nil then
 			for i = 1, LocalGameMinionCount() do
 				local minion = LocalGameMinion(i)
 				if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, Q.Range) then

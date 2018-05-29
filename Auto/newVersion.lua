@@ -37,7 +37,7 @@ Data = {
         },
         MissFortune = {
             Changelog = "MissFortune Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Morgana = {
             Changelog = "Morgana Changelog Here",
