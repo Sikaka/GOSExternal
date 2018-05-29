@@ -26,7 +26,7 @@ function LoadScript()
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
-	LocalObjectManager:OnParticleCreate(function(particleInfo) OnParticleCreate(particleInfo) end)	
+	LocalObjectManager:OnParticleCreate(function(particleInfo) OnParticleCreate(particleInfo) end)
 	
 	Callback.Add("Tick", function() Tick() end)	
 end
@@ -84,6 +84,7 @@ function Tick()
 			local bounceTarget = GetQBounceTarget(target)
 			if CanTarget(bounceTarget) and LocalStringFind(bounceTarget.type, "Hero") then
 				--Check for killsteal
+				
 				if Menu.Skills.Q.Killsteal:Value() and GetQDamage(bounceTarget) >= bounceTarget.health then
 					CastSpell(HK_Q, target)
 					NextTick = LocalGameTimer() + .25
@@ -103,8 +104,9 @@ function Tick()
 		if Menu.Skills.Q.Auto:Value() and NearestEnemy(myHero.pos, 1300) ~= nil then
 			for i = 1, LocalGameMinionCount() do
 				local minion = LocalGameMinion(i)
-				if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, Q.Range) then
-					if not Menu.Skills.Q.Crit:Value() or GetQDamage(minion) > minion.health then
+				if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, Q.Range) then				
+					local minionHp = _G.SDK.HealthPrediction:GetPrediction(minion, Q.Delay)
+					if minionHp > 0 and (not Menu.Skills.Q.Crit:Value() or GetQDamage(minion) > minionHp) then
 						local bounceTarget = GetQBounceTarget(minion)
 						if CanTarget(bounceTarget) and LocalStringFind(bounceTarget.type, "Hero") then
 							CastSpell(HK_Q, minion)
