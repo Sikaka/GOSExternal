@@ -187,6 +187,9 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 			hitChance = 3
 		end
 		
+		--Check if the cast time wont let them walk out before the spell lands and isn't an auto attack. If so consider it accuracy 4 for shit sake
+		
+		
 		if target.pathing.hasMovePath and target.pathing.isDashing and target.pathing.dashSpeed>500 then
 			if self:GetDistance(target.pos, target:GetPath(1)) / target.pathing.dashSpeed + .25 > interceptTime then
 				hitChance = 4
@@ -226,7 +229,7 @@ function __Geometry:PredictReactionTime(unit, minimumReactionTime)
 		if windupRemaining > 0 then
 			reactionTime = windupRemaining
 			if unit.activeSpell.isAutoAttack then
-				reactionTime = reactionTime / 2
+				reactionTime = reactionTime / 3
 			end
 		end
 	end
@@ -5255,7 +5258,7 @@ function __DamageManager:SpellCast(spell)
 		
 		local spellInfo = self.Skills[spell.name]
 		if spellInfo.TargetType == TARGET_TYPE_SINGLE then			
-			local target = ObjectManager:GetObjectByHandle(spell.data.target)
+			local target = ObjectManager:GetHeroByHandle(spell.data.target)
 			if target then
 				local damage = self:CalculateSkillDamage(owner, target, spellInfo)
 				self:IncomingDamage(owner, target, damage, spellInfo.CCType)
@@ -5453,7 +5456,7 @@ end
 
 function __DamageManager:OnAutoAttackMissile(missile)
 	local owner = ObjectManager:GetObjectByHandle(missile.data.missileData.owner)
-	local target = ObjectManager:GetObjectByHandle(missile.data.missileData.target)
+	local target = ObjectManager:GetHeroByHandle(missile.data.missileData.target)
 	if owner and target then
 		local targetCollection = self.EnemyDamage
 		if target.isAlly then
@@ -5484,7 +5487,7 @@ end
 function __DamageManager:OnTargetedMissileTable(missile)
 	local skillInfo = self.MissileNames[missile.name]		
 	local owner = ObjectManager:GetObjectByHandle(missile.data.missileData.owner)
-	local target = ObjectManager:GetObjectByHandle(missile.data.missileData.target)
+	local target = ObjectManager:GetHeroByHandle(missile.data.missileData.target)
 	if skillInfo and owner and target then
 		
 		local targetCollection = self.EnemyDamage

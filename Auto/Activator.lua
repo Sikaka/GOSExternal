@@ -75,10 +75,12 @@ function __Activator:__init()
 			Tick = self.Exhaust,
 			Initialize = function () 
 				local m = self.ActivatorMenu.Summoners:MenuElement({id = "Exhaust", name = "Exhaust", type = MENU})
-				m:MenuElement{id = "Radius", name = "Radius", value = 300, min = 100, max = 700, step = 50}
-				m:MenuElement{id = "Combo", name = "Combo Only", value = true}
+				m:MenuElement{id = "Radius", name = "Peel Radius", value = 300, min = 100, max = 700, step = 50}
+				m:MenuElement{id = "Combo", name = "Use only in Combo", value = true}
+				m:MenuElement{id = "Active", name = "Enable", value = true}
 			end
 		},
+		
 		["SummonerDot"] = { 
 			Tick = self.Ignite, 
 			Initialize = function () 
@@ -87,6 +89,7 @@ function __Activator:__init()
 				m:MenuElement{id = "Killsteal", name = "Killsteal", value = true}
 			end
 		},
+		
 		["SummonerHeal"] = { 
 			Tick = self.Heal,
 			Initialize = function () 
@@ -95,6 +98,7 @@ function __Activator:__init()
 				m:MenuElement{id = "Combo", name = "Combo Only", value = false}
 			end
 		},
+		
 		["SummonerBarrier"] = { 
 			Tick = self.Barrier,
 			Initialize = function () 
@@ -187,51 +191,84 @@ function __Activator:__init()
 				end
 			end
 		end
-		}
+		},
+		[3107] = {	Name = "Redemption",
+		OnMenu = function ()
+			local m = self.ActivatorMenu:MenuElement({id = 3107, name = "Redemption", type = MENU})
+			
+			m:MenuElement({id = "Targets", name = "Target Settings", type = MENU})
+			for i = 1, LocalGameHeroCount() do
+				local hero = LocalGameHero(i)
+				if hero.isAlly then
+					m.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = 50, min = 0, max = 100, step = 1 })
+				end
+			end
+			
+			m:MenuElement({id = "Count", name = "Minimum Target Count", value = 3, min = 1, max = 5, step = 1})
+			m:MenuElement({id = "Auto", name = "Cast Outside Combo Mode", value = true})
+		end,
+		OnTick = function(slot)
+			local realSlot = slot.Slot
+			local spellData = myHero:GetSpellData(realSlot)			
+			if spellData.currentCd < .5 and (Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] or Activator.ActivatorMenu[3107].Auto:Value())then
+				for i = 1, LocalGameHeroCount() do
+					local hero = LocalGameHero(i)
+					if CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, 5500) and Activator.ActivatorMenu[3107].Targets[hero.networkID] then
+						--Count total targets who can be hit after the delay
+						local incomingDamage = LocalDamageManager:RecordedIncomingDamage(hero)
+						local remainingLifePct = (hero.health - incomingDamage) / hero.maxHealth * 100		
+						local origin = LocalGeometry:PredictUnitPosition(hero, 2.5)
+						if LocalGeometry:IsInRange(myHero.pos, origin, 5500) and Activator.ActivatorMenu[3107].Targets[hero.networkID]:Value() >= remainingLifePct then
+							--Count targets inside the radius
+							local targetCount = Activator:EnemyCount(origin, 600,2.5) + Activator:AllyCount(origin, 600,2.5)
+							if targetCount >= Activator.ActivatorMenu[3107].Count:Value() then
+								--Need to cast it to mini map instead
+								Activator:CastSpell(Activator.ItemHotkeys[realSlot], origin)
+							end
+						end
+					end
+				end
+			end
+		end
+		},
 	}
 	
 	
 	self.ItemAttackCallbacks = {}
 	self.ItemTickCallbacks = {}
 	
-	self.ConsumableItems = {
-		[2010] = {name = "Biscuit of Rejuvenation",	buffName = "ItemMiniRegenPotion"},
-		[2003] = {name = "Health Potion",	buffName = "RegenerationPotion"},
-		[2031] = {name = "Refillable Potion",	buffName = "ItemCrystalFlask"},
-		[2032] = {name = "Hunter's Potion",	buffName = "ItemCrystalFlaskJungle"},
-		[2033] = {name = "Corrupting Potion",	buffName = "ItemDarkCrystalFlask"},
-	}
-	
-	self.WardingItems = {
-		[3340] = {name = "Warding Totem",	range = 600},
-		[3098] = {name = "Frostfang",	range = 600},
-		[3092] = {name = "Remnant of the Watchers",	range = 600},
-		[3096] = {name = "Nomad's Medallion",	range = 600},
-		[3069] = {name = "Remnant of the Ascended",	range = 600},
-		[3097] = {name = "Targon's Brace",	range = 600},
-		[3401] = {name = "Remnant of the Aspect",	range = 600},
-		[2055] = {name = "Control Ward",	range = 600},
-		[3363] = {name = "Farsight Alteration",	range= 4000}
-	}
-	
-	self.DamageItems = {
-		[3077] = {name = "Tiamat", range = 300},
-		[3074] = {name = "Ravenous Hydra",  range = 300},
-		[3748] = {name = "Titanic Hydra", range = 300},
-		[3153] = {name = "Blade of the Ruined King", range = 600},
-		[3144] = {name = "Bilgewater Cutlass", range = 600},
-		[3146] = {name = "Hextech Gunblade", range = 700},
-		--[3152] = {name = "Hextech Protobelt-01", range = 800},
-		--[3030] = {name = "Hextech GLP-800", range = 800},
-	}
-	self.ShieldItems = {
-		[2420] = {name = "Stopwatch", effect = "Statis"},
-		[3157] = {name = "Zhonya's Hourglass", effect = "Statis"},		
-	}
-	
 	DelayAction(function () self.LoadCompleted() end, math.max(2,30 - Game.Timer()))
 end
 
+function __Activator:EnemyCount(origin, range, delay)
+	local count = 0
+	for i  = 1,LocalGameHeroCount(i) do
+		local enemy = LocalGameHero(i)
+		local enemyPos = enemy.pos
+		if delay then
+			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
+		end
+		if enemy and Activator:CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
+			count = count + 1
+		end			
+	end
+	return count
+end
+
+function __Activator:AllyCount(origin, range, delay)
+	local count = 0
+	for i  = 1,LocalGameHeroCount(i) do
+		local ally = LocalGameHero(i)
+		local allyPos = ally.pos
+		if delay then
+			allyPos= LocalGeometry:PredictUnitPosition(ally, delay)
+		end
+		if ally and Activator:CanTargetAlly(ally) and LocalGeometry:IsInRange(origin, allyPos, range) then
+			count = count + 1
+		end			
+	end
+	return count
+end
 function __Activator:ClosestAlly(origin, range)
 	local distance = range
 	for i = 1,LocalGameHeroCount()  do
@@ -318,7 +355,6 @@ function __Activator:LoadCompleted()
 end
 
 function __Activator:OnBuyItem(item, slot)
-	print(item.itemID)
 	if self.ItemFunctions[item.itemID] then
 		if self.ItemFunctions[item.itemID].OnMenu then
 			self.ItemFunctions[item.itemID]:OnMenu()
@@ -389,7 +425,17 @@ end
 
 
 function __Activator:Exhaust(spellSlot, hotkey)
-	
+	if self.ActivatorMenu.Summoners.Exhaust.Active:Value() and (self.ActivatorMenu.Summoners.Exhaust.Combo:Value() or Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO]) then
+		for i = 1, LocalGameHeroCount() do
+			local hero = LocalGameHero(i)
+			if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, 650) then
+				if Activator:ClosestAlly(hero.pos, 90000) <= self.ActivatorMenu.Summoners.Exhaust.Radius:Value() then
+					Activator:CastSpell(hotkey, hero)
+					return
+				end
+			end
+		end
+	end
 end
 
 function __Activator:Ignite(spellSlot, hotkey)
