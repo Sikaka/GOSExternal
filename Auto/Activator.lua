@@ -166,8 +166,28 @@ function __Activator:__init()
 				end
 			end
 			m:MenuElement({id="Combo", name="Use Only In Combo", value = false})
+		end,		
+		OnTick = self.CleanseTarget	},
+		
+		[3905] = {	Name = "Twin Shadows",
+		OnMenu = function ()
+			local m = self.ActivatorMenu:MenuElement({id = 3905, name = "Twin Shadows", type = MENU})
+			m:MenuElement({id = "Range", name = "Max Cast Distance", value = 2500, min = 500, max = 4000, step = 100})
+			m:MenuElement({id = "Radius", name = "Minimum Enemy Distance", value = 500, min = 100, max = 2000, step = 50})
 		end,
-		OnTick = self.CleanseTarget	},		
+		OnTick = function(slot)
+			local realSlot = slot.Slot
+			local spellData = myHero:GetSpellData(realSlot)
+			if spellData.currentCd < .5 and Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then
+				for i = 1, LocalGameHeroCount() do
+					local hero = LocalGameHero(i)
+					if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, Activator.ActivatorMenu[3905].Range:Value()) and Activator:ClosestAlly(hero.pos, 90000) <= Activator.ActivatorMenu[3905].Radius:Value() then						
+						Control.CastSpell(Activator.ItemHotkeys[realSlot])
+					end
+				end
+			end
+		end
+		}
 	}
 	
 	
@@ -210,6 +230,22 @@ function __Activator:__init()
 	}
 	
 	DelayAction(function () self.LoadCompleted() end, math.max(2,30 - Game.Timer()))
+end
+
+function __Activator:ClosestAlly(origin, range)
+	local distance = range
+	for i = 1,LocalGameHeroCount()  do
+		local hero = LocalGameHero(i)
+		if hero and Activator:CanTargetAlly(hero) then
+			local d =  LocalGeometry:GetDistance(origin, hero.pos)
+			if d < range and d < distance then
+				distance = d
+			end
+		end
+	end
+	if distance < range then
+		return distance
+	end
 end
 
 function __Activator:CanTarget(target)
@@ -282,6 +318,7 @@ function __Activator:LoadCompleted()
 end
 
 function __Activator:OnBuyItem(item, slot)
+	print(item.itemID)
 	if self.ItemFunctions[item.itemID] then
 		if self.ItemFunctions[item.itemID].OnMenu then
 			self.ItemFunctions[item.itemID]:OnMenu()
@@ -422,10 +459,10 @@ function __Activator:CleanseTarget(slot)
 		for h = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(h)
 			if CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, spellData.range) and Activator.ActivatorMenu[3222].Targets[hero.networkID] and Activator.ActivatorMenu[3222].Targets[hero.networkID]:Value() then
-				for i = 0, myHero.buffCount do
-					local buff = myHero:GetBuff(i)
+				for i = 0, hero.buffCount do
+					local buff = hero:GetBuff(i)
 					if buff.duration > 0 and Activator.ActivatorMenu[3222].CC[buff.type] and Activator.ActivatorMenu[3222].CC[buff.type]:Value() then
-						Control.CastSpell(Activator.ItemHotkeys[slot])
+						Control.CastSpell(Activator.ItemHotkeys[slot],hero)
 						return
 					end
 				end
