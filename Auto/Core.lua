@@ -17,6 +17,8 @@ local CastSpell 					= _G.Control.CastSpell
 local LocalGameIsChatOpen			= Game.IsChatOpen;
 local LocalStringSub				= string.sub;
 local LocalStringLen				= string.len;
+local LocalStringFind				= string.find;
+local LocalTableSort				= table.sort;
 local LocalPairs					= pairs;
 
 function StringEndsWith(str, word)
@@ -63,6 +65,16 @@ function EnableOrb(bool)
         _G.SDK.Orbwalker:SetAttack(bool)
     else
         GOS.BlockMovement = not bool
+        GOS.BlockAttack = not bool
+    end
+end
+
+function EnableOrbAttacks(bool)
+    if _G.EOWLoaded then
+        EOW:SetAttacks(bool)
+    elseif _G.SDK and _G.SDK.Orbwalker then
+        _G.SDK.Orbwalker:SetAttack(bool)
+    else
         GOS.BlockAttack = not bool
     end
 end
