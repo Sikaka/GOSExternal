@@ -11,6 +11,10 @@ Data = {
             Changelog = "Brand Changelog Here",
             Version = 1.3,
         },
+        Cassiopeia = {
+            Changelog = "Cassiopeia Changelog Here",
+            Version = 1,
+        },
         Fiora = {
             Changelog = "Fiora Changelog Here",
             Version = 1.31,
@@ -62,14 +66,14 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.5,
+        Version = 1.51,
     },
     Dependencies = {
         Alpha = {
             Version = 1.5,
         },
         Activator = {
-            Version = 1.4,
+            Version = 1.5,
         },
     },
 }

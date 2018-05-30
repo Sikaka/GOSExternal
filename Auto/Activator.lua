@@ -107,8 +107,12 @@ function __Activator:__init()
 				m:MenuElement{id = "Combo", name = "Combo Only", value = false}
 			end
 		},
-		
+		["SummonerBoost"] = { 
+			Tick = self.Cleanse,
+			Initialize = function () end
+		},		
 	}
+	
 	self.ItemFunctions = {
 		[3077] = {Name = "Tiamat", OnAttack = self.AAResetItem },
 		[3074] = {Name = "Ravenous Hydra", OnAttack = self.AAResetItem },
@@ -146,6 +150,25 @@ function __Activator:__init()
 						end
 					end
 					if targetCount >= targetCountRequired then
+						Control.CastSpell(Activator.ItemHotkeys[realSlot])
+					end
+				end
+			end
+		},
+		
+		[3040] = {Name = "Seraphs Embrace", 
+			OnMenu = function()
+				local m = self.ActivatorMenu:MenuElement({id = 3040, name = "Seraphs Embrace", type = MENU})
+				m:MenuElement{id = "Auto", name = "Cast Without Combo", value = true}
+				m:MenuElement{id = "Health", name = "Health %", value = 30, min = 1, max = 100, step = 1}
+			end,
+			OnTick = function(slot)
+				local realSlot = slot.Slot
+				local spellData = myHero:GetSpellData(realSlot)
+				if spellData.currentCd < .5 and (Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] or Activator.ActivatorMenu[3040].Auto:Value()) then
+					local incomingDamage = LocalDamageManager:RecordedIncomingDamage(myHero)
+					local remainingLifePct = (myHero.health - incomingDamage) / myHero.maxHealth * 100
+					if remainingLifePct <= Activator.ActivatorMenu[3040].Health:Value() and incomingDamage / myHero.health  * 100 > 25 then
 						Control.CastSpell(Activator.ItemHotkeys[realSlot])
 					end
 				end
@@ -478,18 +501,29 @@ function __Activator:Heal(spellSlot, hotkey)
 	end
 end
 
+function __Activator:Cleanse(spellSlot, hotkey)
+	if Activator.ActivatorMenu.Cleanse.Combo:Value() and not Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then return end	
+	local spellData = myHero:GetSpellData(hotkey)
+	if spellData.currentCd < .5 then	
+		for i = 0, myHero.buffCount do
+			local buff = myHero:GetBuff(i)
+			if buff.duration > 0 and Activator.ActivatorMenu.Cleanse.CC[buff.type] and Activator.ActivatorMenu.Cleanse.CC[buff.type]:Value() then
+				Control.CastSpell(hotkey)
+				return
+			end
+		end
+	end
+end
+
 function __Activator:CleanseSelf(slot)
 	--Check if we want to activate only in combo or not	
-	if Activator.ActivatorMenu.Cleanse.Combo:Value() and not Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then return end
-	
-	print("Cleanse test")
+	if Activator.ActivatorMenu.Cleanse.Combo:Value() and not Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then return end	
 	local spellData = myHero:GetSpellData(slot)
 	if spellData.currentCd < .5 then	
 		for i = 0, myHero.buffCount do
 			local buff = myHero:GetBuff(i)
 			if buff.duration > 0 and Activator.ActivatorMenu.Cleanse.CC[buff.type] and Activator.ActivatorMenu.Cleanse.CC[buff.type]:Value() then
 				Control.CastSpell(Activator.ItemHotkeys[slot])
-				print("casting Cleanse")
 				return
 			end
 		end

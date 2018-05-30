@@ -20,6 +20,7 @@ local LocalStringLen				= string.len;
 local LocalStringFind				= string.find;
 local LocalTableSort				= table.sort;
 local LocalPairs					= pairs;
+local LocalMathAbs					= math.abs
 
 function StringEndsWith(str, word)
 	return LocalStringSub(str, - LocalStringLen(word)) == word;
