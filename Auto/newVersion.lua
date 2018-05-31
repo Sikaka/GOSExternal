@@ -9,7 +9,7 @@ Data = {
         },
         Brand = {
             Changelog = "Brand Changelog Here",
-            Version = 1.3,
+            Version = 1.31,
         },
         Cassiopeia = {
             Changelog = "Cassiopeia Changelog Here",
@@ -51,6 +51,10 @@ Data = {
             Changelog = "Morgana Changelog Here",
             Version = 1.1,
         },
+        Pyke = {
+            Changelog = "Pyke Changelog Here",
+            Version = 1,
+        },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
             Version = 1.3,
@@ -70,11 +74,11 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.61,
+        Version = 1.62,
     },
     Dependencies = {
         Alpha = {
-            Version = 1.5,
+            Version = 1.51,
         },
         Activator = {
             Version = 1.51,

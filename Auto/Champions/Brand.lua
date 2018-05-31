@@ -65,11 +65,9 @@ function Tick()
 			if LocalBuffManager:HasBuff(target, "BrandAblaze", timeToIntercept) then
 				NextTick = LocalGameTimer() + .25
 				CastSpell(HK_Q, castPosition)
-				return
 			elseif WHitTime > LocalGameTimer() and LocalGameTimer() + timeToIntercept >  WHitTime and LocalGeometry:IsInRange(WPos, castPosition, W.Radius) then				
 				NextTick = LocalGameTimer() + .25
 				CastSpell(HK_Q, castPosition)
-				return
 			end
 			
 		end
@@ -81,7 +79,6 @@ function Tick()
 		if accuracy >= Menu.Skills.W.AccuracyAuto:Value() or (Menu.Skills.Combo:Value() and accuracy >= Menu.Skills.W.AccuracyCombo:Value()) then
 			NextTick = LocalGameTimer() + .25
 			CastSpell(HK_W, castPosition)
-			return
 		end
 	end
 	
@@ -89,7 +86,6 @@ function Tick()
 	if target and Ready(_E) and Menu.Skills.E.Targets[target.networkID] and Menu.Skills.E.Targets[target.networkID]:Value() and CanTarget(target) and (CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() or Menu.Skills.Combo:Value()) then
 		NextTick = LocalGameTimer() + .25
 		CastSpell(HK_E, target)
-		return
 	end
 	local target = GetTarget(R.Range)
 	if target and Ready(_R) and CanTarget(target) and (Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value())then
@@ -100,7 +96,6 @@ function Tick()
 		if EnemyCount(target.pos, radius, LocalGeometry:GetSpellInterceptTime(myHero.pos, target.pos, R.Delay, R.Speed)) >= Menu.Skills.R.Count:Value() then
 			NextTick = LocalGameTimer() + .25
 			CastSpell(HK_R, target)
-			return
 		end
 	end
 	NextTick = LocalGameTimer() + .1

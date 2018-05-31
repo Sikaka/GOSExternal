@@ -21,7 +21,9 @@ local LocalStringLen				= string.len;
 local LocalStringFind				= string.find;
 local LocalTableSort				= table.sort;
 local LocalPairs					= pairs;
-local LocalMathAbs					= math.abs
+local LocalMathAbs					= math.abs;
+local LocalMathMin					= math.min;
+local LocalMathMax					= math.max;
 
 function StringEndsWith(str, word)
 	return LocalStringSub(str, - LocalStringLen(word)) == word;

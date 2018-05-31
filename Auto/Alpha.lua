@@ -4007,6 +4007,64 @@ function __DamageManager:__init()
 			CCType = BUFF_KNOCKUP,
 		},
 		
+		--[Pyke Skills]--
+		["PykeQ"] = 
+		{
+			Alternate = {"PykeQMelee","PykeQRange"},
+			HeroName = "Pyke",
+			SpellName = "Bone Skewer",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {0,0,0,0,0},
+			Danger = 1,
+		},
+		
+		["PykeQMelee"] = 
+		{
+			HeroName = "Pyke",
+			SpellName = "Bone Skewer",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 100,
+			Length = 400,
+			Damage = {86.25,143.75,201.25,258.75,315.25},
+			BonusADScaling = .69,
+			Danger = 2,
+			SetOrigin = true,
+			CCType = BUFF_SLOW,
+		},
+		
+		["PykeQRange"] = 
+		{
+			HeroName = "Pyke",
+			SpellName = "Bone Skewer",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 70,
+			Collision = 1,
+			Damage = {75,125,175,225,275},
+			BonusADScaling = .6,
+			Danger = 3,
+			CCType = BUFF_KNOCKBACK,
+		},
+		["PykeR"] = 
+		{
+			HeroName = "Pyke",
+			SpellName = "Death from Below",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_TRUE,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 300,
+			SpecialDamage = 
+				function (owner, target)
+					return ({190,190,190,190,190,190,240,290,340,390,440,475,510,545,580,615,635,655})[owner.levelData.lvl] + owner.bonusDamage * .6
+				end,
+			Danger = 3,
+		},
+		
 		--[Quinn Skills]--
 		["QuinnQ"] = 
 		{
@@ -5313,15 +5371,20 @@ function __DamageManager:SpellCast(spell)
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
-			local dirVector = (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)-spell.data.startPos):Normalized()
+		
+			local startPos = LocalVector(spell.data.startPos.x, spell.data.startPos.y, spell.data.startPos.z)
+			if spellInfo.SetOrigin then
+				startPos = owner.pos
+			end
+			
+			local dirVector = (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)-startPos):Normalized()
 			if dirVector.x ~= dirVector.x then
 				dirVector = owner.dir
 			end
-			local castPos = spell.data.startPos + dirVector * (spellInfo.Length or spell.data.range)
-			
+			local castPos = startPos + dirVector * (spellInfo.Length or spell.data.range)
 			for _, target in LocalPairs(collection) do
 					if target ~= nil and LocalType(target) == "userdata" then
-					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, castPos, target.pos)
+					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(startPos, castPos, target.pos)
 					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
 						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
@@ -5551,6 +5614,9 @@ function __DamageManager:PredictDamage(owner, target, spellName)
 	return damage
 end
 
+function __DamageManager:CalculateDamage(owner, target, spellName)
+	return self:CalculateSkillDamage(owner, target, self.MasterSkillLookupTable[spellName])	
+end
 function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 	local damage = 0
 	if not skillInfo or not owner or not target then return damage end
