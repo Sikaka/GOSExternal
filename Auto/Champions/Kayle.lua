@@ -45,7 +45,7 @@ function LoadScript()
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if hero and hero.isAlly then
-			Menu.Skills.R.TargetCC:MenuElement({	id = hero.networkID,	name = hero.charName,	value = hero.isMe and 75 or 50	})
+			Menu.Skills.R.TargetCC:MenuElement({	id = hero.networkID,	name = hero.charName,	value = hero.isMe and 75 or 50,	min = 1,	max = 100,	step = 1	})
 		end
 	end
 	Menu.Skills.R:MenuElement({id = "Damage", name = "Minimum Incoming Dmg%", value = 10, min = 1, max = 50, step = 1 })
