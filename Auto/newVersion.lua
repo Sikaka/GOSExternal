@@ -57,7 +57,7 @@ Data = {
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
-            Version = 1.3,
+            Version = 1.31,
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
@@ -81,7 +81,7 @@ Data = {
             Version = 1.52,
         },
         Activator = {
-            Version = 1.55,
+            Version = 1.6,
         },
     },
 }

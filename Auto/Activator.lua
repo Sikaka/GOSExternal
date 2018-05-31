@@ -139,9 +139,9 @@ function __Activator:__init()
 					local targetCountRequired = Activator.ActivatorMenu[3190].Count:Value() 
 					for i = 1, LocalGameHeroCount() do
 						local hero = LocalGameHero(i)
-						if CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, spellData.range) then
+						if CanTargetAlly(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, spellData.range) then
 							if CurrentPctLife(hero) <= Activator.ActivatorMenu[3190].Health:Value() then
-								local incomingDamage = LocalDamageManager:RecordedIncomingDamage(hero)
+								local incomingDamage = Activator.LocalDamageManager:RecordedIncomingDamage(hero)
 								if incomingDamage / hero.health * 100 >= Activator.ActivatorMenu[3190].Damage:Value() then
 									targetCount = targetCount + 1
 									if targetCount >= targetCountRequired then break end
@@ -166,7 +166,7 @@ function __Activator:__init()
 				local realSlot = slot.Slot
 				local spellData = myHero:GetSpellData(realSlot)
 				if spellData.currentCd < .5 and (Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] or Activator.ActivatorMenu[3040].Auto:Value()) then
-					local incomingDamage = LocalDamageManager:RecordedIncomingDamage(myHero)
+					local incomingDamage = Activator.LocalDamageManager:RecordedIncomingDamage(myHero)
 					local remainingLifePct = (myHero.health - incomingDamage) / myHero.maxHealth * 100
 					if remainingLifePct <= Activator.ActivatorMenu[3040].Health:Value() and incomingDamage / myHero.health  * 100 > 25 then
 						Control.CastSpell(Activator.ItemHotkeys[realSlot])
@@ -208,7 +208,7 @@ function __Activator:__init()
 			if spellData.currentCd < .5 and Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then
 				for i = 1, LocalGameHeroCount() do
 					local hero = LocalGameHero(i)
-					if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, Activator.ActivatorMenu[3905].Range:Value()) and Activator:ClosestAlly(hero.pos, 90000) <= Activator.ActivatorMenu[3905].Radius:Value() then						
+					if CanTarget(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, Activator.ActivatorMenu[3905].Range:Value()) and Activator:ClosestAlly(hero.pos, 90000) <= Activator.ActivatorMenu[3905].Radius:Value() then						
 						Control.CastSpell(Activator.ItemHotkeys[realSlot])
 					end
 				end
@@ -236,12 +236,12 @@ function __Activator:__init()
 			if spellData.currentCd < .5 and (Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] or Activator.ActivatorMenu[3107].Auto:Value())then
 				for i = 1, LocalGameHeroCount() do
 					local hero = LocalGameHero(i)
-					if CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, 5500) and Activator.ActivatorMenu[3107].Targets[hero.networkID] then
+					if CanTargetAlly(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, 5500) and Activator.ActivatorMenu[3107].Targets[hero.networkID] then
 						--Count total targets who can be hit after the delay
-						local incomingDamage = LocalDamageManager:RecordedIncomingDamage(hero)
+						local incomingDamage = Activator.LocalDamageManager:RecordedIncomingDamage(hero)
 						local remainingLifePct = (hero.health - incomingDamage) / hero.maxHealth * 100		
-						local origin = LocalGeometry:PredictUnitPosition(hero, 2.5)
-						if LocalGeometry:IsInRange(myHero.pos, origin, 5500) and Activator.ActivatorMenu[3107].Targets[hero.networkID]:Value() >= remainingLifePct then
+						local origin = Activator.LocalGeometry:PredictUnitPosition(hero, 2.5)
+						if Activator.LocalGeometry:IsInRange(myHero.pos, origin, 5500) and Activator.ActivatorMenu[3107].Targets[hero.networkID]:Value() >= remainingLifePct then
 							--Count targets inside the radius
 							local targetCount = Activator:EnemyCount(origin, 600,2.5) + Activator:AllyCount(origin, 600,2.5)
 							if targetCount >= Activator.ActivatorMenu[3107].Count:Value() then
@@ -269,9 +269,9 @@ function __Activator:EnemyCount(origin, range, delay)
 		local enemy = LocalGameHero(i)
 		local enemyPos = enemy.pos
 		if delay then
-			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
+			enemyPos= Activator.LocalGeometry:PredictUnitPosition(enemy, delay)
 		end
-		if enemy and Activator:CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
+		if enemy and Activator:CanTarget(enemy) and Activator.LocalGeometry:IsInRange(origin, enemyPos, range) then
 			count = count + 1
 		end			
 	end
@@ -284,9 +284,9 @@ function __Activator:AllyCount(origin, range, delay)
 		local ally = LocalGameHero(i)
 		local allyPos = ally.pos
 		if delay then
-			allyPos= LocalGeometry:PredictUnitPosition(ally, delay)
+			allyPos= Activator.LocalGeometry:PredictUnitPosition(ally, delay)
 		end
-		if ally and Activator:CanTargetAlly(ally) and LocalGeometry:IsInRange(origin, allyPos, range) then
+		if ally and Activator:CanTargetAlly(ally) and Activator.LocalGeometry:IsInRange(origin, allyPos, range) then
 			count = count + 1
 		end			
 	end
@@ -297,7 +297,7 @@ function __Activator:ClosestAlly(origin, range)
 	for i = 1,LocalGameHeroCount()  do
 		local hero = LocalGameHero(i)
 		if hero and Activator:CanTargetAlly(hero) then
-			local d =  LocalGeometry:GetDistance(origin, hero.pos)
+			local d =  Activator.LocalGeometry:GetDistance(origin, hero.pos)
 			if d < range and d < distance then
 				distance = d
 			end
@@ -352,8 +352,9 @@ end
 
 function __Activator:LoadCompleted()
 
-	if not _G.Alpha or not _G.Alpha.DamageManager then
+	if not _G.Alpha or not _G.Alpha.DamageManager or not _G.Alpha.Geometry then
 		DelayAction(function () self.LoadCompleted() end, 1)
+		print("Delaying")
 		return
 	end
 	
@@ -439,7 +440,7 @@ function __Activator:CheckItems()
 			if self.Inventory[i].valid == false then
 				self.Inventory[i].valid = true
 				self.Inventory[i].data = myHero:GetItemData(i)
-				self.Inventory[i].spell = self.LocalDamageManager.MasterSkillLookupTable[myHero:GetItemData(i).itemID]
+				self.Inventory[i].spell = Activator.LocalDamageManager.MasterSkillLookupTable[myHero:GetItemData(i).itemID]
 				self:OnBuyItem(myHero:GetItemData(i), i)			
 			end
 		else
@@ -457,7 +458,7 @@ function __Activator:Exhaust(spellSlot, hotkey)
 	if self.ActivatorMenu.Summoners.Exhaust.Active:Value() and (self.ActivatorMenu.Summoners.Exhaust.Combo:Value() or Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO]) then
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
-			if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, 650) then
+			if CanTarget(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, 650) then
 				if Activator:ClosestAlly(hero.pos, 90000) <= self.ActivatorMenu.Summoners.Exhaust.Radius:Value() then
 					Activator:CastSpell(hotkey, hero)
 					return
@@ -471,8 +472,8 @@ function __Activator:Ignite(spellSlot, hotkey)
 	if not myHero or not myHero.levelData then return end
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
-		if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, 600) then	
-			local remainingHealth = hero.health - LocalDamageManager:RecordedIncomingDamage(hero)
+		if CanTarget(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, 600) then	
+			local remainingHealth = hero.health - Activator.LocalDamageManager:RecordedIncomingDamage(hero)
 			if not remainingHealth then
 				remainingHealth = hero.health
 			end
@@ -489,7 +490,7 @@ end
 
 function __Activator:Barrier(spellSlot, hotkey)
 	if myHero.alive and not Activator.ActivatorMenu.Summoners.Barrier.Combo:Value() or Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then
-		local incomingDamage = LocalDamageManager:RecordedIncomingDamage(myHero)
+		local incomingDamage = Activator.LocalDamageManager:RecordedIncomingDamage(myHero)
 		local remainingLifePct = (myHero.health - incomingDamage) / myHero.maxHealth * 100
 		if remainingLifePct <= Activator.ActivatorMenu.Summoners.Barrier.Health:Value() and incomingDamage / myHero.health  * 100 > 25 then
 			Control.CastSpell(hotkey)
@@ -499,7 +500,7 @@ end
 
 function __Activator:Heal(spellSlot, hotkey)
 	if myHero.alive and not Activator.ActivatorMenu.Summoners.Heal.Combo:Value() or Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then	
-		local incomingDamage = LocalDamageManager:RecordedIncomingDamage(myHero)
+		local incomingDamage = Activator.LocalDamageManager:RecordedIncomingDamage(myHero)
 		local remainingLifePct = (myHero.health - incomingDamage) / myHero.maxHealth * 100
 		if remainingLifePct <= Activator.ActivatorMenu.Summoners.Heal.Health:Value() and incomingDamage / myHero.health  * 100 > 25 then
 			Control.CastSpell(hotkey)
@@ -544,7 +545,7 @@ function __Activator:CleanseTarget(slot)
 	if spellData.currentCd < .5 then	
 		for h = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(h)
-			if CanTargetAlly(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, spellData.range) and Activator.ActivatorMenu[3222].Targets[hero.networkID] and Activator.ActivatorMenu[3222].Targets[hero.networkID]:Value() then
+			if CanTargetAlly(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, spellData.range) and Activator.ActivatorMenu[3222].Targets[hero.networkID] and Activator.ActivatorMenu[3222].Targets[hero.networkID]:Value() then
 				for i = 0, hero.buffCount do
 					local buff = hero:GetBuff(i)
 					if buff.duration > 0 and Activator.ActivatorMenu[3222].CC[buff.type] and Activator.ActivatorMenu[3222].CC[buff.type]:Value() then
@@ -563,8 +564,8 @@ function __Activator:RangedItem(slot)
 	if spellData.currentCd < .5 then
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
-			if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, spellData.range) then
-				if Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] and LocalGeometry:IsInRange(myHero.pos, hero.pos, Activator.ActivatorMenu.Damage.Ranged.Radius:Value()) then
+			if CanTarget(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, spellData.range) then
+				if Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, Activator.ActivatorMenu.Damage.Ranged.Radius:Value()) then
 					Control.CastSpell(Activator.ItemHotkeys[slot], hero)
 				elseif Activator.ActivatorMenu.Damage.Ranged.Killsteal:Value() then
 					local damage = Activator.LocalDamageManager:CalculateSkillDamage(myHero, hero, spellData.name)
@@ -580,7 +581,7 @@ end
 function __Activator:AAResetItem(target, itemInfo, slot)
 	local spellData = myHero:GetSpellData(slot)
 	if spellData.currentCd < .5 then
-		if spellData.name and Activator.LocalGeometry:IsInRange(myHero.pos, target.pos, spellData.range) then						
+		if spellData.name and Activator.LocalGeometry:IsInRange(myHero.pos, target.pos, spellData.range) then
 			if Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] and Activator.ActivatorMenu.Damage.AAReset.Combo:Value() then
 				Control.CastSpell(Activator.ItemHotkeys[slot])						
 			else
@@ -596,7 +597,7 @@ end
 function __Activator:OnPostAttack()
 	--Check for E AA reset
 	if not myHero.activeSpell.target then return end
-	local target = LocalObjectManager:GetHeroByHandle(myHero.activeSpell.target)
+	local target = Activator.LocalObjectManager:GetHeroByHandle(myHero.activeSpell.target)
 	if not target then return end
 
 	for i = 1, #self.ItemAttackCallbacks do

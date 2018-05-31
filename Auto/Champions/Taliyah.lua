@@ -8,21 +8,19 @@ function LoadScript()
 	
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Threaded Volley", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 6, step = 1})
+	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Seismic Shove", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
 	Menu.Skills.W:MenuElement({id = "Radius", name = "Push Range", value = 300, min = 100, max = 600, step = 50 })
-	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 2, min = 1, max = 6, step = 1})
+	Menu.Skills.W:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Unraveled Earth", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Cast on Immobile", value = true})
 	Menu.Skills.E:MenuElement({id = "Radius", name = "Peel Range", value = 300, min = 100, max = 600, step = 50 })
-	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1})
-	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })		
-	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+	Menu.Skills.E:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 4, min = 1, max = 6, step = 1})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
@@ -79,7 +77,7 @@ function Tick()
 	if target and Ready(_Q) then
 		local accuracyRequired = 6
 		if Menu.Skills.Q.Auto:Value() then accuracyRequired =  4 end
-		if Menu.Skills.Combo:Value() then accuracyRequired = Menu.Skills.Q.Accuracy:Value() end	
+		if ComboActive() then accuracyRequired = Menu.Skills.Q.Accuracy:Value() end	
 		
 		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay,Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 		if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
@@ -103,7 +101,7 @@ function Tick()
 	if Ready(_W) and target  then		
 	
 		local requiredAccuracy = 6
-		if Menu.Skills.Combo:Value() then
+		if ComboActive() then
 			requiredAccuracy = Menu.Skills.W.Accuracy:Value()
 		elseif Menu.Skills.W.Auto:Value() then
 			requiredAccuracy = 4
