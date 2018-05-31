@@ -13,7 +13,7 @@ Data = {
         },
         Cassiopeia = {
             Changelog = "Cassiopeia Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Fiora = {
             Changelog = "Fiora Changelog Here",
@@ -70,7 +70,7 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.6,
+        Version = 1.61,
     },
     Dependencies = {
         Alpha = {

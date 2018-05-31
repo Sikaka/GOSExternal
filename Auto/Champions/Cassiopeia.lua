@@ -36,23 +36,32 @@ function LoadScript()
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Ult", value = false})
 	Menu.Skills.R:MenuElement({id = "Count", name = "Ult on # of enemies", value = 2, min = 1, max = 6, step = 1 })	
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+	Menu.Skills:MenuElement({id = "AA", name = "Use Auto Attacks In Combo", value = true})
+	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)	
+	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	
-	
-	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)
 	
 	Callback.Add("Tick", function() Tick() end)	
 end
 
-
+local qTime
+local qPos
+function OnSpellCast(spell)
+	if spell.owner == myHero.networkID and spell.data.name == "CassiopeiaQ" then
+		qTime = LocalGameTimer() + Q.Delay
+		qPos = Vector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
+	end
+end
 
 local _nextTick = LocalGameTimer()
 function Tick()
-	--local attacks = not Menu.Skills.Combo:Value() or CurrentPctMana(myHero) < 15
-	--EnableOrbAttacks(attacks)
-	if _nextTick > LocalGameTimer() then  return end
+	local currrentTime = LocalGameTimer()
+	local attacks = not ComboActive() or Menu.Skills.AA:Value() or  CurrentPctMana(myHero) < 15
+	EnableOrbAttacks(attacks)
+	if _nextTick > currrentTime then  return end
 	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
 
+	_nextTick = currrentTime + .05
 	local myMana = CurrentPctMana(myHero)
 	
 	if Ready(_R) then
@@ -61,16 +70,16 @@ function Tick()
 			local castPosition, targets, stuns = GetRCastDetails()
 			if castPosition and targets > 0 then
 				CastSpell(HK_R, castPosition)
-				_nextTick = LocalGameTimer() + .25
+				_nextTick = currrentTime + .25
 				return
 			end
 		end
-		if Menu.Skills.R.Auto:Value() or Menu.Skills.Combo:Value() then
+		if Menu.Skills.R.Auto:Value() or ComboActive() then
 			local castPosition, targets, stuns = GetRCastDetails()
 			if castPosition and 
-				(targets >= Menu.Skills.R.Count:Value() or stuns > 0 and Menu.Skills.Combo:Value()) then
+				(targets >= Menu.Skills.R.Count:Value() or stuns > 0 and ComboActive()) then
 				CastSpell(HK_R, castPosition)
-				_nextTick = LocalGameTimer() + .25
+				_nextTick = currrentTime + .25
 				return
 			end
 		end
@@ -78,26 +87,34 @@ function Tick()
 	
 	local target = GetTarget(Q.Range)
 	if target and Ready(_Q) and myMana >= Menu.Skills.Q.Mana:Value() then
-		local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.AccuracyAuto:Value() 
+		local accuracyRequired = ComboActive() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.AccuracyAuto:Value() 
 		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 		if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
 			CastSpell(HK_Q, castPosition)
-			_nextTick = LocalGameTimer() + .25
-			return
+			_nextTick = currrentTime + .25
 		end
 	end
 	
-	target = GetTarget(E.Range)	
-	if target and Ready(_E) and myMana >= Menu.Skills.E.Mana:Value() and Menu.Skills.Combo:Value() then
-		if IsTargetPoisoned(target) or not Menu.Skills.E.Poison:Value() then
-			CastSpell(HK_E, target)
-			_nextTick = LocalGameTimer() + .15
-			return
+	target = GetTarget(E.Range)
+	
+	if CanTarget(target) and Ready(_E) and myMana >= Menu.Skills.E.Mana:Value() then
+		if qTime and qTime > currrentTime and currrentTime > qTime - .25 then
+			local predictedPosition = LocalGeometry:PredictUnitPosition(target, qTime - currrentTime)
+			if LocalGeometry:IsInRange(qPos, predictedPosition, Q.Radius) then
+				CastSpell(HK_E, target)
+				_nextTick = currrentTime + .15
+			end
+		end
+		if ComboActive() or HarassActive() then
+			if IsTargetPoisoned(target) or not Menu.Skills.E.Poison:Value() and ComboActive() then
+				CastSpell(HK_E, target)
+				_nextTick = currrentTime + .15
+			end
 		end
 	end
 	
 	if Ready(_W) then
-		local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.W.Accuracy:Value() or Menu.Skills.W.Auto:Value() and 4
+		local accuracyRequired = ComboActive() and Menu.Skills.W.Accuracy:Value() or Menu.Skills.W.Auto:Value() and 4
 		
 		local aimPosition = Vector()
 		local aimCount = 0
@@ -113,8 +130,8 @@ function Tick()
 						local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, hero, W.Range, W.Delay, W.Speed, W.Radius, W.Collision, W.IsLine)
 						if LocalGeometry:IsInRange(myHero.pos, castPosition, W.Range) and not LocalGeometry:IsInRange(myHero.pos, castPosition, 500) and accuracy > 3 then
 							CastSpell(HK_W, castPosition)
-							_nextTick = LocalGameTimer() + .15
-							return
+							_nextTick = currrentTime + .15
+							break
 						end
 					end
 				end
@@ -130,11 +147,9 @@ function Tick()
 		if hitCount >= Menu.Skills.W.Count:Value() then
 			CastSpell(HK_W, aimPosition)
 			_nextTick = LocalGameTimer() + .15
-			return
 		end		
 	end
 	
-	_nextTick = LocalGameTimer() + .05
 end
 
 

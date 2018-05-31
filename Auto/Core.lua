@@ -15,6 +15,7 @@ local LocalGameParticleCount 		= Game.ParticleCount;
 local LocalGameParticle				= Game.Particle;
 local CastSpell 					= _G.Control.CastSpell
 local LocalGameIsChatOpen			= Game.IsChatOpen;
+local LocalGameLatency				= Game.Latency;
 local LocalStringSub				= string.sub;
 local LocalStringLen				= string.len;
 local LocalStringFind				= string.find;
