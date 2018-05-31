@@ -78,7 +78,7 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.52,
+            Version = 1.53,
         },
         Activator = {
             Version = 1.6,

@@ -164,7 +164,14 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 	if hitChance > 0 then
 	
 		local reactionTime = self:PredictReactionTime(target, .15)
-		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed)	
+		local adjustedDelay = 0
+		if target.activeSpell and target.activeSpell.valid and not target.activeSpell.spellWasCast then
+			adjustedDelay = LocalGameTimer() - target.activeSpell.startTime + target.activeSpell.windup
+			if adjustedDelay < 0 then
+				adjustedDelay = 0
+			end
+		end
+		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed - adjustedDelay)	
 		local interceptTime = self:GetSpellInterceptTime(source.pos, aimPosition, delay, speed)
 		
 		if not target.pathing or not target.pathing.hasMovePath then
@@ -188,8 +195,7 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		end
 		
 		--Check if the cast time wont let them walk out before the spell lands and isn't an auto attack. If so consider it accuracy 4 for shit sake
-		
-		
+				
 		if target.pathing.hasMovePath and target.pathing.isDashing and target.pathing.dashSpeed>500 then
 			if self:GetDistance(target.pos, target:GetPath(1)) / target.pathing.dashSpeed + .25 > interceptTime then
 				hitChance = 4
