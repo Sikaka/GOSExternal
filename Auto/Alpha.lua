@@ -5513,7 +5513,7 @@ function __DamageManager:MissileCreated(missile)
 	elseif missile.data.missileData.target > 0 and (LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack")) then
 		self:OnAutoAttackMissile(missile)			
 	elseif AlphaMenu.PrintMissile:Value() then
-		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width)
+		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width .. " Speed: " .. missile.data.missileData.speed)
 	end
 end
 

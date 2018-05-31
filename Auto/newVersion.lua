@@ -53,7 +53,7 @@ Data = {
         },
         Pyke = {
             Changelog = "Pyke Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
@@ -78,10 +78,10 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.51,
+            Version = 1.52,
         },
         Activator = {
-            Version = 1.51,
+            Version = 1.55,
         },
     },
 }

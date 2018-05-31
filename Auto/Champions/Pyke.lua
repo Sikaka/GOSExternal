@@ -1,4 +1,4 @@
-Q = {	Range = 650,	Delay = 0.25,	Speed = 1750,	Radius = 70,	IsLine = true, Collision = true	}
+Q = {	Range = 650,	Delay = 0.25,	Speed = 2000,	Radius = 70,	IsLine = true, Collision = true	}
 W = {	Range = 900,	Delay = 0.25	}
 E = {	Range = 525,	Delay = 0.25,	Speed = 1700,	Radius = 150	}
 R = {	Range = 900,	Radius = 250,	Delay = 0.25,	Speed = 90000,	SpellName = "PykeR"	}
@@ -40,6 +40,8 @@ function LoadScript()
 end
 
 local QStartTime = 0
+local RTarget = nil
+local RCastTime = LocalGameTimer()
 function OnSpellCast(spell)
 	if spell.owner == myHero.networkID then
 		if spell.name == "PykeQ" then
@@ -57,14 +59,17 @@ function Tick()
 	
 	if Ready(_Q) then	
 		if myHero.activeSpell.valid and myHero.activeSpell.name == "PykeQ" then
+			local qChargeDuration = LocalGameTimer() - QStartTime
+			if qChargeDuration > 3 then return end
+			
 			if ComboActive() or Menu.Skills.Q.Auto:Value() then
-				local range = LocalMathMax(LocalMathMin(LocalGameTimer() - QStartTime, 1.25) * 880, 400)
+				local range = LocalMathMax(LocalMathMin(qChargeDuration, 1.25) * 880, 400)
 				if range > 400 then
 					for i = 1, LocalGameHeroCount() do
 						local hero = LocalGameHero(i)
 						if CanTarget(hero) and Menu.Skills.Q.Targets[hero.networkID] and Menu.Skills.Q.Targets[hero.networkID]:Value() and LocalGeometry:IsInRange(myHero.pos, hero.pos, range) then				
 							local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, hero, range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
-							if castPosition and accuracy > 1 then
+							if castPosition and accuracy > 0 then
 								NextTick = LocalGameTimer() + .25
 								CastSpell(HK_Q, castPosition)
 								break
@@ -74,8 +79,8 @@ function Tick()
 				else
 					local target = GetTarget(Q.Range)
 					if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID] and not Menu.Skills.Q.Targets[target.networkID]:Value() then
-						local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
-						if castPosition and accuracy > 1 then
+						local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, false, Q.IsLine)
+						if castPosition and accuracy > 0 then
 							NextTick = LocalGameTimer() + .25
 							CastSpell(HK_Q, castPosition)
 						end
@@ -135,15 +140,19 @@ function Tick()
 			local hero = LocalGameHero(i)
 			if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then
 				if Menu.Skills.R.Killsteal:Value() then
+				
+					if RTarget == hero and LocalGameTimer() - RCastTime < 2 then return end
+					
 					local castPosition = LocalGeometry:PredictUnitPosition(hero, R.Delay)
 					local thisDmg = LocalDamageManager:CalculateDamage(myHero, hero, R.SpellName)
 					local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
 
-					print("My dmg: " .. thisDmg .. " health remaining: " .. hero.health  - thisDmg - incomingDmg)
 					if hero.health > incomingDmg and thisDmg + incomingDmg > hero.health then
 						if LocalGeometry:IsInRange(myHero.pos, castPosition, R.Range) then
 							NextTick = LocalGameTimer() + .25
 							CastSpell(HK_R, castPosition)
+							RTarget = hero
+							RCastTime = LocalGameTimer()
 							return
 						end
 					end

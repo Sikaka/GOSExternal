@@ -260,7 +260,7 @@ function __Activator:__init()
 	self.ItemAttackCallbacks = {}
 	self.ItemTickCallbacks = {}
 	
-	DelayAction(function () self.LoadCompleted() end, math.max(2,30 - Game.Timer()))
+	DelayAction(function () self.LoadCompleted() end, 1)
 end
 
 function __Activator:EnemyCount(origin, range, delay)
@@ -351,6 +351,12 @@ function __Activator:CastSpell(key, pos, isLine)
 end
 
 function __Activator:LoadCompleted()
+
+	if not _G.Alpha or not _G.Alpha.DamageManager then
+		DelayAction(function () self.LoadCompleted() end, 1)
+		return
+	end
+	
 	Activator.LocalGeometry = _G.Alpha.Geometry
 	Activator.LocalDamageManager = _G.Alpha.DamageManager
 	Activator.LocalObjectManager = _G.Alpha.ObjectManager
