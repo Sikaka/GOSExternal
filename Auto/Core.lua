@@ -56,6 +56,14 @@ function GetTarget(range, isAD)
 	end
 end
 
+function ComboActive()
+	return LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO]
+end
+
+function HarassActive()
+	return LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_HARASS]
+end
+
 
 function EnableOrb(bool)
     if _G.EOWLoaded then
@@ -200,7 +208,8 @@ end
 
 local remaining = 30 - Game.Timer()
 print(myHero.charName .. " will load shortly")
-DelayAction(function()
+DelayAction(function()	
+	LocalOrbwalker = _G.SDK.Orbwalker
 	LocalGeometry = _G.Alpha.Geometry
 	LocalBuffManager = _G.Alpha.BuffManager
 	LocalObjectManager = _G.Alpha.ObjectManager

@@ -31,6 +31,10 @@ Data = {
             Changelog = "Karthus Changelog Here",
             Version = 1.0,
         },
+        Kayle = {
+            Changelog = "Kayle Changelog Here",
+            Version = 1.0,
+        },
         Lux = {
             Changelog = "Lux Changelog Here",
             Version = 1.21,
@@ -41,7 +45,7 @@ Data = {
         },
         MissFortune = {
             Changelog = "MissFortune Changelog Here",
-            Version = 1.11,
+            Version = 1.2,
         },
         Morgana = {
             Changelog = "Morgana Changelog Here",
@@ -66,7 +70,7 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.51,
+        Version = 1.6,
     },
     Dependencies = {
         Alpha = {

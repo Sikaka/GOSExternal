@@ -163,8 +163,7 @@ function GetQBounceTarget(target)
 	for i = 1, LocalGameMinionCount() do
 		local hero = LocalGameMinion(i)
 		if CanTarget(hero) and hero.networkID ~= target.networkID then
-			local extraDelay = LocalGeometry:GetSpellInterceptTime(targetOrigin, hero.pos, 0, Q.Speed)
-			local heroOrigin = LocalGeometry:PredictUnitPosition(hero, bounceTargetDelay + extraDelay)
+			local heroOrigin = LocalGeometry:PredictUnitPosition(hero, bounceTargetDelay)
 			if LocalGeometry:IsInRange(targetOrigin, heroOrigin, 500 + hero.boundingRadius) and
 				not LocalGeometry:IsInRange(topVector, heroOrigin, 450 - hero.boundingRadius) and
 				not LocalGeometry:IsInRange(bottomVector, heroOrigin, 450 - hero.boundingRadius) and
@@ -177,8 +176,7 @@ function GetQBounceTarget(target)
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if CanTarget(hero) and hero.networkID ~= target.networkID then
-			local extraDelay = LocalGeometry:GetSpellInterceptTime(targetOrigin, hero.pos, 0, Q.Speed)
-			local heroOrigin = LocalGeometry:PredictUnitPosition(hero, bounceTargetDelay + extraDelay)
+			local heroOrigin = LocalGeometry:PredictUnitPosition(hero, bounceTargetDelay )
 			if LocalGeometry:IsInRange(targetOrigin, heroOrigin, 500 + hero.boundingRadius) and
 				not LocalGeometry:IsInRange(topVector, heroOrigin, 450 - hero.boundingRadius) and
 				not LocalGeometry:IsInRange(bottomVector, heroOrigin, 450 - hero.boundingRadius) and
