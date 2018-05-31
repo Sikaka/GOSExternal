@@ -20,7 +20,7 @@ function LoadScript()
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if hero and hero.isAlly then
-			Menu.Skills.W.Targets:MenuElement({	id = hero.networkID,	name = hero.charName,	value = hero.isMe and 50 or 10	})
+			Menu.Skills.W.Targets:MenuElement({	id = hero.networkID,	name = hero.charName,	value = hero.isMe and 50 or 10,	min = 1,	max = 100,	step = 1	})
 		end
 	end
 	Menu.Skills.W:MenuElement({id = "Mana", name = "Mana Limit", value = 20, min = 5, max = 100, step = 5 })
@@ -38,7 +38,7 @@ function LoadScript()
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if hero and hero.isAlly then
-			Menu.Skills.R.Targets:MenuElement({	id = hero.networkID,	name = hero.charName,	value = hero.isMe and 30 or 10	})
+			Menu.Skills.R.Targets:MenuElement({	id = hero.networkID,	name = hero.charName,	value = hero.isMe and 30 or 10,	min = 1,	max = 100,	step = 1	})
 		end
 	end	
 	Menu.Skills.R:MenuElement({	id = "TargetCC",	name = "Incoming CC Target Settings",	type = MENU	})

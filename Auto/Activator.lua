@@ -471,7 +471,7 @@ function __Activator:Ignite(spellSlot, hotkey)
 				remainingHealth = hero.health
 			end
 			if remainingHealth > 0 then
-				if remainingHealth < ({80,105,130,155,180,205,230,255,280,305,330,355,380,405,430,455,480,505})[myHero.levelData.lvl] then	
+				if remainingHealth < ({80,105,130,155,180,205,230,255,280,305,330,355,380,405,430,455,480,505})[myHero.levelData.lvl] and Activator.ActivatorMenu.Summoners.Ignite.Killsteal:Value() then	
 					Activator:CastSpell(hotkey, hero)
 				elseif Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] and Activator.ActivatorMenu.Summoners.Ignite.Combo:Value() then
 					Activator:CastSpell(hotkey, hero)

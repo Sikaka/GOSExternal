@@ -33,7 +33,7 @@ Data = {
         },
         Kayle = {
             Changelog = "Kayle Changelog Here",
-            Version = 1.0,
+            Version = 1.1,
         },
         Lux = {
             Changelog = "Lux Changelog Here",
@@ -77,7 +77,7 @@ Data = {
             Version = 1.5,
         },
         Activator = {
-            Version = 1.5,
+            Version = 1.51,
         },
     },
 }
