@@ -59,6 +59,10 @@ function GetTarget(range, isAD)
 	end
 end
 
+function FarmActive()
+	return LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_LASTHIT] or LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_JUNGLECLEAR] or LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_LANECLEAR]
+end
+
 function ComboActive()
 	return LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO]
 end
@@ -135,7 +139,7 @@ function CastSpell(key, pos, isLine)
 	end
 	
 	if not pos:ToScreen().onScreen and isLine then			
-		pos = myHero.pos + (pos - myHero.pos):Normalized() * 250
+		pos = myHero.pos + (pos - myHero.pos):Normalized() * 500
 	end
 	
 	if not pos:ToScreen().onScreen then
@@ -145,6 +149,7 @@ function CastSpell(key, pos, isLine)
 	EnableOrb(false)
 	Control.CastSpell(key, pos)
 	DelayAction(function() EnableOrb(true)	end, .1)	
+	return true
 end
 
 function EnemyCount(origin, range, delay)

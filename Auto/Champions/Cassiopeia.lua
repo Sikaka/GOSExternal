@@ -1,6 +1,6 @@
 Q = {Range = 850, Radius = 150,Delay = 0.4, Speed = 999999}
 W = {Range = 800, Radius = 150,Delay = 0.25, Speed = 999999}
-E = {Range = 690, Delay = 0.125, Speed = 2500}
+E = {Range = 690, Delay = 0.125, Speed = 2500, SpellName = "CassiopeiaE" }
 R = {Range = 750,Delay = 0.5, Angle = 80}
 
 function LoadScript()
@@ -22,7 +22,8 @@ function LoadScript()
 	Menu.Skills:MenuElement({id = "E", name = "[E] Twin Fang", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Poison", name = "Only cast on poisoned enemies", value = false})
 	Menu.Skills.E:MenuElement({id = "FarmPoison", name = "Only cast on poisoned minions", value = false, toggle = true})
-	Menu.Skills.E:MenuElement({id = "Mana", name = "Farm Mana Limit", value = 15, min = 5, max = 100, step = 5 })
+	Menu.Skills.E:MenuElement({id = "Farm", name = "E Last Hit (Toggle)", value = false, toggle = true, key = 0x72})
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Petrifying Gaze", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Assist", name = "Manual Ult Key",value = false,  key = 0x73})	
@@ -97,6 +98,20 @@ function Tick()
 	
 	target = GetTarget(E.Range)
 	
+	if (FarmActive() or Menu.Skills.E.Farm:Value()) and Ready(_E) and myMana >= Menu.Skills.E.Mana:Value() then	
+		for i = 1, LocalGameMinionCount() do
+			local minion = LocalGameMinion(i)
+			if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, E.Range) then
+				local predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, LocalGeometry:GetSpellInterceptTime(myHero.pos, minion.pos, E.Delay, E.Speed) - Game.Latency()/1000)
+				local predictedDamage = LocalDamageManager:CalculateDamage(myHero, minion, E.SpellName)
+				if predictedHealth > 0 and predictedDamage > predictedHealth then
+					CastSpell(HK_E, minion)
+					_nextTick = currrentTime + .15
+					break
+				end
+			end
+		end
+	end
 	if CanTarget(target) and Ready(_E) and myMana >= Menu.Skills.E.Mana:Value() then
 		if qTime and qTime > currrentTime and currrentTime > qTime - .25 then
 			local predictedPosition = LocalGeometry:PredictUnitPosition(target, qTime - currrentTime)

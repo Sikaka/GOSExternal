@@ -42,7 +42,6 @@ function LoadScript()
 		end
 	end
 		
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
@@ -70,6 +69,8 @@ function Tick()
 		DetonateE()
 	end
 	
+	NextTick = LocalGameTimer() + .1
+	
 	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		for i = 1, LocalGameHeroCount() do
 			local target = LocalGameHero(i)
@@ -81,8 +82,9 @@ function Tick()
 					local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, W.Delay, W.Speed, W.Radius,true)
 					if targetCount >= Menu.Skills.W.Count:Value() then
 						NextTick = LocalGameTimer() + .25
-						CastSpell(HK_W, castPosition, true)
-						return
+						if CastSpell(HK_W, castPosition, true) then
+							return
+						end
 					end
 				end
 			end
@@ -90,7 +92,7 @@ function Tick()
 	end
 	
 	--Check for killsteal or target count R
-	if Ready(_R) and Menu.Skills.R.Killsteal:Value() and (not Menu.Skills.R.Combo:Value() or Menu.Skills.Combo:Value()) then
+	if Ready(_R) and Menu.Skills.R.Killsteal:Value() and (not Menu.Skills.R.Combo:Value() or ComboActive()) then
 		local rDamage= 200 + (myHero:GetSpellData(_R).level) * 100 + myHero.ap * 0.75
 		for i = 1, LocalGameHeroCount() do
 			local target = LocalGameHero(i)
@@ -106,9 +108,10 @@ function Tick()
 					local predictedHealth = target.health + target.hpRegen * 2 - extraIncoming			
 					thisRDamage = LocalDamageManager:CalculateMagicDamage(myHero,target, thisRDamage)
 					if predictedHealth > 0 and thisRDamage > predictedHealth then
-						NextTick = LocalGameTimer() + .25
-						CastSpell(HK_R, castPosition, true)
-						return
+						NextTick = LocalGameTimer() + 1
+						if CastSpell(HK_R, castPosition, true) then
+							return
+						end
 					end
 				end
 			end
@@ -119,43 +122,45 @@ function Tick()
 	local target = GetTarget(Q.Range)
 	if target and CanTarget(target) then
 		if Ready(_E) then
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
+			local accuracyRequired = ComboActive() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision, E.IsLine)
 			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
 				NextTick = LocalGameTimer() + .25
-				CastSpell(HK_E, castPosition)
-				return
+				if CastSpell(HK_E, castPosition) then
+					return
+				end
 			end
 		end
 		
 		if Ready(_Q) then
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
+			local accuracyRequired = ComboActive() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
 				NextTick = LocalGameTimer() + .25
-				CastSpell(HK_Q, castPosition)
-				return
-			end
-		end
-	end
-	
-	local target = GetTarget(R.Range)
-	if target and CanTarget(target) and Ready(_R) and (not Menu.Skills.R.Combo:Value() or Menu.Skills.Combo:Value()) then
-		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, R.Range, R.Delay, R.Speed, R.Radius, R.Collision, R.IsLine)
-		if castPosition and LocalGeometry:IsInRange(myHero.pos, castPosition, R.Range) then
-			if accuracy >= Menu.Skills.R.Accuracy:Value() then
-				local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * R.Range
-				local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, R.Delay, R.Speed, R.Radius)
-				if targetCount >= Menu.Skills.R.Count:Value() then
-					NextTick = LocalGameTimer() + .25
-					CastSpell(HK_R, castPosition)
+				if CastSpell(HK_Q, castPosition) then
 					return
 				end
 			end
 		end
 	end
 	
-	NextTick = LocalGameTimer() + .1
+	local target = GetTarget(R.Range)
+	if target and CanTarget(target) and Ready(_R) and (not Menu.Skills.R.Combo:Value() or ComboActive()) then
+		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, R.Range, R.Delay, R.Speed, R.Radius, R.Collision, R.IsLine)
+		if castPosition and LocalGeometry:IsInRange(myHero.pos, castPosition, R.Range) then
+			if accuracy >= Menu.Skills.R.Accuracy:Value() then
+				local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * R.Range
+				local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, R.Delay, R.Speed, R.Radius)
+				if targetCount >= Menu.Skills.R.Count:Value() then
+					NextTick = LocalGameTimer() + 1					
+					if CastSpell(HK_R, castPosition, true) then
+						return
+					end
+				end
+			end
+		end
+	end
+	
 end
 
 
@@ -217,7 +222,6 @@ function OnCC(target, damage, ccType)
 	end
 	
 	if target.isEnemy and CanTarget(target) and LocalDamageManager.IMMOBILE_TYPES[ccType] then
-		print("CC enemy")
 		if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and Menu.Skills.Q.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, Q.Range) then
 			NextTick = LocalGameTimer() + .25
 			CastSpell(HK_Q, target.pos,true)
