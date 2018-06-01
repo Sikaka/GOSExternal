@@ -163,15 +163,8 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 	local aimPosition = target.pos
 	if hitChance > 0 then
 	
-		local reactionTime = self:PredictReactionTime(target, .15)
-		local adjustedDelay = 0
-		if target.activeSpell and target.activeSpell.valid and not target.activeSpell.spellWasCast then
-			adjustedDelay = LocalGameTimer() - target.activeSpell.startTime + target.activeSpell.windup
-			if adjustedDelay < 0 then
-				adjustedDelay = 0
-			end
-		end
-		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed - adjustedDelay)	
+		local reactionTime = self:PredictReactionTime(target, .15)		
+		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed )	
 		local interceptTime = self:GetSpellInterceptTime(source.pos, aimPosition, delay, speed)
 		
 		if not target.pathing or not target.pathing.hasMovePath then
@@ -190,7 +183,13 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		end
 		
 		local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
-		if movementRadius <= radius  then				
+		if movementRadius <= radius  then
+			if target.activeSpell and target.activeSpell.valid and not target.activeSpell.spellWasCast then
+				adjustedDelay = LocalGameTimer() - target.activeSpell.startTime + target.activeSpell.windup
+				if adjustedDelay > 0 then					
+					aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed - adjustedDelay)
+				end
+			end
 			hitChance = 3
 		end
 		
