@@ -52,7 +52,6 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()	
-	
 	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
@@ -98,7 +97,7 @@ function Tick()
 	
 	if Ready(_W) and ComboActive() and Menu.Skills.W.Combo:Value() then
 		local target, distance = NearestEnemy(myHero.pos, 1500)
-		if distance > 500 then
+		if target and distance > 500 then
 			CastSpell(HK_W)
 			NextTick = LocalGameTimer() + .25
 		end
@@ -139,10 +138,8 @@ function Tick()
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
 			if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then
-				if Menu.Skills.R.Killsteal:Value() then
-				
-					if RTarget == hero and LocalGameTimer() - RCastTime < 2 then return end
-					
+				if Menu.Skills.R.Killsteal:Value() then				
+					if RTarget == hero and LocalGameTimer() - RCastTime < 2 then return end					
 					local castPosition = LocalGeometry:PredictUnitPosition(hero, R.Delay)
 					local thisDmg = LocalDamageManager:CalculateDamage(myHero, hero, R.SpellName)
 					local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
@@ -156,16 +153,16 @@ function Tick()
 							return
 						end
 					end
-					
-					if ComboActive() then
-						local hitCount = EnemyCount(castPosition, R.Radius, R.Delay)
-						if hitCount >= Menu.Skills.R.Count:Value() then
-							NextTick = LocalGameTimer() + .25
-							CastSpell(HK_R, castPosition)
-							return
-						end
+				end	
+				if ComboActive() then
+					local hitCount = EnemyCount(castPosition, R.Radius, R.Delay)
+					if hitCount >= Menu.Skills.R.Count:Value() then
+						NextTick = LocalGameTimer() + .25
+						CastSpell(HK_R, castPosition)
+						return
 					end
 				end
+				
 			end
 		end
 	end

@@ -53,7 +53,7 @@ Data = {
         },
         Pyke = {
             Changelog = "Pyke Changelog Here",
-            Version = 1.1,
+            Version = 1.11,
         },
         Taliyah = {
             Changelog = "Taliyah Changelog Here",
