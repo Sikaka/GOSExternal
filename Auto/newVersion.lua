@@ -51,6 +51,10 @@ Data = {
             Changelog = "Morgana Changelog Here",
             Version = 1.1,
         },
+        Nami = {
+            Changelog = "Nami Changelog Here",
+            Version = 1,
+        },
         Pyke = {
             Changelog = "Pyke Changelog Here",
             Version = 1.11,
