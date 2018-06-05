@@ -135,7 +135,7 @@ function __Geometry:Angle(A, B)
 end
 
 function __Geometry:IsInRange(p1, p2, range)
-	if not p1 or not p2 then
+	if not p1 or not p2 or not p1.x or not p2.x then
 		local dInfo = debug.getinfo(2)
 		print("Undefined IsInRange target. Please report. Method: " .. dInfo.name .. "  Line: " .. dInfo.linedefined)
 		return false
@@ -186,7 +186,7 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		if movementRadius <= radius  then
 			if target.activeSpell and target.activeSpell.valid and not target.activeSpell.spellWasCast then
 				adjustedDelay = LocalGameTimer() - target.activeSpell.startTime + target.activeSpell.windup
-				if adjustedDelay > 0 then					
+				if adjustedDelay > 0 then
 					aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed - adjustedDelay)
 				end
 			end

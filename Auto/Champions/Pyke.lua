@@ -95,6 +95,9 @@ function Tick()
 		end
 	end
 	
+	if myHero.activeSpell.valid and myHero.activeSpell.name == "PykeQ" then
+		return 
+	end
 	if Ready(_W) and ComboActive() and Menu.Skills.W.Combo:Value() then
 		local target, distance = NearestEnemy(myHero.pos, 1500)
 		if target and distance > 500 then
@@ -121,7 +124,7 @@ function Tick()
 	end
 	
 	local target = GetTarget(E.Range, true)
-	if Ready(_E) and CanTarget(target) and ComboActive() then
+	if Ready(_E) and CanTarget(target) and ComboActive() and not myHero.activeSpell.valid then
 		local castPosition = LocalGeometry:PredictUnitPosition(target, E.Delay + LocalGeometry:GetDistance(myHero.pos, target.pos)/E.Speed)
 		if LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
 			local endPosition = myHero.pos + (castPosition-myHero.pos):Normalized() * E.Range
@@ -138,9 +141,9 @@ function Tick()
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
 			if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then
+				local castPosition = LocalGeometry:PredictUnitPosition(hero, R.Delay)
 				if Menu.Skills.R.Killsteal:Value() then				
-					if RTarget == hero and LocalGameTimer() - RCastTime < 2 then return end					
-					local castPosition = LocalGeometry:PredictUnitPosition(hero, R.Delay)
+					if RTarget == hero and LocalGameTimer() - RCastTime < 2 then return end			
 					local thisDmg = LocalDamageManager:CalculateDamage(myHero, hero, R.SpellName)
 					local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
 
