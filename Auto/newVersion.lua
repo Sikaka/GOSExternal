@@ -53,7 +53,7 @@ Data = {
         },
         Nami = {
             Changelog = "Nami Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Pyke = {
             Changelog = "Pyke Changelog Here",

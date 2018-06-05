@@ -12,6 +12,7 @@ function LoadScript()
 	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto cast on Immobile", value = true, toggle = true })	
 	Menu.Skills.Q:MenuElement({id = "Count", name = "Auto cast on # Enemies", tooltip = "How many targets we need to be able to hit to auto cast", value = 3, min = 1, max = 6, step = 1 })
 	Menu.Skills.Q:MenuElement({id = "Mana", name = "Minimum Mana", value = 15, min = 1, max = 100, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "Assist", name = "Assist Key",value = false,  key = 0x70})
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Ebb and Flow", type = MENU})
 	Menu.Skills.W:MenuElement({id = "BounceTargets", name = "Target Settings [Bounce]", type = MENU})
@@ -53,9 +54,6 @@ function LoadScript()
 	Callback.Add("Tick", function() Tick() end)
 end
 
-local EPos = nil
-local EExpiresAt = 0
-
 function OnSpellCast(spell)
 	if  not spell.isEnemy and Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() and Menu.Skills.E.Auto:Value() then
 		local owner = LocalObjectManager:GetHeroByID(spell.owner)
@@ -88,8 +86,8 @@ function Tick()
 	
 	if Ready(_Q) then
 		local target = GetTarget(Q.Range)
-			if CanTarget(target) then
-			local accuracyRequired = ComboActive() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
+		if CanTarget(target) then
+			local accuracyRequired = (ComboActive() or Menu.Skills.Q.Assist:Value()) and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 			local hitCount = EnemyCount(castPosition, Q.Radius, LocalGeometry:GetSpellInterceptTime(myHero.pos, castPosition, Q.Delay, Q.Speed))
 			if hitCount >= Menu.Skills.Q.Count:Value() then
