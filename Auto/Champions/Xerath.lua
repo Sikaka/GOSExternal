@@ -8,7 +8,8 @@ local LocalTableSort = table.sort
 function LoadScript()
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = myHero.charName})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
-	Menu.Skills:MenuElement({id = "Q", name = "[Q] Arcanopulse", type = MENU})	
+	Menu.Skills:MenuElement({id = "Q", name = "[Q] Arcanopulse", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Assist", name = "Assist", value = true, toggle = true,  key = 0x70 })		
 	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Accuracy", value = 3, min = 1, max = 6, step = 1 })		
 	Menu.Skills.Q:MenuElement({id = "Targets", name = "Target List", type = MENU})
 	for i = 1, LocalGameHeroCount() do
@@ -75,7 +76,7 @@ function Tick()
 	if NextTick > currentTime then return end
 	NextTick = LocalGameTimer() + .1
 	
-	if IsQCharging() then
+	if IsQCharging() and Menu.Skills.Q.Assist:Value() then
 		local chargeTime = LocalMathMin(LocalGameTimer() - qStartTime, 2)
 		local range = 750 + 500* chargeTime		
 		for i = 1, LocalGameHeroCount() do
