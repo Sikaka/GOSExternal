@@ -84,7 +84,7 @@ function Tick()
 			if CanTarget(hero) and Menu.Skills.Q.Targets[hero.networkID] then
 				local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, hero, range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 				if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, range - 200) then
-					local thisDmg = LocalDamageManager:CalculateSkillDamage(myHero, hero, "XerathArcanopulseChargeUp")
+					local thisDmg = LocalDamageManager:CalculateDamage(myHero, hero, "XerathArcanopulseChargeUp")
 					local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
 					--We can killsteal the target. Set them as our priority
 					if incomingDmg < hero.health and incomingDmg +  thisDmg >= hero.health and Menu.Skills.Q.Killsteal then
@@ -109,7 +109,7 @@ function Tick()
 	if IsRActive() and Ready(_R) then
 		local target = Menu.Skills.R.Assist:Value() and NearestEnemy(mousePos, 800) or Menu.Skills.R.Auto:Value() and GetTarget(R.Range)
 		if target then
-			local thisDmg = LocalDamageManager:CalculateSkillDamage(myHero, target, "XerathLocusOfPower2")
+			local thisDmg = LocalDamageManager:CalculateDamage(myHero, target, "XerathLocusOfPower2")
 			local accuracyRequired = Menu.Skills.R.Killsteal:Value() and thisDmg >= target.health and 1 or Menu.Skills.R.Accuracy:Value()
 			local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, R.Range, R.Delay,R.Speed, R.Radius, R.Collision, R.IsLine)
 			if aimPosition and hitChance >= accuracyRequired then
@@ -140,7 +140,7 @@ function Tick()
 	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		local target = GetTarget(W.Range)
 		if CanTarget(target) then
-			local thisDmg = LocalDamageManager:CalculateSkillDamage(myHero, target, "XerathArcaneBarrage2")
+			local thisDmg = LocalDamageManager:CalculateDamage(myHero, target, "XerathArcaneBarrage2")
 			local accuracyRequired = Menu.Skills.W.Killsteal:Value() and thisDmg >= target.health and 2 or Menu.Skills.Combo:Value() and Menu.Skills.W.Accuracy:Value() or Menu.Skills.W.Auto:Value() and 4 or 6
 			local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, W.Range, W.Delay,W.Speed, W.Radius, W.Collision, W.IsLine)
 			if aimPosition and hitChance >= accuracyRequired then

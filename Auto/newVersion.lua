@@ -23,6 +23,10 @@ Data = {
             Changelog = "Soraka Changelog Here",
             Version = 1.1,
         },
+        Garen = {
+            Changelog = "Garen Changelog Here",
+            Version = 1,
+        },
         Heimerdinger = {
             Changelog = "Heimerdinger Changelog Here",
             Version = 1.1,
@@ -69,7 +73,7 @@ Data = {
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
-            Version = 1.21,
+            Version = 1.3,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",
@@ -82,11 +86,11 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.63,
+        Version = 1.65,
     },
     Dependencies = {
         Alpha = {
-            Version = 1.56,
+            Version = 1.6,
         },
         Activator = {
             Version = 1.6,

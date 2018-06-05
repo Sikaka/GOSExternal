@@ -1888,13 +1888,14 @@ function __DamageManager:__init()
 		--[GAREN SKILLS]--
 		["GarenQ"] = 
 		{
+			Alias = "GarentQAttack",
 			SpellName = "Garen",
 			HeroName = "Decisive Strike",
 			SpellSlot = _Q,
 			DamageType = DAMAGE_TYPE_PHYSICAL,
 			TargetType = TARGET_TYPE_SINGLE,						
 			Damage = {30,65,100,135,170},
-			ADScaling = .4,
+			ADScaling = 1.4,
 			Danger = 1,
 			CCType = BUFF_SILENCE,
 		},
@@ -1907,7 +1908,7 @@ function __DamageManager:__init()
 			TargetType = TARGET_TYPE_SINGLE,						
 			Damage = {175,350,525},
 			MissingHealth = {.286,.333,.4},
-			Danger = 1,
+			Danger = 4,
 		},
 		
 		--[GNAR SKILLS]--
