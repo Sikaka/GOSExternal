@@ -27,6 +27,10 @@ Data = {
             Changelog = "Heimerdinger Changelog Here",
             Version = 1.1,
         },
+        Illaoi = {
+            Changelog = "Illaoi Changelog Here",
+            Version = 1.1,
+        },
         Karthus = {
             Changelog = "Karthus Changelog Here",
             Version = 1.0,
@@ -82,7 +86,7 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.55,
+            Version = 1.56,
         },
         Activator = {
             Version = 1.6,

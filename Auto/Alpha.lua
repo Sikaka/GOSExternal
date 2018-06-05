@@ -565,7 +565,7 @@ function __ObjectManager:Tick()
 				if self.CachedParticles[particle.networkID] then
 					self.CachedParticles[particle.networkID].valid = true
 				else
-					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
+					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name, data = particle}
 					self.CachedParticles[particle.networkID] =particleData
 					self:ParticleCreated(particleData)
 				end
