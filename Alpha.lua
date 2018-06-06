@@ -135,7 +135,7 @@ function __Geometry:Angle(A, B)
 end
 
 function __Geometry:IsInRange(p1, p2, range)
-	if not p1 or not p2 then
+	if not p1 or not p2 or not p1.x or not p2.x then
 		local dInfo = debug.getinfo(2)
 		print("Undefined IsInRange target. Please report. Method: " .. dInfo.name .. "  Line: " .. dInfo.linedefined)
 		return false
@@ -163,8 +163,8 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 	local aimPosition = target.pos
 	if hitChance > 0 then
 	
-		local reactionTime = self:PredictReactionTime(target, .15)
-		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed)	
+		local reactionTime = self:PredictReactionTime(target, .15)		
+		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed )	
 		local interceptTime = self:GetSpellInterceptTime(source.pos, aimPosition, delay, speed)
 		
 		if not target.pathing or not target.pathing.hasMovePath then
@@ -183,13 +183,18 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		end
 		
 		local origin,movementRadius = self:UnitMovementBounds(target, interceptTime, reactionTime)
-		if movementRadius <= radius  then				
+		if movementRadius <= radius  then
+			if target.activeSpell and target.activeSpell.valid and not target.activeSpell.spellWasCast then
+				adjustedDelay = LocalGameTimer() - target.activeSpell.startTime + target.activeSpell.windup
+				if adjustedDelay > 0 then
+					aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed - adjustedDelay)
+				end
+			end
 			hitChance = 3
 		end
 		
 		--Check if the cast time wont let them walk out before the spell lands and isn't an auto attack. If so consider it accuracy 4 for shit sake
-		
-		
+				
 		if target.pathing.hasMovePath and target.pathing.isDashing and target.pathing.dashSpeed>500 then
 			if self:GetDistance(target.pos, target:GetPath(1)) / target.pathing.dashSpeed + .25 > interceptTime then
 				hitChance = 4
@@ -560,7 +565,7 @@ function __ObjectManager:Tick()
 				if self.CachedParticles[particle.networkID] then
 					self.CachedParticles[particle.networkID].valid = true
 				else
-					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name}
+					local particleData = { valid = true, networkID = particle.networkID,  pos = particle.pos, name = particle.name, data = particle}
 					self.CachedParticles[particle.networkID] =particleData
 					self:ParticleCreated(particleData)
 				end
@@ -1883,13 +1888,14 @@ function __DamageManager:__init()
 		--[GAREN SKILLS]--
 		["GarenQ"] = 
 		{
+			Alias = "GarentQAttack",
 			SpellName = "Garen",
 			HeroName = "Decisive Strike",
 			SpellSlot = _Q,
 			DamageType = DAMAGE_TYPE_PHYSICAL,
 			TargetType = TARGET_TYPE_SINGLE,						
 			Damage = {30,65,100,135,170},
-			ADScaling = .4,
+			ADScaling = 1.4,
 			Danger = 1,
 			CCType = BUFF_SILENCE,
 		},
@@ -1902,7 +1908,7 @@ function __DamageManager:__init()
 			TargetType = TARGET_TYPE_SINGLE,						
 			Damage = {175,350,525},
 			MissingHealth = {.286,.333,.4},
-			Danger = 1,
+			Danger = 4,
 		},
 		
 		--[GNAR SKILLS]--
@@ -4007,6 +4013,64 @@ function __DamageManager:__init()
 			CCType = BUFF_KNOCKUP,
 		},
 		
+		--[Pyke Skills]--
+		["PykeQ"] = 
+		{
+			Alternate = {"PykeQMelee","PykeQRange"},
+			HeroName = "Pyke",
+			SpellName = "Bone Skewer",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,
+			TargetType = TARGET_TYPE_SINGLE,
+			Damage = {0,0,0,0,0},
+			Danger = 1,
+		},
+		
+		["PykeQMelee"] = 
+		{
+			HeroName = "Pyke",
+			SpellName = "Bone Skewer",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 100,
+			Length = 400,
+			Damage = {86.25,143.75,201.25,258.75,315.25},
+			BonusADScaling = .69,
+			Danger = 2,
+			SetOrigin = true,
+			CCType = BUFF_SLOW,
+		},
+		
+		["PykeQRange"] = 
+		{
+			HeroName = "Pyke",
+			SpellName = "Bone Skewer",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			Radius = 70,
+			Collision = 1,
+			Damage = {75,125,175,225,275},
+			BonusADScaling = .6,
+			Danger = 3,
+			CCType = BUFF_KNOCKBACK,
+		},
+		["PykeR"] = 
+		{
+			HeroName = "Pyke",
+			SpellName = "Death from Below",
+			SpellSlot = _R,
+			DamageType = DAMAGE_TYPE_TRUE,
+			TargetType = TARGET_TYPE_CIRCLE,
+			Radius = 300,
+			SpecialDamage = 
+				function (owner, target)
+					return ({190,190,190,190,190,190,240,290,340,390,440,475,510,545,580,615,635,655})[owner.levelData.lvl] + owner.bonusDamage * .6
+				end,
+			Danger = 3,
+		},
+		
 		--[Quinn Skills]--
 		["QuinnQ"] = 
 		{
@@ -5313,15 +5377,20 @@ function __DamageManager:SpellCast(spell)
 				end
 			end
 		elseif spellInfo.TargetType == TARGET_TYPE_LINE and spellInfo.Radius then
-			local dirVector = (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)-spell.data.startPos):Normalized()
+		
+			local startPos = LocalVector(spell.data.startPos.x, spell.data.startPos.y, spell.data.startPos.z)
+			if spellInfo.SetOrigin then
+				startPos = owner.pos
+			end
+			
+			local dirVector = (LocalVector(spell.data.placementPos.x, spell.data.placementPos.y, spell.data.placementPos.z)-startPos):Normalized()
 			if dirVector.x ~= dirVector.x then
 				dirVector = owner.dir
 			end
-			local castPos = spell.data.startPos + dirVector * (spellInfo.Length or spell.data.range)
-			
+			local castPos = startPos + dirVector * (spellInfo.Length or spell.data.range)
 			for _, target in LocalPairs(collection) do
 					if target ~= nil and LocalType(target) == "userdata" then
-					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(spell.data.startPos, castPos, target.pos)
+					local proj1, pointLine, isOnSegment =Geometry:VectorPointProjectionOnLineSegment(startPos, castPos, target.pos)
 					if isOnSegment and Geometry:IsInRange(target.pos, pointLine, spellInfo.Radius + target.boundingRadius) then
 						local damage = self:CalculateSkillDamage(owner, target, spellInfo)
 						self:IncomingDamage(owner, target, damage, spellInfo.CCType,true)
@@ -5332,7 +5401,29 @@ function __DamageManager:SpellCast(spell)
 			print("Unhandled targeting type: " .. spellInfo.TargetType)
 		end
 	elseif spell.data.target > 0 then
-		--We need to filter if its a melee auto attack vs ranged or we will double the dmg when the missile is created.		
+		
+		local owner = ObjectManager:GetHeroByHandle(spell.handle)
+		local target = ObjectManager:GetHeroByHandle(spell.data.target)
+		if owner and owner.range < 275 and target then
+			local targetCollection = self.EnemyDamage
+			if target.isAlly then
+				targetCollection = self.AlliedDamage
+			end
+			if not targetCollection[target.handle] then return end
+			local damage = owner.totalDamage
+			if LocalStringFind(spell.name, "CritAttack") then
+				damage = damage * 1.5
+			end
+			damage = self:CalculatePhysicalDamage(owner, target, damage)
+			targetCollection[target.handle][owner.networkID] = 
+			{
+				Name = spell.name,
+				Damage = damage,
+				Danger = 0,
+				Expires = spell.windupEnd + .25,
+			}
+			self:IncomingDamage(owner, target, damage)
+		end
 	end
 end
 
@@ -5450,7 +5541,7 @@ function __DamageManager:MissileCreated(missile)
 	elseif missile.data.missileData.target > 0 and (LocalStringFind(missile.name, "BasicAttack") or LocalStringFind(missile.name, "CritAttack")) then
 		self:OnAutoAttackMissile(missile)			
 	elseif AlphaMenu.PrintMissile:Value() then
-		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width)
+		print("Unhandled missile: " .. missile.name .. " Width: " ..missile.data.missileData.width .. " Speed: " .. missile.data.missileData.speed)
 	end
 end
 
@@ -5518,15 +5609,19 @@ end
 
 function __DamageManager:RecordedIncomingDamage(target)
 	local damage = 0
-	
 	local targetCollection = self.EnemyDamage
+	local currentTime = LocalGameTimer()
 	if target.isAlly then
 		targetCollection = self.AlliedDamage
 	end
 	if targetCollection[target.handle] then
-		for _, dmg in LocalPairs(targetCollection[target.handle]) do
+		for _, dmg in LocalPairs(targetCollection[target.handle]) do			
 			if dmg then
-				damage = damage + dmg.Damage
+				if dmg.Expires and currentTime > dmg.Expires then
+					targetCollection[target.handle][_] = nil
+				else				
+					damage = damage + dmg.Damage
+				end
 			end
 		end
 	end	
@@ -5551,6 +5646,9 @@ function __DamageManager:PredictDamage(owner, target, spellName)
 	return damage
 end
 
+function __DamageManager:CalculateDamage(owner, target, spellName)
+	return self:CalculateSkillDamage(owner, target, self.MasterSkillLookupTable[spellName])	
+end
 function __DamageManager:CalculateSkillDamage(owner, target, skillInfo)
 	local damage = 0
 	if not skillInfo or not owner or not target then return damage end
