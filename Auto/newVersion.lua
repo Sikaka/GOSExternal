@@ -93,7 +93,7 @@ Data = {
             Version = 1.65,
         },
         Activator = {
-            Version = 1.6,
+            Version = 1.7,
         },
     },
 }

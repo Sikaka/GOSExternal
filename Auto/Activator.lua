@@ -54,12 +54,12 @@ function __Activator:__init()
 	for i = ITEM_1, ITEM_7 do
 		self.Inventory[i] = {valid = false, data = nil}		
 	end
+	local MapID = Game.mapID
 	self.Base = 
 			MapID == TWISTED_TREELINE and myHero.team == 100 and {x=1076, y=150, z=7275} or myHero.team == 200 and {x=14350, y=151, z=7299} or
 			MapID == SUMMONERS_RIFT and myHero.team == 100 and {x=419,y=182,z=438} or myHero.team == 200 and {x=14303,y=172,z=14395} or
 			MapID == HOWLING_ABYSS and myHero.team == 100 and {x=971,y=-132,z=1180} or myHero.team == 200 and {x=11749,y=-131,z=11519} or
 			MapID == CRYSTAL_SCAR and {x = 0, y = 0, z = 0}
-			
 	self.ItemHotkeys = {
 		[ITEM_1] = HK_ITEM_1,
 		[ITEM_2] = HK_ITEM_2,
@@ -114,6 +114,12 @@ function __Activator:__init()
 	}
 	
 	self.ItemFunctions = {
+		[2010] = {Name = "Biscuit of Rejuvenation", OnTick = function(slot) self:Potion(slot, "ItemMiniRegenPotion") end },
+		[2003] = {Name = "Health Potion", OnTick = function(slot) self:Potion(slot, "RegenerationPotion") end },
+		[2031] = {Name = "Refillable Potion", OnTick = function(slot) self:Potion(slot, "ItemCrystalFlask") end },
+		[2032] = {Name = "Hunter's Potion", OnTick = function(slot) self:Potion(slot, "ItemCrystalFlaskJungle") end },
+		[2033] = {Name = "Corrupting Potion", OnTick = function(slot) self:Potion(slot, "ItemDarkCrystalFlask") end },
+		
 		[3077] = {Name = "Tiamat", OnAttack = self.AAResetItem },
 		[3074] = {Name = "Ravenous Hydra", OnAttack = self.AAResetItem },
 		[3748] = {Name = "Titanic Hydra", OnAttack = self.AAResetItem },
@@ -354,7 +360,6 @@ function __Activator:LoadCompleted()
 
 	if not _G.Alpha or not _G.Alpha.DamageManager or not _G.Alpha.Geometry then
 		DelayAction(function () self.LoadCompleted() end, 1)
-		print("Delaying")
 		return
 	end
 	
@@ -395,6 +400,8 @@ function __Activator:OnBuyItem(item, slot)
 		elseif self.ItemFunctions[item.itemID].OnTick then
 			table.insert(self.ItemTickCallbacks, {Tick = self.ItemFunctions[item.itemID].OnTick, Item = item, Slot = slot})
 		end
+	else
+		--print("Unhandled item: " .. item.itemID)
 	end
 end
 
@@ -436,19 +443,19 @@ function __Activator:CheckItems()
 	if nextInventoryCheck > Game.Timer() then return end
 	nextInventoryCheck = Game.Timer() + 5
 	for i = ITEM_1, ITEM_7 do
-		if myHero:GetItemData(i).itemID ~= 0 then
-			if self.Inventory[i].valid == false then
-				self.Inventory[i].valid = true
-				self.Inventory[i].data = myHero:GetItemData(i)
-				self.Inventory[i].spell = Activator.LocalDamageManager.MasterSkillLookupTable[myHero:GetItemData(i).itemID]
-				self:OnBuyItem(myHero:GetItemData(i), i)			
-			end
-		else
-			if self.Inventory[i].valid == true then
-				self:OnSellItem(self.Inventory[i].data, i)
-				self.Inventory[i].valid = false
-				self.Inventory[i].data = nil
-			end
+		local itemData = myHero:GetItemData(i)		
+		if self.Inventory[i].valid and (itemData.itemID == 0 or self.Inventory[i].data.itemID ~= itemData.itemID) then			
+			self:OnSellItem(self.Inventory[i].data, i)
+			self.Inventory[i].valid = false
+			self.Inventory[i].data = nil
+		end
+		
+		--New item in the slot
+		if not self.Inventory[i].valid and myHero:GetItemData(i).itemID ~= 0 then
+			self.Inventory[i].valid = true
+			self.Inventory[i].data = myHero:GetItemData(i)
+			self.Inventory[i].spell = Activator.LocalDamageManager.MasterSkillLookupTable[myHero:GetItemData(i).itemID]
+			self:OnBuyItem(myHero:GetItemData(i), i)
 		end
 	end
 end
@@ -557,7 +564,27 @@ function __Activator:CleanseTarget(slot)
 		end
 	end
 end
+function __Activator:HasBuff(target, buffName, minimumDuration)
 
+	local duration = minimumDuration
+	if not minimumDuration then
+		duration = 0
+	end
+	local durationRemaining
+	for i = 1, target.buffCount do
+		local buff = target:GetBuff(i)
+		if buff.duration > duration and buff.name == buffName then
+			durationRemaining = buff.duration
+			return true, durationRemaining
+		end
+	end
+end
+function __Activator:Potion(slot, buff)
+	if Activator:HasBuff(myHero, buff) or Activator:HasBuff(myHero, "recall") or LocalGeometry:GetDistance(myHero.pos,Activator.Base) < 1000  then return end
+	if Activator.ActivatorMenu.Healing.Auto:Value() and CurrentPctLife(myHero) <= Activator.ActivatorMenu.Healing.Life:Value() then
+		Control.CastSpell(Activator.ItemHotkeys[slot.Slot])
+	end
+end
 
 function __Activator:RangedItem(slot)
 	local spellData = myHero:GetSpellData(slot)
