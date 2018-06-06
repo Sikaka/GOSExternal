@@ -41,7 +41,7 @@ Data = {
         },
         Kayle = {
             Changelog = "Kayle Changelog Here",
-            Version = 1.1,
+            Version = 1.2,
         },
         Lux = {
             Changelog = "Lux Changelog Here",
@@ -90,7 +90,7 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.6,
+            Version = 1.65,
         },
         Activator = {
             Version = 1.6,

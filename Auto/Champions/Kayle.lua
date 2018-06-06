@@ -48,6 +48,13 @@ function LoadScript()
 			Menu.Skills.R.TargetCC:MenuElement({	id = hero.networkID,	name = hero.charName,	value = hero.isMe and 75 or 50,	min = 1,	max = 100,	step = 1	})
 		end
 	end
+	Menu.Skills.R:MenuElement({	id = "Gapcloser",	name = "Anti Gapcloser Settings",	type = MENU	})
+	for i = 1, LocalGameHeroCount() do
+		local hero = LocalGameHero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.R.TargetCC:MenuElement({	id = hero.networkID,	name = hero.charName,	value = false	})
+		end
+	end
 	Menu.Skills.R:MenuElement({id = "Damage", name = "Minimum Incoming Dmg%", value = 10, min = 1, max = 50, step = 1 })
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
@@ -60,7 +67,6 @@ function Tick()
 	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
-	
 	if Ready(_R) then
 		if ComboActive() or Menu.Skills.R.Auto:Value() then
 			for i = 1, LocalGameHeroCount() do
@@ -71,6 +77,14 @@ function Tick()
 					if Menu.Skills.R.Targets[hero.networkID]:Value() >= remainingLifePct and (incomingDamage > hero.health or GetTarget(1500) ~= nil and incomingDamage / hero.health * 100 > Menu.Skills.R.Damage:Value()) then
 						NextTick = LocalGameTimer() + .25
 						CastSpell(HK_R, hero)
+						return
+					end
+				elseif CanTarget(hero) and hero.pathing.hasMovePath and hero.pathing.isDashing and Menu.Skills.R.Gapcloser[hero.networkID] and Menu.Skills.R.Gapcloser[hero.networkID]:Value() then
+					local endPos = hero:GetPath(1)
+					local ally = NearestAlly(endPos, 200)
+					if ally and LocalGeometry:IsInRange(myHero.pos, ally.pos, R.Range) then
+						NextTick = LocalGameTimer() + .25
+						CastSpell(HK_R, ally)
 						return
 					end
 				end

@@ -5401,7 +5401,29 @@ function __DamageManager:SpellCast(spell)
 			print("Unhandled targeting type: " .. spellInfo.TargetType)
 		end
 	elseif spell.data.target > 0 then
-		--We need to filter if its a melee auto attack vs ranged or we will double the dmg when the missile is created.		
+		
+		local owner = ObjectManager:GetHeroByHandle(spell.handle)
+		local target = ObjectManager:GetHeroByHandle(spell.data.target)
+		if owner and owner.range < 275 and target then
+			local targetCollection = self.EnemyDamage
+			if target.isAlly then
+				targetCollection = self.AlliedDamage
+			end
+			if not targetCollection[target.handle] then return end
+			local damage = owner.totalDamage
+			if LocalStringFind(spell.name, "CritAttack") then
+				damage = damage * 1.5
+			end
+			damage = self:CalculatePhysicalDamage(owner, target, damage)
+			targetCollection[target.handle][owner.networkID] = 
+			{
+				Name = spell.name,
+				Damage = damage,
+				Danger = 0,
+				Expires = spell.windupEnd + .25,
+			}
+			self:IncomingDamage(owner, target, damage)
+		end
 	end
 end
 
@@ -5587,15 +5609,19 @@ end
 
 function __DamageManager:RecordedIncomingDamage(target)
 	local damage = 0
-	
 	local targetCollection = self.EnemyDamage
+	local currentTime = LocalGameTimer()
 	if target.isAlly then
 		targetCollection = self.AlliedDamage
 	end
 	if targetCollection[target.handle] then
-		for _, dmg in LocalPairs(targetCollection[target.handle]) do
+		for _, dmg in LocalPairs(targetCollection[target.handle]) do			
 			if dmg then
-				damage = damage + dmg.Damage
+				if dmg.Expires and currentTime > dmg.Expires then
+					targetCollection[target.handle][_] = nil
+				else				
+					damage = damage + dmg.Damage
+				end
 			end
 		end
 	end	
