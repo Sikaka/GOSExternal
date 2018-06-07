@@ -580,7 +580,7 @@ function __Activator:HasBuff(target, buffName, minimumDuration)
 	end
 end
 function __Activator:Potion(slot, buff)
-	if Activator:HasBuff(myHero, buff) or Activator:HasBuff(myHero, "recall") or LocalGeometry:GetDistance(myHero.pos,Activator.Base) < 1000  then return end
+	if Activator:HasBuff(myHero, buff) or Activator:HasBuff(myHero, "recall") or Activator.LocalGeometry:GetDistance(myHero.pos,Activator.Base) < 1000  then return end
 	if Activator.ActivatorMenu.Healing.Auto:Value() and CurrentPctLife(myHero) <= Activator.ActivatorMenu.Healing.Life:Value() then
 		Control.CastSpell(Activator.ItemHotkeys[slot.Slot])
 	end
