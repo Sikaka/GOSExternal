@@ -41,7 +41,7 @@ Data = {
         },
         Kayle = {
             Changelog = "Kayle Changelog Here",
-            Version = 1.2,
+            Version = 1.21,
         },
         Lux = {
             Changelog = "Lux Changelog Here",

@@ -52,7 +52,7 @@ function LoadScript()
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if hero and hero.isEnemy then
-			Menu.Skills.R.TargetCC:MenuElement({	id = hero.networkID,	name = hero.charName,	value = false	})
+			Menu.Skills.R.Gapcloser:MenuElement({	id = hero.networkID,	name = hero.charName,	value = false	})
 		end
 	end
 	Menu.Skills.R:MenuElement({id = "Damage", name = "Minimum Incoming Dmg%", value = 10, min = 1, max = 50, step = 1 })
