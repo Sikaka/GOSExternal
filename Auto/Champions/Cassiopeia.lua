@@ -98,16 +98,18 @@ function Tick()
 	
 	target = GetTarget(E.Range)
 	
-	if (FarmActive() or Menu.Skills.E.Farm:Value()) and Ready(_E) and myMana >= Menu.Skills.E.Mana:Value() then	
-		for i = 1, LocalGameMinionCount() do
-			local minion = LocalGameMinion(i)
-			if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, E.Range) then
-				local predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, LocalGeometry:GetSpellInterceptTime(myHero.pos, minion.pos, E.Delay, E.Speed) - Game.Latency()/1000)
-				local predictedDamage = LocalDamageManager:CalculateDamage(myHero, minion, E.SpellName)
-				if predictedHealth > 0 and predictedDamage > predictedHealth then
-					CastSpell(HK_E, minion)
-					_nextTick = currrentTime + .15
-					break
+	if not ComboActive() then
+		if (FarmActive() or Menu.Skills.E.Farm:Value()) and Ready(_E) and myMana >= Menu.Skills.E.Mana:Value() then	
+			for i = 1, LocalGameMinionCount() do
+				local minion = LocalGameMinion(i)
+				if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, E.Range) then
+					local predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, LocalGeometry:GetSpellInterceptTime(myHero.pos, minion.pos, E.Delay, E.Speed) - Game.Latency()/1000)
+					local predictedDamage = LocalDamageManager:CalculateDamage(myHero, minion, E.SpellName)
+					if predictedHealth > 0 and predictedDamage > predictedHealth then
+						CastSpell(HK_E, minion)
+						_nextTick = currrentTime + .15
+						break
+					end
 				end
 			end
 		end
