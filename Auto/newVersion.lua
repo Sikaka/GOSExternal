@@ -15,6 +15,10 @@ Data = {
             Changelog = "Cassiopeia Changelog Here",
             Version = 1.21,
         },
+        Ezreal = {
+            Changelog = "Ezreal Changelog Here",
+            Version = 1,
+        },
         Fiora = {
             Changelog = "Fiora Changelog Here",
             Version = 1.31,
@@ -73,7 +77,7 @@ Data = {
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
-            Version = 1.3,
+            Version = 1.35,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",

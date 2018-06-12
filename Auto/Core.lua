@@ -24,6 +24,9 @@ local LocalPairs					= pairs;
 local LocalMathAbs					= math.abs;
 local LocalMathMin					= math.min;
 local LocalMathMax					= math.max;
+local LocalTargetSelector			= nil;
+local LocalOrbwalker				= nil;
+local LocalHealthPrediction			= nil;
 
 function StringEndsWith(str, word)
 	return LocalStringSub(str, - LocalStringLen(word)) == word;
@@ -53,9 +56,9 @@ end
 
 function GetTarget(range, isAD)
 	if isAD then		
-		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
+		return LocalTargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
 	else
-		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
+		return LocalTargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
 	end
 end
 
@@ -73,26 +76,12 @@ end
 
 
 function EnableOrb(bool)
-    if _G.EOWLoaded then
-        EOW:SetMovements(bool)
-        EOW:SetAttacks(bool)
-    elseif _G.SDK and _G.SDK.Orbwalker then
-        _G.SDK.Orbwalker:SetMovement(bool)
-        _G.SDK.Orbwalker:SetAttack(bool)
-    else
-        GOS.BlockMovement = not bool
-        GOS.BlockAttack = not bool
-    end
+	LocalOrbwalker:SetMovement(bool)
+	LocalOrbwalker:SetAttack(bool)
 end
 
-function EnableOrbAttacks(bool)
-    if _G.EOWLoaded then
-        EOW:SetAttacks(bool)
-    elseif _G.SDK and _G.SDK.Orbwalker then
-        _G.SDK.Orbwalker:SetAttack(bool)
-    else
-        GOS.BlockAttack = not bool
-    end
+function EnableOrbAttacks(bool)   
+	LocalOrbwalker:SetAttack(bool)
 end
 
 
@@ -216,8 +205,11 @@ end
 
 local remaining = 30 - Game.Timer()
 print(myHero.charName .. " will load shortly")
-DelayAction(function()	
+DelayAction(function()
+	LocalTargetSelector = _G.SDK.TargetSelector
+	LocalHealthPrediction = _G.SDK.HealthPrediction
 	LocalOrbwalker = _G.SDK.Orbwalker
+	
 	LocalGeometry = _G.Alpha.Geometry
 	LocalBuffManager = _G.Alpha.BuffManager
 	LocalObjectManager = _G.Alpha.ObjectManager

@@ -88,14 +88,14 @@ function Tick()
 					local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
 					--We can killsteal the target. Set them as our priority
 					if incomingDmg < hero.health and incomingDmg +  thisDmg >= hero.health and Menu.Skills.Q.Killsteal then
-						CastSpell(HK_Q, aimPosition)
+						CastSpell(HK_Q, aimPosition, true)
 						NextTick = LocalGameTimer() + .3
 						return
 					end
 
 					if Menu.Skills.Q.Targets[hero.networkID]:Value() or chargeTime > 1.75 then
 						if hitChance >= Menu.Skills.Q.Accuracy:Value() then
-							CastSpell(HK_Q, aimPosition)
+							CastSpell(HK_Q, aimPosition, true)
 							NextTick = LocalGameTimer() + .3
 							return
 						end

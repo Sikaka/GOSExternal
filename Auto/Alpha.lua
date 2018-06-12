@@ -157,15 +157,16 @@ function __Geometry:GetLineTargetCount(source, aimPos, delay, speed, width, targ
 	end
 	return targetCount
 end
+
 function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision, isLine)
 	local hitChance = 1
 	if not self:IsInRange(source.pos, target.pos, range) then hitChance = -1 end
 	local aimPosition = target.pos
 	if hitChance > 0 then
 	
-		local reactionTime = self:PredictReactionTime(target, .15)		
-		aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed )	
-		local interceptTime = self:GetSpellInterceptTime(source.pos, aimPosition, delay, speed)
+		local reactionTime = self:PredictReactionTime(target, .15)				
+		local interceptTime = self:GetSpellUnitInterceptTime(source.pos, target.pos, target:GetPath(1), self:GetTargetMS(target), delay, speed)
+		aimPosition = self:PredictUnitPosition(target, interceptTime)
 		
 		if not target.pathing or not target.pathing.hasMovePath then
 			hitChance = 2
@@ -187,7 +188,7 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 			if target.activeSpell and target.activeSpell.valid and not target.activeSpell.spellWasCast then
 				adjustedDelay = LocalGameTimer() - target.activeSpell.startTime + target.activeSpell.windup
 				if adjustedDelay > 0 then
-					aimPosition = self:PredictUnitPosition(target, delay + self:GetDistance(source.pos, target.pos) / speed - adjustedDelay)
+					aimPosition = self:PredictUnitPosition(target, interceptTime- adjustedDelay)
 				end
 			end
 			hitChance = 3
@@ -196,17 +197,17 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		--Check if the cast time wont let them walk out before the spell lands and isn't an auto attack. If so consider it accuracy 4 for shit sake
 				
 		if target.pathing.hasMovePath and target.pathing.isDashing and target.pathing.dashSpeed>500 then
-			if self:GetDistance(target.pos, target:GetPath(1)) / target.pathing.dashSpeed + .25 > interceptTime then
-				hitChance = 4
-			end
+			hitChance = 4
 		end
 		
 		if self:GetImmobileTime(target) >= interceptTime then
 			hitChance = 5
 		end
 		
+		if not self:IsInRange(source.pos, aimPosition, range) then hitChance = -1 end
+		
 		if checkCollision then
-			if self:CheckMinionCollision(source.pos, aimPosition, delay, speed, radius) then
+			if self:CheckMinionCollision(source.pos, aimPosition, interceptTime, radius) then
 				hitChance = -1
 			end
 		end
@@ -256,39 +257,51 @@ function __Geometry:UnitMovementBounds(unit, delay, reactionTime)
 	return startPosition, radius	
 end
 
+function __Geometry:GetSpellUnitInterceptTime(source, startPos, endPos, unitspeed, delay, spellspeed)
+        local sx = source.x
+        local sy = source.z
+        local ux = startPos.x
+        local uy = startPos.z
+        local dx = endPos.x - ux
+        local dy = endPos.z - uy
+        local magnitude = LocalSqrt(dx * dx + dy * dy)
+        dx = (dx / magnitude) * unitspeed
+        dy = (dy / magnitude) * unitspeed
+        local a = (dx * dx) + (dy * dy) - (spellspeed * spellspeed)
+        local b = 2 * ((ux * dx) + (uy * dy) - (sx * dx) - (sy * dy))
+        local c = (ux * ux) + (uy * uy) + (sx * sx) + (sy * sy) - (2 * sx * ux) - (2 * sy * uy)
+        local d = (b * b) - (4 * a * c)
+        if d > 0 then
+                local t1 = (-b + LocalSqrt(d)) / (2 * a)
+                local t2 = (-b - LocalSqrt(d)) / (2 * a)
+                return LocalMax(t1, t2) + Game.Latency()/2000 + delay
+        end
+        if d >= 0 and d < 0.00001 then
+                return -b / (2 * a) + Game.Latency()/2000 + delay
+        end
+        return Game.Latency()/2000 + delay
+end
+
 function __Geometry:GetSpellInterceptTime(startPos, endPos, delay, speed)	
 	local interceptTime = Game.Latency()/2000 + delay + self:GetDistance(startPos, endPos) / speed
 	return interceptTime
 end
 
-function __Geometry:CheckMinionCollision(origin, endPos, delay, speed, radius, frequency)
+function __Geometry:CheckMinionCollision(origin, endPos, interceptTime, radius, frequency)
 		
-	if not frequency then
-		frequency = radius
-	end
-	local directionVector = (endPos - origin):Normalized()
-	local checkCount = self:GetDistance(origin, endPos) / frequency
-	for i = 1, checkCount do
-		local checkPosition = origin + directionVector * i * frequency
-		local checkDelay = delay + self:GetDistance(origin, checkPosition) / speed
-		if self:IsMinionIntersection(checkPosition, radius, checkDelay, radius * 3) then
-			return true
-		end
-	end
-	return false
-end
-
-function __Geometry:IsMinionIntersection(location, radius, delay, maxDistance)
-	if not maxDistance then
-		maxDistance = 500
-	end
 	for i = 1, LocalGameMinionCount() do
 		local minion = LocalGameMinion(i)
-		if minion and self:CanTarget(minion) and self:IsInRange(minion.pos, location, maxDistance) then
-			local predictedPosition = self:PredictUnitPosition(minion, delay)
-			if self:IsInRange(location, predictedPosition, radius + minion.boundingRadius) then
+		if minion and self:CanTarget(minion) and self:IsInRange(origin,minion.pos, 2000) then
+			local minionPos = minion.pos
+			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(origin, endPos, minionPos)
+			if IsOnSegment and Geometry:IsInRange(minionPos, pointLine, radius + minion.boundingRadius) then
 				return true
 			end
+			local minionPos =self:PredictUnitPosition(minion, interceptTime)
+			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(origin, endPos, minionPos)
+			if IsOnSegment and Geometry:IsInRange(minion.pos, pointLine, radius + minion.boundingRadius) then
+				return true
+			end			
 		end
 	end
 	return false
@@ -5434,6 +5447,7 @@ function __DamageManager:GetSpellHitDetails(spell, target)
 	local owner = ObjectManager:GetHeroByID(spell.owner)
 	local spellCastPos = LocalVector(spell.data.placementPos.x, spell.data.placementPos.y,spell.data.placementPos.z)
 	local spellSpeed = spell.data.speed or 999999	
+	
 	local predictedTargetPos = Geometry:PredictUnitPosition(target, spell.windupEnd- LocalGameTimer() + Geometry:GetDistance(owner.pos, target.pos))
 	local hitTime = spell.windupEnd - LocalGameTimer() + Geometry:GetDistance(owner.pos, predictedTargetPos) / spellSpeed
 	local willHit = false
