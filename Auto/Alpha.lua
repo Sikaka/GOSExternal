@@ -205,9 +205,8 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 		end
 		
 		if not self:IsInRange(source.pos, aimPosition, range) then hitChance = -1 end
-		
 		if checkCollision then
-			if self:CheckMinionCollision(source.pos, aimPosition, interceptTime, radius) then
+			if self:CheckMinionCollision(source.pos, aimPosition, delay, speed, radius) then
 				hitChance = -1
 			end
 		end
@@ -287,25 +286,43 @@ function __Geometry:GetSpellInterceptTime(startPos, endPos, delay, speed)
 	return interceptTime
 end
 
-function __Geometry:CheckMinionCollision(origin, endPos, interceptTime, radius, frequency)
+function __Geometry:CheckMinionCollision(origin, endPos, delay, speed, radius, frequency)
 		
-	for i = 1, LocalGameMinionCount() do
-		local minion = LocalGameMinion(i)
-		if minion and self:CanTarget(minion) and self:IsInRange(origin,minion.pos, 2000) then
-			local minionPos = minion.pos
-			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(origin, endPos, minionPos)
-			if IsOnSegment and Geometry:IsInRange(minionPos, pointLine, radius + minion.boundingRadius) then
-				return true
-			end
-			local minionPos =self:PredictUnitPosition(minion, interceptTime)
-			local proj1, pointLine, isOnSegment = Geometry:VectorPointProjectionOnLineSegment(origin, endPos, minionPos)
-			if IsOnSegment and Geometry:IsInRange(minion.pos, pointLine, radius + minion.boundingRadius) then
-				return true
-			end			
+	if not frequency then
+		frequency = radius
+	end
+	local directionVector = (endPos - origin):Normalized()
+	local checkCount = self:GetDistance(origin, endPos) / frequency
+	for i = 1, checkCount do
+		local checkPosition = origin + directionVector * i * frequency
+		local checkDelay = delay + self:GetDistance(origin, checkPosition) / speed
+		if self:IsMinionIntersection(checkPosition, radius, checkDelay, radius * 3) then
+			return true
 		end
 	end
 	return false
 end
+
+function __Geometry:IsMinionIntersection(location, radius, delay, maxDistance)
+	if not maxDistance then
+		maxDistance = 500
+	end
+	for i = 1, LocalGameMinionCount() do
+		local minion = LocalGameMinion(i)
+		if minion and self:CanTarget(minion) and self:IsInRange(minion.pos, location, maxDistance) then
+			local predictedPosition = self:PredictUnitPosition(minion, delay)
+			if self:IsInRange(location, predictedPosition, radius + minion.boundingRadius) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function __Geometry:CanTarget(target, allowInvisible)
+	return target.isEnemy and target.alive and target.health > 0 and target.visible and target.isTargetable
+end
+
 
 function __Geometry:CanTarget(target, allowInvisible)
 	return target.isEnemy and target.alive and target.health > 0 and target.visible and target.isTargetable
