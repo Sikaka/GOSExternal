@@ -145,9 +145,7 @@ function Tick()
 				if Menu.Skills.R.Killsteal:Value() then				
 					if RTarget == hero and LocalGameTimer() - RCastTime < 2 then return end			
 					local thisDmg = LocalDamageManager:CalculateDamage(myHero, hero, R.SpellName)
-					local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
-
-					if hero.health > incomingDmg and thisDmg + incomingDmg > hero.health then
+					if thisDmg > hero.health + hero.hpRegen then
 						if LocalGeometry:IsInRange(myHero.pos, castPosition, R.Range) then
 							NextTick = LocalGameTimer() + .25
 							CastSpell(HK_R, castPosition)
