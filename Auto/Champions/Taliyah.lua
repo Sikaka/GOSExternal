@@ -45,6 +45,7 @@ function Tick()
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end	
 	
+	if BlockSpells() then return end
 	if #vectorCast > 0 then
 		vectorCast[1]()
 		table.remove(vectorCast, 1)

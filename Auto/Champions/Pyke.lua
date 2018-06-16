@@ -52,9 +52,9 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()	
-	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
+	if BlockSpells() then return end
 	
 	if Ready(_Q) then	
 		if myHero.activeSpell.valid and myHero.activeSpell.name == "PykeQ" then

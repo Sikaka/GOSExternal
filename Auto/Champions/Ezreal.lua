@@ -84,11 +84,10 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()
-	if LocalGameIsChatOpen() then return end
-	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
-	
 	local currentTime = LocalGameTimer()
+	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end	
 	if NextTick > currentTime then return end
+	if BlockSpells() then return end
 	NextTick = currentTime + .05
 	
 	if Ready(_R) then

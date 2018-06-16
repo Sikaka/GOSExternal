@@ -22,7 +22,7 @@ function LoadScript()
 	Menu.Skills.E:MenuElement({id = "Count", name = "Combo Target Count", value = 2, min = 1, max = 6, step = 1})
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 20, min = 5, max = 100, step = 5 })
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+	
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
@@ -34,7 +34,7 @@ end
 
 function OnSpellCast(spell)
 	--If we're about to be hit by a spell, are in combo and have auto W turned on... use it so we can try to dodge easier
-	if spell.isEnemy and Ready(_W) and Menu.Skills.W.Auto:Value() and Menu.Skills.Combo:Value() and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
+	if spell.isEnemy and Ready(_W) and Menu.Skills.W.Auto:Value() and ComboActive() and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() then
 		local hitDetails = LocalDamageManager:GetSpellHitDetails(spell,myHero)
 		if hitDetails.Hit then
 			if hitDetails.HitTime  > .25 then	
@@ -51,6 +51,7 @@ function Tick()
 	if NextTick > currentTime then return end
 	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
 	
+	if BlockSpells() then return end
 	local myMana = CurrentPctMana(myHero)
 	
 	
@@ -58,7 +59,7 @@ function Tick()
 	
 		local target = GetTarget(E.Range, true)
 		if target and CanTarget(target) then
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.E.Combo:Value() and 2 or Menu.Skills.E.Auto:Value() and 4 or 6
+			local accuracyRequired = ComboActive() and Menu.Skills.E.Combo:Value() and 2 or Menu.Skills.E.Auto:Value() and 4 or 6
 			local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay,E.Speed, E.Radius, E.Collision, E.IsLine)
 			if aimPosition and hitChance >= accuracyRequired then
 				--We have the cast position. Now lets see if its an immobile target or not
@@ -75,7 +76,7 @@ function Tick()
 	if Ready(_Q) and myMana >= Menu.Skills.Q.Mana:Value() then
 		local target = GetTarget(Q.Range, true)
 		if target and CanTarget(target) then
-			if Menu.Skills.Combo:Value() or (Menu.Skills.Q.Killsteal:Value() and GetQDamage(target) >= target.health) then
+			if ComboActive() or (Menu.Skills.Q.Killsteal:Value() and GetQDamage(target) >= target.health) then
 				CastSpell(HK_Q, target)
 				NextTick = LocalGameTimer() + .25
 				return				
@@ -120,7 +121,7 @@ function Tick()
 	end
 	
 	
-	if Menu.Skills.Combo:Value() and Menu.Skills.W.Auto:Value() and myMana >= Menu.Skills.E.Mana:Value() then
+	if ComboActive() and Menu.Skills.W.Auto:Value() and myMana >= Menu.Skills.E.Mana:Value() then
 		Control.CastSpell(HK_W)
 	end
 	
@@ -152,7 +153,7 @@ end
 
 function GetQBounceTarget(target)
 	if not target then return end
-	local bounceTargetDelay = LocalGeometry:GetSpellInterceptTime(myHero.pos, target.pos, Q.Delay, Q.Speed)
+	local bounceTargetDelay = LocalGeometry:InterceptTime(myHero, target, Q.Delay, Q.Speed)
 	local targetOrigin = LocalGeometry:PredictUnitPosition(target, bounceTargetDelay)
 	if not LocalGeometry:IsInRange(myHero.pos, targetOrigin, Q.Range) then return end	
 	local topVector = targetOrigin +(targetOrigin - myHero.pos):Perpendicular():Normalized()* 500
@@ -195,7 +196,7 @@ end
 
 function OnCC(target, damage, ccType, canDodge)
 	if target.isEnemy and CanTarget(target) and LocalDamageManager.IMMOBILE_TYPES[ccType] then
-		if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() and (Menu.Skills.E.Auto:Value() or Menu.Skills.E.Combo:Value() and Menu.Skills.Combo:Value()) and LocalGeometry:IsInRange(myHero.pos, target.pos, E.Range) then
+		if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() and (Menu.Skills.E.Auto:Value() or Menu.Skills.E.Combo:Value() and ComboActive()) and LocalGeometry:IsInRange(myHero.pos, target.pos, E.Range) then
 			NextTick = LocalGameTimer() + .25
 			CastSpell(HK_E, target.pos)
 			return

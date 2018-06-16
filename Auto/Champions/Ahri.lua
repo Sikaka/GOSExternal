@@ -26,26 +26,18 @@ function LoadScript()
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Danger Level (Auto)", value = 4, min = 1, max = 6, step = 1 })
 	Menu.Skills.R:MenuElement({id = "Combo", name = "Danger Level (Combo)", value = 1, min = 1, max = 6, step = 1 })
 
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+		
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
 end
 
-
-function Rotate(vector, angle)
-	print("Start: " .. vector.x.. ", ".. vector.y .. ", ".. vector.z)
-	vector.x = vector.x *  math.cos(angle) - vector.z *  math.sin(angle)
-	vector.z = vector.x * math.sin(angle) + vector.z * math.cos(angle)
-	print("End: " .. vector.x.. ", ".. vector.y .. ", ".. vector.z)
-	return vector
-end
 function OnSpellCast(spell)
 	if spell.isEnemy and Ready(_R) then
 		local hitDetails = LocalDamageManager:GetSpellHitDetails(spell,myHero)
 		if hitDetails.Hit and hitDetails.Path then
-			if hitDetails.Danger >= Menu.Skills.R.Auto:Value() or (Menu.Skills.Combo:Value() and hitDetails.Danger >= Menu.Skills.R.Combo:Value()) then	
+			if hitDetails.Danger >= Menu.Skills.R.Auto:Value() or (ComboActive() and hitDetails.Danger >= Menu.Skills.R.Combo:Value()) then	
 				local dashPos = myHero.pos + hitDetails.Path * R.Range				
 				CastSpell(HK_R, dashPos)
 			end				
@@ -56,13 +48,14 @@ end
 local NextTick = LocalGameTimer()
 local NextR = LocalGameTimer()
 function Tick()
+	if BlockSpells() then return end
 	if NextTick > LocalGameTimer() then return end
 	
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() then
 		local target = GetTarget(E.Range)
 		--Get cast position for target
 		if target and CanTarget(target) then
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
+			local accuracyRequired = ComboActive() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision, E.IsLine)
 			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
 				NextTick = LocalGameTimer() + .25
@@ -78,7 +71,7 @@ function Tick()
 		if target and CanTarget(target) then		
 			--Check the damage we will deal to the target
 			local targetQDamage = 2 * _G.Alpha.DamageManager:CalculateMagicDamage(myHero, target, myHero.ap * .65 + ({75,120,165,210,255})[myHero:GetSpellData(_Q).level])			
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
+			local accuracyRequired = ComboActive() and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
 			if targetQDamage > target.health and accuracyRequired > Menu.Skills.Q.KSAccuracy:Value() then
 				accuracyRequired = Menu.Skills.Q.KSAccuracy:Value()
 			end
@@ -98,7 +91,7 @@ function Tick()
 			local hero = LocalGameHero(i)
 			if hero and CanTarget(hero) then
 				local origin = LocalGeometry:PredictUnitPosition(hero, W.Delay)
-				if LocalGeometry:IsInRange(myHero.pos, origin, Menu.Skills.W.Radius:Value()) or (LocalGeometry:IsInRange(myHero.pos, origin,W.Range) and Menu.Skills.Combo:Value()) then
+				if LocalGeometry:IsInRange(myHero.pos, origin, Menu.Skills.W.Radius:Value()) or (LocalGeometry:IsInRange(myHero.pos, origin,W.Range) and ComboActive()) then
 					NextTick = LocalGameTimer() + .25
 					CastSpell(HK_W)
 					return

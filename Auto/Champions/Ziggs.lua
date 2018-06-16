@@ -39,12 +39,13 @@ function LoadScript()
 	end
 	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 3, min = 1, max = 6, step = 1 })
 
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+		
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
+	Callback.Add("WndMsg",function(Msg, Key) WndMsg(Msg, Key) end)
 end
 
 local WPos = nil
@@ -60,13 +61,14 @@ local NextTick = LocalGameTimer()
 function Tick()
 	if NextTick > LocalGameTimer() then return end
 	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
+	if BlockSpells() then return end
 	if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		local target = GetTarget(Q.Range)
 		--Get cast position for target
 		if target and CanTarget(target) then		
 			--Check the damage we will deal to the target
 			local targetQDamage = _G.Alpha.DamageManager:CalculateMagicDamage(myHero, target, myHero.ap * .65 + ({75,120,165,210,255})[myHero:GetSpellData(_Q).level])
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.Q.Accuracy:Value() or 6
+			local accuracyRequired = ComboActive() and Menu.Skills.Q.Accuracy:Value() or 6
 			if targetQDamage > target.health and accuracyRequired > Menu.Skills.Q.KSAccuracy:Value() then
 				accuracyRequired = Menu.Skills.Q.KSAccuracy:Value()
 			end
@@ -84,7 +86,7 @@ function Tick()
 		local target = GetTarget(E.Range)
 		--Get cast position for target
 		if target and CanTarget(target) then			
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6		
+			local accuracyRequired = ComboActive() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6		
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision)
 			if castPosition and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then
 				if accuracy >= accuracyRequired then
@@ -141,7 +143,7 @@ function Tick()
 		end
 	end
 	
-	if Ready(_R) and Menu.Skills.Combo:Value() then
+	if Ready(_R) and ComboActive() then
 		--Check enemies in range and how many enemies are predicted within the explosion radius if we aim at them...				
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)

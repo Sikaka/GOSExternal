@@ -40,7 +40,7 @@ function LoadScript()
 		end
 	end
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+		
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
@@ -91,6 +91,7 @@ local NextTick = LocalGameTimer()
 function Tick()
 	if NextTick > LocalGameTimer() then return end
 	
+	if BlockSpells() then return end
 	--Look for targets we can revive
 	if Ready(_R) then
 		for i = 1, LocalGameHeroCount() do
@@ -109,7 +110,7 @@ function Tick()
 	
 	if Ready(_Q)  and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
 		if qTarget and LocalGeometry:IsInRange(myHero.pos, qTarget.pos, Q.Range) then
-			local requiredAccuracy = Menu.Skills.Combo:Value() and Menu.Skills.Q.AccuracyCombo:Value() or Menu.Skills.Q.AccuracyAuto:Value()
+			local requiredAccuracy = ComboActive() and Menu.Skills.Q.AccuracyCombo:Value() or Menu.Skills.Q.AccuracyAuto:Value()
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, qTarget, Q.Range, Q.Delay, Q.Speed, 125, Q.Collision, Q.IsLine)
 			if castPosition and accuracy >= Menu.Skills.Q.AccuracyStun:Value() and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) and EnemyCount(castPosition, Q.Radius) >= 1 then
 				NextTick = LocalGameTimer() + .25
@@ -119,7 +120,7 @@ function Tick()
 		end
 		local target = GetTarget(Q.Range)
 		if target then			
-			local requiredAccuracy = Menu.Skills.Combo:Value() and Menu.Skills.Q.AccuracyCombo:Value() or Menu.Skills.Q.AccuracyAuto:Value()
+			local requiredAccuracy = ComboActive() and Menu.Skills.Q.AccuracyCombo:Value() or Menu.Skills.Q.AccuracyAuto:Value()
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, 125, Q.Collision, Q.IsLine)
 			if castPosition and accuracy >= requiredAccuracy and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
 				NextTick = LocalGameTimer() + .25

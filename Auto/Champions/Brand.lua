@@ -31,8 +31,6 @@ function LoadScript()
 	Menu.Skills.R:MenuElement({id = "Count", name = "Auto Cast On Enemy Count", value = 3, min = 1, max = 6, step = 1 })	
 	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Cast", value = false})
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
-	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
@@ -52,13 +50,13 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()
-	if LocalGameIsChatOpen() then return end
+	if BlockSpells() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end	
 	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
 	
 	local target = GetTarget(Q.Range)
-	if target and Ready(_Q) and  CanTarget(target) and (Menu.Skills.Combo:Value() or Menu.Skills.Q.Auto:Value()) then
+	if target and Ready(_Q) and  CanTarget(target) and (ComboActive() or Menu.Skills.Q.Auto:Value()) then
 		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 		if castPosition and accuracy >= Menu.Skills.Q.Accuracy:Value() then
 			local timeToIntercept = LocalGeometry:GetSpellInterceptTime(myHero.pos, castPosition, Q.Delay, Q.Speed)
@@ -74,21 +72,21 @@ function Tick()
 	end
 	
 	local target = GetTarget(W.Range)
-	if target and Ready(_W) and CanTarget(target) and (CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() or Menu.Skills.Combo:Value()) then
+	if target and Ready(_W) and CanTarget(target) and (CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() or ComboActive()) then
 		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, W.Range, W.Delay, W.Speed, W.Radius, W.Collision, W.IsLine)
-		if accuracy >= Menu.Skills.W.AccuracyAuto:Value() or (Menu.Skills.Combo:Value() and accuracy >= Menu.Skills.W.AccuracyCombo:Value()) then
+		if accuracy >= Menu.Skills.W.AccuracyAuto:Value() or (ComboActive() and accuracy >= Menu.Skills.W.AccuracyCombo:Value()) then
 			NextTick = LocalGameTimer() + .25
 			CastSpell(HK_W, castPosition)
 		end
 	end
 	
 	local target = GetTarget(E.Range)
-	if target and Ready(_E) and Menu.Skills.E.Targets[target.networkID] and Menu.Skills.E.Targets[target.networkID]:Value() and CanTarget(target) and (CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() or Menu.Skills.Combo:Value()) then
+	if target and Ready(_E) and Menu.Skills.E.Targets[target.networkID] and Menu.Skills.E.Targets[target.networkID]:Value() and CanTarget(target) and (CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() or ComboActive()) then
 		NextTick = LocalGameTimer() + .25
 		CastSpell(HK_E, target)
 	end
 	local target = GetTarget(R.Range)
-	if target and Ready(_R) and CanTarget(target) and (Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value())then
+	if target and Ready(_R) and CanTarget(target) and (ComboActive() or Menu.Skills.R.Auto:Value())then
 		local radius = R.Radius
 		if LocalBuffManager:HasBuff(target, "BrandAblaze", 1) then
 			radius = 725

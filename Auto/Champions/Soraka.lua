@@ -37,7 +37,7 @@ function LoadScript()
 	end
 	Menu.Skills.R:MenuElement({id = "Count", name = "Injured Count Required", value = 2, min = 1, max = 5, step = 1 })
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+	
 	
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)	
@@ -50,6 +50,7 @@ local NextTick = LocalGameTimer()
 function Tick()
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
+	if BlockSpells() then return end
 	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
 	
 	local saveCount = 0
@@ -102,7 +103,7 @@ function Tick()
 	
 	local target = GetTarget(Q.Range)	
 	if target and Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() then
-		local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.Q.AccuracyCombo:Value() or Menu.Skills.Q.AccuracyAuto:Value() 
+		local accuracyRequired = ComboActive() and Menu.Skills.Q.AccuracyCombo:Value() or Menu.Skills.Q.AccuracyAuto:Value() 
 		local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 		if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
 			NextTick = LocalGameTimer() + .25

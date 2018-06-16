@@ -56,6 +56,7 @@ end
 
 local _nextTick = LocalGameTimer()
 function Tick()
+	if BlockSpells() then return end
 	local currrentTime = LocalGameTimer()
 	local attacks = not ComboActive() or Menu.Skills.AA:Value() or  CurrentPctMana(myHero) < 15
 	EnableOrbAttacks(attacks)
@@ -103,7 +104,9 @@ function Tick()
 			for i = 1, LocalGameMinionCount() do
 				local minion = LocalGameMinion(i)
 				if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, E.Range) then
-					local predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, LocalGeometry:GetSpellInterceptTime(myHero.pos, minion.pos, E.Delay, E.Speed) - Game.Latency()/1000)
+				
+				
+					local predictedHealth = _G.SDK.HealthPrediction:GetPrediction(minion, LocalGeometry:InterceptTime(myHero, minion, E.Delay, E.Speed))
 					local predictedDamage = LocalDamageManager:CalculateDamage(myHero, minion, E.SpellName)
 					if predictedHealth > 0 and predictedDamage > predictedHealth then
 						CastSpell(HK_E, minion)

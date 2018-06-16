@@ -50,7 +50,7 @@ function LoadScript()
 	Menu.Skills.R:MenuElement({id = "Damage", name = "Minimum Incoming Damage", value = 100, min = 50, max = 1000, step = 50 })
 	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 2, min = 1, max = 6, step = 1 })		
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+		
 	
 	LocalObjectManager:OnBuffAdded(function (target, buff) OnBuffAdded(target,buff) end)
 	LocalObjectManager:OnBuffRemoved(function (target, buff) OnBuffRemoved(target,buff) end)
@@ -79,9 +79,9 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()
-	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
+	if BlockSpells() then return end
 	if Ready(_R) then
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
@@ -102,7 +102,7 @@ function Tick()
 		end
 	end
 	
-	if Ready(_W)  and (Menu.Skills.Combo:Value() or Menu.Skills.W.Auto:Value()) then		
+	if Ready(_W)  and (ComboActive() or Menu.Skills.W.Auto:Value()) then		
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
 			if hero and CanTarget(hero) and Menu.Skills.W.Targets[hero.networkID] and Menu.Skills.W.Targets[hero.networkID]:Value() then				
@@ -128,7 +128,7 @@ function Tick()
 		local target = GetTarget(Q.Range)
 		if target then
 			local accuracyRequired = 6
-			if Menu.Skills.Combo:Value() then
+			if ComboActive() then
 				accuracyRequired = Menu.Skills.Q.Accuracy:Value()
 			elseif Menu.Skills.Q.Auto:Value() then
 				accuracyRequired = 4
@@ -164,7 +164,7 @@ function Tick()
 			end
 		end
 		
-		if Menu.Skills.Combo:Value() then
+		if ComboActive() then
 			local target = GetTarget(E.Range)
 			if CanTarget(target) then
 				NextTick = LocalGameTimer() + .25
@@ -181,7 +181,7 @@ end
 function OnCC(target, damage, ccType)
 	if target.isAlly then
 		if Ready(_R) and LocalGeometry:IsInRange(myHero.pos, target.pos, R.Range) and Menu.Skills.R.Targets[target.networkID] and Menu.Skills.R.Targets[target.networkID]:Value() >= CurrentPctLife(target) then
-			if Menu.Skills.Combo:Value() or Menu.Skills.R.Auto:Value() then
+			if ComboActive() or Menu.Skills.R.Auto:Value() then
 				CastSpell(HK_R, target)				
 				NextTick = LocalGameTimer() + .15
 				return

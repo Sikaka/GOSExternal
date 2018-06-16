@@ -64,9 +64,9 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()
-	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
+	if BlockSpells() then return end
 	if Ready(_R) then
 		if ComboActive() or Menu.Skills.R.Auto:Value() then
 			for i = 1, LocalGameHeroCount() do

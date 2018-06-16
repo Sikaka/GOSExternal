@@ -18,9 +18,7 @@ function LoadScript()
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Bladework", type = MENU})
 	Menu.Skills.E:MenuElement({id = "Auto", name = "AA Reset", value = true})
-	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })		
-	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })	
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)
 	Callback.Add("Tick", function() Tick() end)	
@@ -46,7 +44,7 @@ function OnSpellCast(spell)
 				end
 			end
 			if Ready(_Q) then
-				if hitDetails.Danger >= Menu.Skills.Q.DodgeAuto:Value() or (Menu.Skills.Combo:Value() and hitDetails.Danger >= Menu.Skills.Q.DodgeCombo:Value()) then	
+				if hitDetails.Danger >= Menu.Skills.Q.DodgeAuto:Value() or (ComboActive() and hitDetails.Danger >= Menu.Skills.Q.DodgeCombo:Value()) then	
 					local dashPos = myHero.pos + hitDetails.Path * Q.Range				
 					CastSpell(HK_Q, dashPos)
 					NextTick = LocalGameTimer() +.15
@@ -57,7 +55,7 @@ function OnSpellCast(spell)
 end
 
 
-local _offsetDistance = 50
+local _offsetDistance = 100
 local _marks = {}
 local _markOffsets = 
 {
@@ -94,7 +92,7 @@ function OnPostAttack()
 	local target = LocalObjectManager:GetHeroByHandle(myHero.activeSpell.target)
 	if not target then return end
 		
-	if Ready(_E) and (Menu.Skills.E.Auto:Value() or Menu.Skills.Combo:Value()) then	
+	if Ready(_E) and (Menu.Skills.E.Auto:Value() or ComboActive()) then	
 		CastSpell(HK_E)
 		_G.SDK.Orbwalker.AutoAttackResetted = true
 		return
@@ -105,9 +103,10 @@ local NextTick = LocalGameTimer()
 function Tick()
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
+	if BlockSpells() then return end
 
 	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
-	if Ready(_Q) and (Menu.Skills.Combo:Value() or Menu.Skills.Q.Auto:Value()) then
+	if Ready(_Q) and (ComboActive() or Menu.Skills.Q.Auto:Value()) then
 		local target = GetTarget(Q.Range, true)
 		if CanTarget(target) then
 			for _, mark in LocalPairs(_marks) do
@@ -127,7 +126,7 @@ end
 
 function OnCC(target, damage, ccType, canDodge)
 	if target == myHero then
-		if Menu.Skills.W.Auto:Value() or Menu.Skills.Combo:Value() then
+		if Menu.Skills.W.Auto:Value() or ComboActive() then
 			local target = GetTarget(W.Range, true)
 			if target then				
 				local predictedPosition = LocalGeometry:PredictUnitPosition(target, W.Delay)

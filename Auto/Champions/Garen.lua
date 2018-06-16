@@ -36,7 +36,7 @@ function OnPostAttack()
 	local target = LocalObjectManager:GetHeroByHandle(myHero.activeSpell.target)
 	if not target then return end
 		
-	if Ready(_Q) and (Menu.Skills.Q.Auto:Value() or Menu.Skills.Combo:Value()) then	
+	if Ready(_Q) and (Menu.Skills.Q.Auto:Value() or ComboActive()) then	
 		CastSpell(HK_Q)
 		_G.SDK.Orbwalker.AutoAttackResetted = true
 		return
@@ -79,10 +79,10 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()
-	if LocalGameIsChatOpen() then return end	
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
 	NextTick = LocalGameTimer() + .1
+	if BlockSpells() then return end
 	
 	if ComboActive() then
 		local target = GetTarget(Menu.Skills.Q.Radius:Value(), true)
@@ -96,7 +96,7 @@ function Tick()
 			local hero = LocalGameHero(i)
 			if CanTarget(hero) and LocalGeometry:IsInRange(myHero.pos, hero.pos, R.Range) then	
 				local thisDmg = LocalDamageManager:CalculateDamage(myHero, hero, "GarenR")
-				local qDamage = ComboActive() and Ready(_Q) and LocalGeometry:IsInRange(myHero.pos, hero.pos, 150) and LocalDamageManager:CalculateDamage(myHero, hero, "GarenQAttack") or 0 
+				local qDamage = ComboActive() and Ready(_Q) and LocalGeometry:IsInRange(myHero.pos, hero.pos, myHero.range) and LocalDamageManager:CalculateDamage(myHero, hero, "GarenQAttack") or 0 
 				local incomingDmg =LocalDamageManager:RecordedIncomingDamage(hero)
 				local heroHp = hero.health + hero.hpRegen
 				if thisDmg > heroHp and incomingDmg + qDamage < heroHp then

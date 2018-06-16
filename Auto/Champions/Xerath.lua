@@ -39,7 +39,7 @@ function LoadScript()
 	Menu.Skills.R:MenuElement({id = "Killsteal", name = "Killsteal", value = true })
 	Menu.Skills.R:MenuElement({id = "Assist", name = "Assist Key",value = false,  key = 0x73})
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })	
+		
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)	
 	Callback.Add("Tick", function() Tick() end)
 end
@@ -70,11 +70,11 @@ function IsRActive()
 end
 
 local NextTick = LocalGameTimer()
-function Tick()
-	if LocalGameIsChatOpen() then return end
+function Tick()	
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
 	NextTick = LocalGameTimer() + .1
+	if BlockSpells() then return end
 	
 	if IsQCharging() and Menu.Skills.Q.Assist:Value() then
 		local chargeTime = LocalMathMin(LocalGameTimer() - qStartTime, 2)
@@ -127,7 +127,7 @@ function Tick()
 	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value()  then
 		local target = GetTarget(E.Range)
 		if CanTarget(target) then
-			local accuracyRequired =  Menu.Skills.Combo:Value() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
+			local accuracyRequired =  ComboActive() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
 			local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay,E.Speed, E.Radius, E.Collision, E.IsLine)
 			if aimPosition and hitChance >= accuracyRequired then
 				CastSpell(HK_E, aimPosition)
@@ -141,7 +141,7 @@ function Tick()
 		local target = GetTarget(W.Range)
 		if CanTarget(target) then
 			local thisDmg = LocalDamageManager:CalculateDamage(myHero, target, "XerathArcaneBarrage2")
-			local accuracyRequired = Menu.Skills.W.Killsteal:Value() and thisDmg >= target.health and 2 or Menu.Skills.Combo:Value() and Menu.Skills.W.Accuracy:Value() or Menu.Skills.W.Auto:Value() and 4 or 6
+			local accuracyRequired = Menu.Skills.W.Killsteal:Value() and thisDmg >= target.health and 2 or ComboActive() and Menu.Skills.W.Accuracy:Value() or Menu.Skills.W.Auto:Value() and 4 or 6
 			local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, W.Range, W.Delay,W.Speed, W.Radius, W.Collision, W.IsLine)
 			if aimPosition and hitChance >= accuracyRequired then
 				CastSpell(HK_W, aimPosition)

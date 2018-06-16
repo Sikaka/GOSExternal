@@ -22,7 +22,7 @@ function LoadScript()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Mana Limit", value = 15, min = 5, max = 100, step = 5 })
 	Menu.Skills.E:MenuElement({id = "Assist", name = "Assist Key",value = false,  key = 0x72})
 	
-	Menu.Skills:MenuElement({id = "Combo", name = "Combo Key",value = false,  key = string.byte(" ") })
+	
 	
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType, canDodge) OnCC(target, damage, ccType, canDodge) end)
 	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
@@ -47,8 +47,9 @@ local NextTick = LocalGameTimer()
 function Tick()
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
+	if BlockSpells() then return end
 	if myHero.activeSpell and myHero.activeSpell.valid and not myHero.activeSpell.spellWasCast then return end
-	if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and (Menu.Skills.Q.Auto:Value() or Menu.Skills.Combo:Value()) then
+	if Ready(_Q) and CurrentPctMana(myHero) >= Menu.Skills.Q.Mana:Value() and (Menu.Skills.Q.Auto:Value() or ComboActive()) then
 		local target = GetTarget(Q.Range)
 		if target and CanTarget(target) then
 			local castPosition = LocalGeometry:PredictUnitPosition(target, Q.Delay)
@@ -59,10 +60,10 @@ function Tick()
 		end
 	end
 	
-	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() and (Menu.Skills.W.Auto:Value() or Menu.Skills.Combo:Value()) then
+	if Ready(_W) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value() and (Menu.Skills.W.Auto:Value() or ComboActive()) then
 		local target = GetTarget(W.Range)
 		if target and CanTarget(target) then
-			local accuracyRequired = Menu.Skills.Combo:Value() and Menu.Skills.W.Accuracy:Value() or Menu.Skills.W.Auto:Value() and 4 or 6		
+			local accuracyRequired = ComboActive() and Menu.Skills.W.Accuracy:Value() or Menu.Skills.W.Auto:Value() and 4 or 6		
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, W.Range, W.Delay, W.Speed, W.Radius, W.Collision)
 			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, W.Range) then				
 				NextTick = LocalGameTimer() + .2
@@ -71,10 +72,10 @@ function Tick()
 		end
 	end
 	
-	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() and (Menu.Skills.E.Auto:Value() or Menu.Skills.Combo:Value()) then
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value() and (Menu.Skills.E.Auto:Value() or ComboActive()) then
 		local target = GetTarget(E.Range)
 		if target and CanTarget(target) then
-			local accuracyRequired = Menu.Skills.E.Assist:Value() and 1 or Menu.Skills.Combo:Value() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6		
+			local accuracyRequired = Menu.Skills.E.Assist:Value() and 1 or ComboActive() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6		
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision)
 			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, E.Range) then				
 				NextTick = LocalGameTimer() + .2

@@ -422,7 +422,8 @@ function __Activator:OnSellItem(item, slot)
 end
 
 local nextTick = Game.Timer()
-function __Activator:Tick()	
+function __Activator:Tick()
+	if not myHero.alive then return end
 	if nextTick > Game.Timer() then return end
 	nextTick = Game.Timer() + .25	
 	if self.Summoner1 and myHero:GetSpellData(SUMMONER_1).currentCd < 1 then		
@@ -610,7 +611,7 @@ function __Activator:AAResetItem(target, itemInfo, slot)
 	if spellData.currentCd < .5 then
 		if spellData.name and Activator.LocalGeometry:IsInRange(myHero.pos, target.pos, spellData.range) then
 			if Activator.LocalOrbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] and Activator.ActivatorMenu.Damage.AAReset.Combo:Value() then
-				Control.CastSpell(Activator.ItemHotkeys[slot])						
+				Control.CastSpell(Activator.ItemHotkeys[slot])
 			else
 				local damage = Activator.LocalDamageManager:CalculateSkillDamage(myHero, target, spellData.name)
 				if damage >= target.health and Activator.ActivatorMenu.Damage.AAReset.Killsteal:Value() then

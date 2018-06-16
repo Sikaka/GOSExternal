@@ -68,10 +68,10 @@ end
 
 local NextTick = LocalGameTimer()
 function Tick()
-	if LocalGameIsChatOpen() then return end
 	local currentTime = LocalGameTimer()
 	if NextTick > currentTime then return end
 	NextTick = LocalGameTimer() + .1
+	if BlockSpells() then return end
 	local currentMana = CurrentPctMana(myHero)
 	
 	if Ready(_E) then
