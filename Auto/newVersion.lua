@@ -90,7 +90,7 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.65,
+        Version = 1.66,
     },
     Dependencies = {
         Alpha = {
