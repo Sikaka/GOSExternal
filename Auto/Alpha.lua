@@ -164,8 +164,9 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 	local aimPosition = target.pos
 	if hitChance > 0 then
 	
-		local reactionTime = self:PredictReactionTime(target, .15)				
-		local interceptTime = self:GetSpellUnitInterceptTime(source.pos, target.pos, target:GetPath(1), self:GetTargetMS(target), delay, speed)
+		local reactionTime = self:PredictReactionTime(target, .15)			
+
+		local interceptTime = self:InterceptTime(source, target, delay, speed)
 		aimPosition = self:PredictUnitPosition(target, interceptTime)
 		
 		if not target.pathing or not target.pathing.hasMovePath then
@@ -215,6 +216,58 @@ function __Geometry:GetCastPosition(source, target, range, delay, speed, radius,
 	return aimPosition, hitChance	
 end
 
+
+
+
+function __Geometry:InterceptTime(source, target, delay, speed)
+	local relativePosition = target.pos - source.pos
+	local relativeVelocity = (self:NextPath(source) - source.pos):Normalized() * self:GetTargetMS(source) -(self:NextPath(target) - target.pos):Normalized() * self:GetTargetMS(target)
+	
+	if relativeVelocity.x ~= relativeVelocity.x then
+		relativeVelocity = LocalVector(0,0,0)
+	end
+	local velocitySquared = self:GetSqrMagnitude(relativeVelocity)
+	
+	local a = velocitySquared - speed * speed
+	if LocalAbs(a)  < .001 then
+		local t = - self:GetSqrMagnitude(relativePosition) / (2*relativeVelocity:DotProduct(relativePosition))
+		return delay + LocalMax(t, 0)
+	end
+	
+	local b = 2*relativeVelocity:DotProduct(relativePosition)
+	local c = self:GetSqrMagnitude(relativePosition)
+	local d = b * b - 4*a*c
+	if d > 0 then
+		local t1 = (-b + LocalSqrt(d)) / (2*a)
+		local t2 = (-b - LocalSqrt(d)) / (2*a)
+		if t1 > 0 then
+			if t2 > 0 then
+				return delay+ LocalMin(t1, t2)
+			else
+				return delay+ t1
+			end
+		else
+			return delay + LocalMax(t2, 0)
+		end
+	elseif d < 0 then
+		return delay
+	else
+		return delay + LocalMax(-b/2*a, 0)
+	end	
+end
+
+function __Geometry:NextPath(unit)
+	if unit.pathing.hasMovePath then
+		return unit:GetPath(1)
+	else
+		return unit.pos
+	end
+end
+
+function __Geometry:GetSqrMagnitude(vector)
+	return vector.x * vector.x + vector.y * vector.y + vector.z * vector.z
+end
+
 function __Geometry:GetImmobileTime(unit)
 	local duration = 0
 	for i = 0, unit.buffCount do
@@ -223,7 +276,7 @@ function __Geometry:GetImmobileTime(unit)
 			duration = buff.duration
 		end
 	end
-	return duration		
+	return duration
 end
 
 function __Geometry:PredictReactionTime(unit, minimumReactionTime)
@@ -254,31 +307,6 @@ function __Geometry:UnitMovementBounds(unit, delay, reactionTime)
 		radius = self:GetTargetMS(unit) * deltaDelay	
 	end
 	return startPosition, radius	
-end
-
-function __Geometry:GetSpellUnitInterceptTime(source, startPos, endPos, unitspeed, delay, spellspeed)
-        local sx = source.x
-        local sy = source.z
-        local ux = startPos.x
-        local uy = startPos.z
-        local dx = endPos.x - ux
-        local dy = endPos.z - uy
-        local magnitude = LocalSqrt(dx * dx + dy * dy)
-        dx = (dx / magnitude) * unitspeed
-        dy = (dy / magnitude) * unitspeed
-        local a = (dx * dx) + (dy * dy) - (spellspeed * spellspeed)
-        local b = 2 * ((ux * dx) + (uy * dy) - (sx * dx) - (sy * dy))
-        local c = (ux * ux) + (uy * uy) + (sx * sx) + (sy * sy) - (2 * sx * ux) - (2 * sy * uy)
-        local d = (b * b) - (4 * a * c)
-        if d > 0 then
-                local t1 = (-b + LocalSqrt(d)) / (2 * a)
-                local t2 = (-b - LocalSqrt(d)) / (2 * a)
-                return LocalMax(t1, t2) + Game.Latency()/2000 + delay
-        end
-        if d >= 0 and d < 0.00001 then
-                return -b / (2 * a) + Game.Latency()/2000 + delay
-        end
-        return Game.Latency()/2000 + delay
 end
 
 function __Geometry:GetSpellInterceptTime(startPos, endPos, delay, speed)	
