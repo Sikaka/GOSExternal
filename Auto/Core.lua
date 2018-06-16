@@ -53,13 +53,18 @@ function CanTargetAlly(target)
 	return target and target.pos and target.isAlly and target.alive and target.health > 0 and target.visible and target.isTargetable
 end
 
-
 function GetTarget(range, isAD)
 	if isAD then		
 		return LocalTargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
 	else
 		return LocalTargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_MAGICAL);
 	end
+end
+
+function BlockSpells()
+	if LocalGameIsChatOpen() then return true end
+	if LocalBuffManager:HasBuff(myHero, "recall") then return true end
+	if not Game.IsOnTop() then return true end
 end
 
 function FarmActive()
