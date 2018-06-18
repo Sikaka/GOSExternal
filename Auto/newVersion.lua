@@ -17,7 +17,7 @@ Data = {
         },
         Ezreal = {
             Changelog = "Ezreal Changelog Here",
-            Version = 1.1,
+            Version = 1.2,
         },
         Fiora = {
             Changelog = "Fiora Changelog Here",

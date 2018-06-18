@@ -154,8 +154,8 @@ function Tick()
 	if Ready(_Q) and FarmActive() and Menu.Skills.Q.Farm:Value() then
 		for i = 1, LocalGameMinionCount() do
 			local minion = LocalGameMinion(i)
-			if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, Q.Range) and not LocalGeometry:IsInRange(myHero.pos, minion.pos, myHero.range) then
-				local interceptTime = LocalGeometry:GetSpellUnitInterceptTime(myHero.pos, minion.pos, minion:GetPath(1), LocalGeometry:GetTargetMS(minion), Q.Delay, Q.Speed)
+			if CanTarget(minion) and LocalGeometry:IsInRange(myHero.pos, minion.pos, Q.Range) and not LocalGeometry:IsInRange(myHero.pos, minion.pos, myHero.range) then			
+				local interceptTime = LocalGeometry:InterceptTime(myHero, minion, Q.Delay, Q.Speed)
 				local predictedHealth = LocalHealthPrediction:GetPrediction(minion, interceptTime)
 				local predictedDamage = LocalDamageManager:CalculateDamage(myHero, minion, "EzrealMysticShot")
 				if predictedHealth > 0 and predictedDamage > predictedHealth then				
