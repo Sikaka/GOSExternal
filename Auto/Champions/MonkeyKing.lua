@@ -58,7 +58,7 @@ function Tick()
 		local target = GetTarget(myHero.range + 125, true)
 		if CanTarget(target) then
 			local thisDmg = LocalDamageManager:CalculateDamage(myHero, target, "MonkeyKingDoubleAttack")
-			if thisDmg > thisDmg >= target.health + target.hpRegen then
+			if thisDmg >= target.health + target.hpRegen then
 				CastSpell(HK_Q)
 				LocalOrbwalker.AutoAttackResetted = true
 			end
