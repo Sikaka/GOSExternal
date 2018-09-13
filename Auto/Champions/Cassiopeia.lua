@@ -27,6 +27,7 @@ function LoadScript()
 	
 	Menu.Skills:MenuElement({id = "R", name = "[R] Petrifying Gaze", type = MENU})
 	Menu.Skills.R:MenuElement({id = "Assist", name = "Manual Ult Key",value = false,  key = 0x73})	
+	Menu.Skills.R:MenuElement({id = "Range", name = "Range Limit", value = 95, min = 10, max = 100, step = 5 })
 	Menu.Skills.R:MenuElement({id = "Targets", name = "Stun Targets", type = MENU})	
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
@@ -176,11 +177,12 @@ end
 function GetRCastDetails()
 	local aimPosition = Vector()
 	local aimCount = 0
+	local adjustedRRange = R.Range * Menu.Skills.R.Range / 100
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if CanTarget(hero) then
 			local predictedPosition = LocalGeometry:PredictUnitPosition(hero, R.Delay)
-			if LocalGeometry:IsInRange(myHero.pos, predictedPosition, R.Range) then
+			if LocalGeometry:IsInRange(myHero.pos, predictedPosition, adjustedRRange) then
 				aimPosition = aimPosition + predictedPosition
 				aimCount = aimCount + 1
 			end
@@ -207,14 +209,15 @@ function GetRCastDetails()
 end
 function PredictRTargets(directionVector)	
 	local hitCount = 0
-	local stunCount = 0
-	local castPos = myHero.pos + directionVector * R.Range
+	local stunCount = 0		
+	local adjustedRRange = R.Range * Menu.Skills.R.Range / 100
+	local castPos = myHero.pos + directionVector * adjustedRRange	
 	local castAngle = LocalGeometry:Angle(myHero.pos, castPos)
 	for i = 1, LocalGameHeroCount() do
 		local target = LocalGameHero(i)
 		if target and CanTarget(target) then
 			local predictedPosition = LocalGeometry:PredictUnitPosition(target, R.Delay)
-			if LocalGeometry:IsInRange(myHero.pos, predictedPosition, R.Range) then
+			if LocalGeometry:IsInRange(myHero.pos, predictedPosition, adjustedRRange) then
 				local deltaAngle = LocalMathAbs(LocalGeometry:Angle(myHero.pos, predictedPosition) - castAngle)
 				if deltaAngle <= 37 then
 					hitCount = hitCount + 1
