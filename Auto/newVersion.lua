@@ -13,7 +13,7 @@ Data = {
         },
         Cassiopeia = {
             Changelog = "Cassiopeia Changelog Here",
-            Version = 1.3,
+            Version = 1.31,
         },
         Ezreal = {
             Changelog = "Ezreal Changelog Here",

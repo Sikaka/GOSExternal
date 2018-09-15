@@ -177,7 +177,7 @@ end
 function GetRCastDetails()
 	local aimPosition = Vector()
 	local aimCount = 0
-	local adjustedRRange = R.Range * Menu.Skills.R.Range / 100
+	local adjustedRRange = R.Range * Menu.Skills.R.Range:Value() / 100
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
 		if CanTarget(hero) then
@@ -210,7 +210,7 @@ end
 function PredictRTargets(directionVector)	
 	local hitCount = 0
 	local stunCount = 0		
-	local adjustedRRange = R.Range * Menu.Skills.R.Range / 100
+	local adjustedRRange = R.Range * Menu.Skills.R.Range:Value() / 100
 	local castPos = myHero.pos + directionVector * adjustedRRange	
 	local castAngle = LocalGeometry:Angle(myHero.pos, castPos)
 	for i = 1, LocalGameHeroCount() do
