@@ -161,6 +161,32 @@ function EnemyCount(origin, range, delay)
 	return count
 end
 
+function OdysseyEnemyCount(origin, range, delay)
+	local count = 0
+	for i  = 1,LocalGameHeroCount(i) do
+		local enemy = LocalGameHero(i)
+		local enemyPos = enemy.pos
+		if delay then
+			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
+		end
+		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
+			count = count + 1
+		end			
+	end
+	for i  = 1,LocalGameMinionCount(i) do
+		local enemy = LocalGameMinion(i)
+		local enemyPos = enemy.pos
+		if delay then
+			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
+		end
+		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
+			count = count + 1
+		end
+	end
+	return count
+end
+
+
 function NearestAlly(origin, range)
 	local ally = nil
 	local distance = range

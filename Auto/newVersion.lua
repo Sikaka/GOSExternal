@@ -1,7 +1,13 @@
 Data = {
     Loader = {
-        Version = 1.1,
+        Version = 1.2,
     },
+	Odyssey = {
+        Sona = {
+            Changelog = "Sona Changelog Here",
+            Version = 1,
+        },
+	},
     Champions = {
         Ahri = {
             Changelog = "Ahri Changelog Here",
@@ -94,11 +100,11 @@ Data = {
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
-        Version = 1.71,
+        Version = 1.8,
     },
     Dependencies = {
         Alpha = {
-            Version = 1.71,
+            Version = 1.72,
         },
         Activator = {
             Version = 1.8,

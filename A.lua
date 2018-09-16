@@ -22,6 +22,7 @@ end
 
 local function AutoUpdate()
 	local CHAMP_PATH			= AUTO_PATH..'Champions/'
+	local ODYSSEY_PATH			= AUTO_PATH..'Champions/Odyssey/'
 	local SCRIPT_URL			= "https://raw.githubusercontent.com/Sikaka/GOSExternal/"
 	local AUTO_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/"
 	local CHAMP_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/Champions/"
@@ -64,6 +65,9 @@ local function AutoUpdate()
 			
 	local function CheckSupported()
 		local Data = dofile(AUTO_PATH..newVersion)
+		if Game.mapID == 20 then
+			return Data.Odyssey[charName]
+		end
 		return Data.Champions[charName]
 	end
 	
@@ -93,9 +97,13 @@ local function AutoUpdate()
 			end
 		end		
 		
-		--Write the core module
+		--Write the core module			
 		writeModule(readAll(AUTO_PATH..coreName))
-		writeModule(readAll(CHAMP_PATH..charName..dotlua))
+		if Game.mapID == 20 then
+			writeModule(readAll(ODYSSEY_PATH..charName..dotlua))
+		else
+			writeModule(readAll(CHAMP_PATH..charName..dotlua))
+		end
 				
 		--Load the active module
 		dofile(AUTO_PATH.."dynamicScript"..dotlua) 
@@ -131,6 +139,18 @@ local function AutoUpdate()
 			end
 		end
 		
+		for k,v in pairs(latestData.Odyssey) do
+			if not FileExist(ODYSSEY_PATH..k..dotlua) or not currentData.Odyssey[k] or currentData.Odyssey[k].Version < v.Version then
+				print("Downloading Odyssey Champion Script: " .. k)
+				DownloadFile(CHAMP_URL, ODYSSEY_PATH, k..dotlua)
+				if not currentData.Odyssey[k] then
+					currentData.Odyssey[k] = v
+				else
+					currentData.Odyssey[k].Version = v.Version
+				end
+			end
+		end
+		
 		if currentData.Core.Version < latestData.Core.Version or not FileExist(AUTO_PATH.."Core.lua") then
 			DownloadFile(AUTO_URL, AUTO_PATH, "Core.lua")        
 			currentData.Core.Version = latestData.Core.Version
@@ -138,6 +158,9 @@ local function AutoUpdate()
 		
 		UpdateVersionControl(currentData)
 		
+	end
+	
+	local function LoadScript()
 		if CheckSupported() then
 			InitializeScript()
 		else
@@ -145,8 +168,9 @@ local function AutoUpdate()
 		end
 	end
 	
-	GetVersionControl()
-	CheckUpdate()
+	--GetVersionControl()
+	--CheckUpdate()
+	LoadScript()
 end
 	
 function OnLoad()
