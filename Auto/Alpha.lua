@@ -157,6 +157,68 @@ function __Geometry:GetLineTargetCount(source, aimPos, delay, speed, width, targ
 	end
 	return targetCount
 end
+function __Geometry:GetLineMinionTargetCount(source, aimPos, delay, speed, width)
+	local targetCount = 0
+	for i = 1, LocalGameMinionCount() do
+		local t = LocalGameMinion(i)
+		if t and t.pos and t.alive and t.health > 0 and t.visible and t.isTargetable then			
+			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)			
+			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
+			if proj1 and isOnSegment and self:IsInRange(predictedPos, proj1, t.boundingRadius + width) then
+				targetCount = targetCount + 1
+			end
+		end
+	end
+	return targetCount
+end
+
+function __Geometry:GetLineFarmCastPosition(source, range, delay, speed, width)
+	local castOffset = (mousePos - myHero.pos):Normalized()		
+	local targetCount = 0
+	local aimPosition = source
+	--Check 20 possible angles for best target count
+	for i = 0, 360, 18 do	
+		local castDir = castOffset:Rotated(0,i,0)
+		local castTargets = self:GetLineMinionTargetCount(source, source + castDir*range, delay, speed, width)
+		if castTargets > targetCount then
+			aimPosition = myHero.pos + castDir * 500
+			targetCount = castTargets
+		end
+	end
+	
+	return targetCount, aimPosition
+end
+function __Geometry:GetArcFarmCastPosition(range, delay, speed, width)
+	local castOffset = (mousePos - myHero.pos):Normalized()		
+	local targetCount = 0
+	local castPosition = myHero.pos
+	--Check 20 possible angles for best target count
+	for i = 0, 360, 18 do	
+		local castDir = castOffset:Rotated(0,i,0)
+		local castPos = myHero.pos + castDir * range
+		local castAngle = LocalGeometry:Angle(myHero.pos, castPos)
+		local hitCount = 0
+		for i = 1, LocalGameMinionCount() do
+			local t = LocalGameMinion(i)
+			if t and t.pos and t.alive and t.health > 0 and t.visible and t.isTargetable then			
+				local predictedPosition = self:PredictUnitPosition(t, delay+ self:GetDistance(myHero.pos, t.pos) / speed)	
+				if self:IsInRange(myHero.pos, predictedPosition, range) then
+					local deltaAngle = math.abs(self:Angle(myHero.pos, predictedPosition) - castAngle)
+					if deltaAngle <= 15 then
+						hitCount = hitCount + 1
+					end
+				end
+			end
+		end
+		
+		if hitCount > targetCount then
+			targetCount = hitCount
+			castPosition = castPos
+		end
+	end
+	
+	return targetCount, castPosition
+end
 
 function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision, isLine)
 	local hitChance = 1

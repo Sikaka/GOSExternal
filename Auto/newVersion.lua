@@ -7,6 +7,10 @@ Data = {
             Changelog = "Sona Changelog Here",
             Version = 1,
         },
+        Jinx = {
+            Changelog = "Jinx Changelog Here",
+            Version = 1,
+        },
 	},
     Champions = {
         Ahri = {
@@ -104,7 +108,7 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.72,
+            Version = 1.73,
         },
         Activator = {
             Version = 1.8,
