@@ -140,6 +140,7 @@ local function AutoUpdate()
 		end
 		
 		for k,v in pairs(latestData.Odyssey) do
+			print("Testing Name: " .. k)
 			if not FileExist(ODYSSEY_PATH..k..dotlua) or not currentData.Odyssey[k] or currentData.Odyssey[k].Version < v.Version then
 				print("Downloading Odyssey Champion Script: " .. k)
 				DownloadFile(CHAMP_URL, ODYSSEY_PATH, k..dotlua)
@@ -168,8 +169,8 @@ local function AutoUpdate()
 		end
 	end
 	
-	--GetVersionControl()
-	--CheckUpdate()
+	GetVersionControl()
+	CheckUpdate()
 	LoadScript()
 end
 	
