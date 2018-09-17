@@ -1,6 +1,6 @@
 Data = {
     Loader = {
-        Version = 1,
+        Version = 1.5,
     },
 	Odyssey = {
         Sona = {

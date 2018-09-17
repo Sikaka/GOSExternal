@@ -26,6 +26,7 @@ local function AutoUpdate()
 	local SCRIPT_URL			= "https://raw.githubusercontent.com/Sikaka/GOSExternal/"
 	local AUTO_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/"
 	local CHAMP_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/Champions/"
+	local ODYSSEY_URL			= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/Champions/Odyssey/"
 	local oldVersion			= "currentVersion.lua"
 	local newVersion			= "newVersion.lua"
 	--
@@ -48,12 +49,9 @@ local function AutoUpdate()
 		return res
 	end
 	local function DownloadFile(from, to, filename)
-		
 		local startTime = osclock()
 		DownloadFileAsync(from..filename, to..filename, function() end)		
 		repeat until osclock() - startTime > 5 or FileExist(to..filename)
-		--print("Downloading: " .. from.. filename)
-		--print("To: " .. to.. filename)
 	end	
 	
 	local function GetVersionControl()
@@ -140,10 +138,9 @@ local function AutoUpdate()
 		end
 		
 		for k,v in pairs(latestData.Odyssey) do
-			print("Testing Name: " .. k)
 			if not FileExist(ODYSSEY_PATH..k..dotlua) or not currentData.Odyssey[k] or currentData.Odyssey[k].Version < v.Version then
 				print("Downloading Odyssey Champion Script: " .. k)
-				DownloadFile(CHAMP_URL, ODYSSEY_PATH, k..dotlua)
+				DownloadFile(ODYSSEY_URL, ODYSSEY_PATH, k..dotlua)
 				if not currentData.Odyssey[k] then
 					currentData.Odyssey[k] = v
 				else
