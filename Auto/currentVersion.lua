@@ -6,6 +6,9 @@ Data = {
         Activator = {
             Version = 1.1,
         },
+        Drawer = {
+            Version = 1.0,
+        },
     },
     Loader = {
         Version = 1,
