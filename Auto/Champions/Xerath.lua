@@ -124,7 +124,7 @@ function Tick()
 		end
 	end
 	
-	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value()  then
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value()  then
 		local target = GetTarget(E.Range)
 		if CanTarget(target) then
 			local accuracyRequired =  ComboActive() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
@@ -145,9 +145,12 @@ function Tick()
 			local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, W.Range, W.Delay,W.Speed, W.Radius, W.Collision, W.IsLine)
 			if aimPosition and hitChance >= accuracyRequired then
 				CastSpell(HK_W, aimPosition)
-				NextTick = LocalGameTimer() + .2
+				NextTick = LocalGameTimer() + .2	
 				return
 			end
 		end
 	end
+	
+	
+	
 end
