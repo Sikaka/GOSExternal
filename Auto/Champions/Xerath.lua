@@ -124,7 +124,7 @@ function Tick()
 		end
 	end
 	
-	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.W.Mana:Value()  then
+	if Ready(_E) and CurrentPctMana(myHero) >= Menu.Skills.E.Mana:Value()  then
 		local target = GetTarget(E.Range)
 		if CanTarget(target) then
 			local accuracyRequired =  ComboActive() and Menu.Skills.E.Accuracy:Value() or Menu.Skills.E.Auto:Value() and 4 or 6
