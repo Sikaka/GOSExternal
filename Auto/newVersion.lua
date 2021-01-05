@@ -101,6 +101,10 @@ Data = {
             Changelog = "Zilean Changelog Here",
             Version = 1.11,
         },
+        Janna = {
+            Changelog = "Janna Changelog Here",
+            Version = 1,
+        },
     },
     Core = {
         Changelog = "Auto Version ChangeLog Here",
@@ -109,9 +113,6 @@ Data = {
     Dependencies = {
         Alpha = {
             Version = 1.73,
-        },
-        Activator = {
-            Version = 1.8,
         },
     },
 }
