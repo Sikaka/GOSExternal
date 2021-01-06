@@ -114,6 +114,9 @@ Data = {
         Alpha = {
             Version = 1.73,
         },
+        Activator = {
+            Version = 1.8,
+        },
     },
 }
 
