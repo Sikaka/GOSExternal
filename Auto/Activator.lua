@@ -480,7 +480,7 @@ function __Activator:Ignite(spellSlot, hotkey)
 	if not myHero or not myHero.levelData then return end
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
-		if CanTarget(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, 600) then	
+		if hero and CanTarget(hero) and Activator.LocalGeometry:IsInRange(myHero.pos, hero.pos, 600) then	
 			local remainingHealth = hero.health - Activator.LocalDamageManager:RecordedIncomingDamage(hero)
 			if not remainingHealth then
 				remainingHealth = hero.health

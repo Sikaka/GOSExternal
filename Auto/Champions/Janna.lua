@@ -173,7 +173,7 @@ function Tick()
 		end
 	end
 	
-	if Ready(_E) and (if ComboActive() or Menu.Skills.E.Auto:Value())then
+	if Ready(_E) and (if ComboActive() or Menu.Skills.E.Auto:Value()) then
 		--Loop allies in range
 		for i = 1, LocalGameHeroCount() do
 			local hero = LocalGameHero(i)
