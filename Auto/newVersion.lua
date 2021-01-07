@@ -103,7 +103,7 @@ Data = {
         },
         Janna = {
             Changelog = "Janna Changelog Here",
-            Version = 1,
+            Version = 1.01,
         },
     },
     Core = {
