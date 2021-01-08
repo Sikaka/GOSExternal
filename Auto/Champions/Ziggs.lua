@@ -40,9 +40,9 @@ function LoadScript()
 	Menu.Skills.R:MenuElement({id = "Count", name = "Enemy Count", value = 3, min = 1, max = 6, step = 1 })
 
 		
-	
-	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
-	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
+	--Disabled CC and Blink checks as they are very performance intensive.
+	--LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
+	--LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
 end
@@ -132,8 +132,10 @@ function Tick()
 						local predictedPosition = origin + forward * scaling					
 						if LocalGeometry:IsInRange(myHero.pos, predictedPosition, Q.Range) and Menu.Skills.W.ComboTargets[hero.networkID] and Menu.Skills.W.ComboTargets[hero.networkID]:Value() then
 							NextTick = LocalGameTimer() + .2
-							CastSpell(HK_Q, predictedPosition)
-							DelayAction(function()CastSpell(HK_W) end,.15)
+
+							--Pop W to force them to dash and use Q on where they will be forced to land after a VERY small delay
+							CastSpell(HK_W)
+							DelayAction(function()CastSpell(HK_Q,predictedPosition) end,.15)
 							return
 						end
 					end

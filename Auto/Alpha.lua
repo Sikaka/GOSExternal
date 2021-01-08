@@ -145,6 +145,7 @@ end
 
 function __Geometry:GetLineTargetCount(source, aimPos, delay, speed, width, targetAllies)
 	local targetCount = 0
+	local targetsHit = {}
 	for i = 1, LocalGameHeroCount() do
 		local t = LocalGameHero(i)
 		if t and t.pos and t.alive and t.health > 0 and t.visible and t.isTargetable and ( targetAllies or t.isEnemy) then			
@@ -152,11 +153,13 @@ function __Geometry:GetLineTargetCount(source, aimPos, delay, speed, width, targ
 			local proj1, pointLine, isOnSegment = self:VectorPointProjectionOnLineSegment(source, aimPos, predictedPos)
 			if proj1 and isOnSegment and self:IsInRange(predictedPos, proj1, t.boundingRadius + width) then
 				targetCount = targetCount + 1
+				table.insert(targetsHit,t);
 			end
 		end
 	end
-	return targetCount
+	return targetCount, targetsHit
 end
+
 function __Geometry:GetLineMinionTargetCount(source, aimPos, delay, speed, width)
 	local targetCount = 0
 	for i = 1, LocalGameMinionCount() do
