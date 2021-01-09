@@ -59,7 +59,7 @@ Data = {
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
-            Version = 1.5,
+            Version = 1.51,
         },
     },
 }

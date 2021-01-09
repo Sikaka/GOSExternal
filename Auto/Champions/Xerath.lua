@@ -401,8 +401,7 @@ end
 
 
 --Set forced target when clicking on the enemy
-function Xerath:WndMsg(msg,key)	
-	if Menu.Settings.TargetingMode:Value() ~= 2 then return end
+function Xerath:WndMsg(msg,key)
 	if msg == 513 then
 		local candidates = {}
 		for i  = 1,GameHeroCount(i) do
