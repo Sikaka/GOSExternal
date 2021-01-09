@@ -1,3 +1,11 @@
+--TODO: Replace the LocalGameTimer etc with these
+local MathAbs, MathAtan, MathAtan2, MathAcos, MathCeil, MathCos, MathDeg, MathFloor, MathHuge, MathMax, MathMin, MathPi, MathRad, MathSin, MathSqrt, MathRandom = math.abs, math.atan, math.atan2, math.acos, math.ceil, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.pi, math.rad, math.sin, math.sqrt, math.random
+local GameCanUseSpell, GameLatency, GameTimer, GameHeroCount, GameHero, GameMinionCount, GameMinion, GameMissileCount, GameMissile = Game.CanUseSpell, Game.Latency, Game.Timer, Game.HeroCount, Game.Hero, Game.MinionCount, Game.Minion, Game.MissileCount, Game.Missile
+local DrawCircle, DrawColor, DrawLine, DrawText, ControlKeyUp, ControlKeyDown, ControlMouseEvent, ControlSetCursorPos = Draw.Circle, Draw.Color, Draw.Line, Draw.Text, Control.KeyUp, Control.KeyDown, Control.mouse_event, Control.SetCursorPos
+local TableInsert, TableRemove, TableSort = table.insert, table.remove, table.sort
+
+
+
 local LocalGameTimer				= Game.Timer;
 local LocalGameHeroCount 			= Game.HeroCount;
 local LocalGameHero 				= Game.Hero;
@@ -161,32 +169,6 @@ function EnemyCount(origin, range, delay)
 	return count
 end
 
-function OdysseyEnemyCount(origin, range, delay)
-	local count = 0
-	for i  = 1,LocalGameHeroCount(i) do
-		local enemy = LocalGameHero(i)
-		local enemyPos = enemy.pos
-		if delay then
-			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
-		end
-		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
-			count = count + 1
-		end			
-	end
-	for i  = 1,LocalGameMinionCount(i) do
-		local enemy = LocalGameMinion(i)
-		local enemyPos = enemy.pos
-		if delay then
-			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
-		end
-		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
-			count = count + 1
-		end
-	end
-	return count
-end
-
-
 function NearestAlly(origin, range)
 	local ally = nil
 	local distance = range
@@ -221,6 +203,15 @@ function NearestEnemy(origin, range)
 	if distance < range then
 		return enemy, distance
 	end
+end
+
+function Class()		
+	local cls = {}; cls.__index = cls		
+	return setmetatable(cls, {__call = function (c, ...)		
+		local instance = setmetatable({}, cls)		
+		if cls.__init then cls.__init(instance, ...) end		
+		return instance		
+	end})		
 end
 
 if FileExist(COMMON_PATH .. "Auto/Alpha.lua") then
