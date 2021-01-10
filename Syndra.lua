@@ -40,7 +40,7 @@ local function AutoUpdate()
 	end
 
 	DownloadFile(GITHUB_PATH..LIBRARY_NAME..".version", SCRIPT_PATH .."Common/"..LIBRARY_NAME..".version")
-	if tonumber(ReadFile(SCRIPT_PATH ..LIBRARY_NAME..".version")) > LIBRARY_VERSION then
+	if tonumber(ReadFile(SCRIPT_PATH .."Common/"..LIBRARY_NAME..".version")) > LIBRARY_VERSION then
 		print(LIBRARY_NAME..": Found library update! Downloading...")
 		DownloadFile(GITHUB_PATH..LIBRARY_NAME..".lua", SCRIPT_PATH .."Common/"..LIBRARY_NAME..".lua")
 		print(LIBRARY_NAME..": Successfully updated library. Use 2x F6!")
@@ -51,7 +51,7 @@ end
 function OnLoad()
 	print("Loading "..SCRIPT_NAME.."...")
 	DelayAction(function()
-		print("Sikaka's " .. SCRIPT_NAME.."successfully loaded!")
+		print("Sikaka" .. SCRIPT_NAME.." loaded!")
 		AutoUpdate()
 	end, MathMax(0.07, 30 - GameTimer()))
 end
