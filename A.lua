@@ -22,11 +22,9 @@ end
 
 local function AutoUpdate()
 	local CHAMP_PATH			= AUTO_PATH..'Champions/'
-	local ODYSSEY_PATH			= AUTO_PATH..'Champions/Odyssey/'
 	local SCRIPT_URL			= "https://raw.githubusercontent.com/Sikaka/GOSExternal/"
 	local AUTO_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/"
 	local CHAMP_URL				= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/Champions/"
-	local ODYSSEY_URL			= "https://raw.githubusercontent.com/Sikaka/GOSExternal/master/Auto/Champions/Odyssey/"
 	local oldVersion			= "currentVersion.lua"
 	local newVersion			= "newVersion.lua"
 	--
@@ -63,9 +61,6 @@ local function AutoUpdate()
 			
 	local function CheckSupported()
 		local Data = dofile(AUTO_PATH..newVersion)
-		if Game.mapID == 20 then
-			return Data.Odyssey[charName]
-		end
 		return Data.Champions[charName]
 	end
 	
@@ -97,11 +92,7 @@ local function AutoUpdate()
 		
 		--Write the core module			
 		writeModule(readAll(AUTO_PATH..coreName))
-		if Game.mapID == 20 then
-			writeModule(readAll(ODYSSEY_PATH..charName..dotlua))
-		else
-			writeModule(readAll(CHAMP_PATH..charName..dotlua))
-		end
+		writeModule(readAll(CHAMP_PATH..charName..dotlua))
 				
 		--Load the active module
 		dofile(AUTO_PATH.."dynamicScript"..dotlua) 
@@ -133,18 +124,6 @@ local function AutoUpdate()
 					currentData.Champions[k] = v
 				else
 					currentData.Champions[k].Version = v.Version
-				end
-			end
-		end
-		
-		for k,v in pairs(latestData.Odyssey) do
-			if not FileExist(ODYSSEY_PATH..k..dotlua) or not currentData.Odyssey[k] or currentData.Odyssey[k].Version < v.Version then
-				print("Downloading Odyssey Champion Script: " .. k)
-				DownloadFile(ODYSSEY_URL, ODYSSEY_PATH, k..dotlua)
-				if not currentData.Odyssey[k] then
-					currentData.Odyssey[k] = v
-				else
-					currentData.Odyssey[k].Version = v.Version
 				end
 			end
 		end

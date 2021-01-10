@@ -4535,6 +4535,23 @@ function __DamageManager:__init()
 			Danger = 1,
 		},
 		
+		--[Sivir Skills]--
+		["SivirQ"] = 
+		{
+			HeroName = "Sivir",
+			SpellName = "SivirQ",
+			SpellSlot = _Q,
+			DamageType = DAMAGE_TYPE_PHYSICAL,			
+			TargetType = TARGET_TYPE_LINE,
+			MissileName = "SivirQ",
+			Radius = 60,
+			Damage = {35, 50, 65, 80, 95},
+			APScaling = .5,
+			ADScaling =1,
+			Danger = 2,			
+		},
+
+
 		--[Sejuani Skills]--
 		["SejuaniW"] = 
 		{

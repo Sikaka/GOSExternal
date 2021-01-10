@@ -33,6 +33,10 @@ Data = {
             Changelog = "Fiora Changelog Here",
             Version = 1.311,
         },
+        Sivir = {
+            Changelog = "Sivir Changelog Here",
+            Version = 1,
+        },
         Soraka = {
             Changelog = "Soraka Changelog Here",
             Version = 1.11,
