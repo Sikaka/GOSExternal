@@ -1,4 +1,4 @@
-Q = {	Range = 750,	Delay = 0.35,	Speed = 999999,	Radius = 145, IsLine = true	}
+Q = {	Range = 750,	Delay = 0.35,	Speed = 999999,	Radius = 145	}
 W = {	Range = 1050,	Delay = 0.5,	Speed = 999999,	Radius = 200	}
 E = {	Range = 1100,	Delay = 0.25,	Speed = 1400,	Radius = 80, Collision = true,	IsLine = true	}
 R = {	Range = 5000,	Delay = 0.627,	Speed = 999999,	Radius = 140	}
@@ -32,11 +32,12 @@ function Xerath:GenerateMenu()
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Arcanopulse", type = MENU})
 	Menu.Skills.Q:MenuElement({id = "Killsteal", name = "Killsteal", value = true, toggle = true })	
-	Menu.Skills.Q:MenuElement({id = "Mode", name = "Assist Mode", drop = {"All Allowed Targets", "Selected Target Only"}})	
-	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Assist Accuracy", value = 3, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })
-	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
-	Menu.Skills.Q:MenuElement({id = "TargetCount", name = "Release on # Enemies", value = 2, min = 1, max = 6, step = 1 })
-	Menu.Skills.Q:MenuElement({id = "Targets", name = "Target List", type = MENU})
+	Menu.Skills.Q:MenuElement({id = "Mode", name = "Targeting Mode", drop = {"All Allowed Targets", "Selected Target Only"}})	
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto: Release Accuracy", value = 3, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })	
+	Menu.Skills.Q:MenuElement({id = "TargetCount", name = "Auto: Release # Enemies (Uses Combo Accuracy)", value = 2, min = 1, max = 6, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo: Release Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
+	Menu.Skills.Q:MenuElement({id = "SafeDistance", name = "Combo: Minimum Enemy Distance (Start Charging)", value = 400, min = 100, max = 1500, step = 50 })
+	Menu.Skills.Q:MenuElement({id = "Targets", name = "Priority List (Release Before Full Charge)", type = MENU})
 	for i = 1, GameHeroCount() do
 		local hero = GameHero(i)
 		if hero and hero.isEnemy then
@@ -46,12 +47,13 @@ function Xerath:GenerateMenu()
 
 	Menu.Skills:MenuElement({id = "W", name = "[W] Eye of Destruction", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Killsteal", name = "Killsteal", value = true, toggle = true })	
-	Menu.Skills.W:MenuElement({id = "AccuracyAuto", name = "Assist Accuracy", value = 5, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })
+	Menu.Skills.W:MenuElement({id = "AccuracyAuto", name = "Assist Accuracy", value = 4, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })
 	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
 	Menu.Skills.W:MenuElement({id = "TargetCount", name = "Target # Enemies", value = 2, min = 1, max = 6, step = 1 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Shocking Orb", type = MENU})
-	Menu.Skills.E:MenuElement({id = "AccuracyAuto", name = "Assist Accuracy", value = 5, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })
+	Menu.Skills.E:MenuElement({id = "AccuracyAuto", name = "Assist Accuracy", value = 4, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })	
+	Menu.Skills.E:MenuElement({id = "PeelRadius", name = "Auto: Peel Radius (Use Combo Accuracy)", value = 400, min = 100, max = 1500, step = 50 })
 	Menu.Skills.E:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
 			
 	Menu.Skills:MenuElement({id = "R", name = "[R] Rite of the Arcane", type = MENU})
@@ -105,15 +107,19 @@ function Xerath:Tick()
 		--Dead, untargetable, lost vision, too long since last spell cast on them, etc
 	self:CheckRetargetTimeout()
 
+	--LocalOrbwalker.SetAttack(not self:IsRActive() or not self:IsQActive())
+	--LocalOrbwalker.SetMovement(not self:IsRActive())
+
 	--Run skill logic in order of priority. If logic returns true (action taken) then cancel the rest of the logic early!
+	if self:E_Peel() then return end
 	if self:Q_Logic() then return end
 	if self:R_Logic() then return end
 	if self:E_Logic() then return end
 	if self:W_Logic() then return end
 end
 
-
 function Xerath:CheckRetargetTimeout()
+	
 	--Handle nulling out out current target if the last spell cast at them was too long ago.
 	if Menu.Settings.TargetingMode:Value() == 2 then return end
 
@@ -162,8 +168,19 @@ function Xerath:Q_Logic()
 			end
 		end
 		return true
-	else
-		--Check if we should start casting Q (combo)
+	elseif ComboActive() then
+		--Do NOT start charging Q if an enemy is too close to us.
+		local target = NearestEnemy(myHero.pos, Menu.Skills.Q.SafeDistance:Value())
+		if target and CanTarget(target) then return false end
+		for i = 1, GameHeroCount() do
+			local target = GameHero(i)
+			if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID] and LocalGeometry:GetDistance(myHero.pos, target.pos) <= 1500 then				
+				ControlKeyDown(HK_Q)
+				self.NextTick = self.CurrentGameTime + .25
+				return true
+			end
+		end
+
 	end
 end
 
@@ -255,7 +272,7 @@ function Xerath:W_Targeting(target)
 	return {}
 end
 
-function Xerath:E_Logic()	
+function Xerath:E_Logic()
 	if not Ready(_E) then return false end
 	if not self.ForcedTarget then
 		local candidates = {}
@@ -281,6 +298,24 @@ function Xerath:E_Logic()
 			CastSpell(HK_E, targetData.aimPosition, true)
 			self:SetDynamicForcedTarget(targetData.target, .25)
 			return true
+		end
+	end
+end
+
+function Xerath:E_Peel()
+	if not Ready(_E) or self:IsQActive() or self:IsRActive() then return end
+	--Handle peeling enemies that come too close to self/allies by using E. We will ignore forced target for the duration
+	--This bypasses all locked target checks to try to peel with more reliability
+	for i = 1, GameHeroCount() do
+		local target = GameHero(i)
+		if target and CanTarget(target) and LocalGeometry:GetDistance(myHero.pos, target.pos) <= Menu.Skills.E.PeelRadius:Value() then			
+			local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, E.Range, E.Delay, E.Speed, E.Radius, E.Collision, E.IsLine)
+			if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, E.Range)  then
+				if (hitChance >= Menu.Skills.E.AccuracyAuto:Value()) or (ComboActive() and hitChance >= Menu.Skills.E.AccuracyCombo:Value()) then
+					CastSpell(HK_E, aimPosition, true)					
+					self.NextTick = self.CurrentGameTime + .25
+				end
+			end
 		end
 	end
 end
@@ -401,7 +436,8 @@ end
 
 
 --Set forced target when clicking on the enemy
-function Xerath:WndMsg(msg,key)
+function Xerath:WndMsg(msg,key)	
+	if Menu.Settings.TargetingMode:Value() ~= 2 then return end
 	if msg == 513 then
 		local candidates = {}
 		for i  = 1,GameHeroCount(i) do

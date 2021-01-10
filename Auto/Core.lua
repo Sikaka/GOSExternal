@@ -221,7 +221,7 @@ else
 end
 
 if not _G.SDK or not _G.SDK.TargetSelector then
-	print("IC Orbwalker MUST be active in order to use this script.")
+	print("GG Orbwalker MUST be active in order to use this script.")
 	return
 end
 
