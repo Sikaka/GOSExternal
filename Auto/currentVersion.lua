@@ -37,18 +37,6 @@ Data = {
             Changelog = "Soraka Changelog Here",
             Version = 1.11,
         },
-        Garen = {
-            Changelog = "Garen Changelog Here",
-            Version = 1.1,
-        },
-        Heimerdinger = {
-            Changelog = "Heimerdinger Changelog Here",
-            Version = 1.11,
-        },
-        Illaoi = {
-            Changelog = "Illaoi Changelog Here",
-            Version = 1.11,
-        },
         Karthus = {
             Changelog = "Karthus Changelog Here",
             Version = 1.01,
@@ -73,21 +61,9 @@ Data = {
             Changelog = "Morgana Changelog Here",
             Version = 1.11,
         },
-        MonkeyKing = {
-            Changelog = "MonkeyKing Changelog Here",
-            Version = 1.11,
-        },
         Nami = {
             Changelog = "Nami Changelog Here",
             Version = 1.11,
-        },
-        Pyke = {
-            Changelog = "Pyke Changelog Here",
-            Version = 1.22,
-        },
-        Taliyah = {
-            Changelog = "Taliyah Changelog Here",
-            Version = 1.33,
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",

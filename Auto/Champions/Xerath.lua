@@ -4,7 +4,7 @@ E = {	Range = 1100,	Delay = 0.25,	Speed = 1400,	Radius = 80, Collision = true,	I
 R = {	Range = 5000,	Delay = 0.627,	Speed = 999999,	Radius = 140	}
 
 local Xerath = Class()
-function Xerath:__init()	
+function Xerath:__init()
 	self:GenerateMenu()
 
 	--Set internal variables for champ logic
@@ -48,7 +48,7 @@ function Xerath:GenerateMenu()
 	Menu.Skills:MenuElement({id = "W", name = "[W] Eye of Destruction", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Killsteal", name = "Killsteal", value = true, toggle = true })	
 	Menu.Skills.W:MenuElement({id = "AccuracyAuto", name = "Assist Accuracy", value = 4, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })
-	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
+	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
 	Menu.Skills.W:MenuElement({id = "TargetCount", name = "Target # Enemies", value = 2, min = 1, max = 6, step = 1 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Shocking Orb", type = MENU})
@@ -197,7 +197,7 @@ end
 
 function Xerath:Q_Targeting(target)
 	local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, self.QData.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
-	if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, self.QData.Range - 150) then
+	if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, self.QData.Range - 200) then
 		local endPosition = myHero.pos + (aimPosition-myHero.pos):Normalized() * self.QData.Range						
 		local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, Q.Delay, Q.Speed, Q.Radius)
 		local qDamage = LocalDamageManager:CalculateDamage(myHero, target, "XerathArcanopulseChargeUp")
