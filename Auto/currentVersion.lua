@@ -35,7 +35,7 @@ Data = {
         },
         Sivir = {
             Changelog = "Sivir Changelog Here",
-            Version = 1,
+            Version = 1.1,
         },
         Soraka = {
             Changelog = "Soraka Changelog Here",

@@ -1,13 +1,14 @@
 local Sivir = Class()
 function Sivir:__init()
 	self:GenerateMenu()
-	self.Q = {	Range = 1250,	Delay = 0.25,	Speed = 1350,	Radius = 180	}
+	Q = {	Range = 1250,	Delay = 0.25,	Speed = 1350,	Radius = 180	}
 	self.NextTick = GameTimer()
+	self.Data = _G.SDK.Data
 	Callback.Add("Tick", function() self:Tick() end)
 	Callback.Add("Draw", function() self:Draw() end)
 
 	if _G.JustEvade then 
-		_G.JustEvade:OnImpossibleDodge(function(dangerLevel)  self:ImpossibleDodge(danger) end)		
+		_G.JustEvade:OnImpossibleDodge(function(dangerLevel)  self:ImpossibleDodge(dangerLevel) end)		
 		print("Warning: JustEvade must have evade mode emabled for E to be used.")
 	else
 		print("JustEvade is not loaded. E will not be used.")
@@ -49,7 +50,7 @@ function Sivir:ImpossibleDodge(danger)
 	end
 end
 
-function self:OnPostAttack()
+function Sivir:OnPostAttack()
 	if not Ready(_W) then return end
 	if not myHero.activeSpell.target then return end
 	local target = LocalObjectManager:GetHeroByHandle(myHero.activeSpell.target)
@@ -88,7 +89,7 @@ function Sivir:Q_Logic()
 	local candidates = {}
 	for i = 1, GameHeroCount() do
 		local target = GameHero(i)
-		if CanTarget(target) and ComboActive() or Menu.Skills.Q.Targets[target.networkID] then
+		if CanTarget(target) and (ComboActive() or Menu.Skills.Q.Targets[target.networkID]) then
 			local targetData = self:Q_Targeting(target)
 			if targetData and targetData.target then
 				TableInsert(candidates, targetData)
@@ -97,18 +98,18 @@ function Sivir:Q_Logic()
 	end
 	--Order the table and select the best one.			
 	TableSort(candidates, function (a,b) return a.target and (a.targetPriority > b.targetPriority or (a.targetPriority == b.targetPriority and a.accuracy > b.accuracy)) end)
-	if #candidates > 0 and #candidates[1].aimPosition then			
+	if #candidates > 0 and candidates[1].aimPosition then			
 		CastSpell(HK_Q, candidates[1].aimPosition, true)
-		self:SetDynamicForcedTarget(candidates[1].target, .3)
+		self.NextTick = self.CurrentGameTime + .3
 	end
 end
 
 
 function Sivir:Q_Targeting(target)
-	local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, self.QData.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
-	if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, self.Q.Range) then
-		local endPosition = myHero.pos + (aimPosition-myHero.pos):Normalized() * self.Q.Range						
-		local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, self.Q.Delay, self.Q.Speed, self.Q.Radius)
+	local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
+	if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, Q.Range) then
+		local endPosition = myHero.pos + (aimPosition-myHero.pos):Normalized() * Q.Range						
+		local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, Q.Delay, Q.Speed, Q.Radius)
 		local targetPriority = self.Data:GetHeroPriority(target.charName)
 
 		if Menu.Skills.Q.Killsteal:Value() then
