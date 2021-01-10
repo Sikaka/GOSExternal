@@ -18,6 +18,16 @@ local function Class()
 	end})		
 end
 
+
+local Syndra = Class()
+function Syndra:__init()
+	self.NextTick = GameTimer()
+	self.Data = _G.SDK.Data
+	print("SYNDRA ONLINE")
+end
+
+--AUTO UPDATE LOGIC--
+
 local function DownloadFile(site, file)
 	DownloadFileAsync(site, file, function() end)
 	local timer = os.clock()
@@ -52,14 +62,7 @@ function OnLoad()
 	print("Loading "..SCRIPT_NAME.."...")
 	DelayAction(function()
 		print("Sikaka" .. SCRIPT_NAME.." loaded!")
-		AutoUpdate()
-	end, MathMax(0.07, 30 - GameTimer()))
-end
-
-
-local Syndra = Class()
-function Syndra:__init()
-	self.NextTick = GameTimer()
-	self.Data = _G.SDK.Data
-	print("SYNDRA ONLINE")
+		--AutoUpdate()		
+		Syndra()
+	end, MathMax(0.07, 10 - GameTimer()))
 end
