@@ -1,7 +1,7 @@
 local Sivir = Class()
 function Sivir:__init()
 	self:GenerateMenu()
-	Q = {	Range = 1250,	Delay = 0.25,	Speed = 1350,	Radius = 180	}
+	Q = {	Range = 1250,	Delay = 0.25,	Speed = 1350,	Radius = 90, IsLine = true	}
 	self.NextTick = GameTimer()
 	self.Data = _G.SDK.Data
 	Callback.Add("Tick", function() self:Tick() end)
@@ -60,7 +60,7 @@ function Sivir:OnPostAttack()
 	local minimumManaPct = ComboActive() and Menu.Skills.W.ManaCombo:Value() or Menu.Skills.W.ManaAuto:Value()
 	if(currentManaPct >= minimumManaPct) then
 		CastSpell(HK_W)
-	end	
+	end
 end
 
 function Sivir:Draw()
@@ -97,7 +97,7 @@ function Sivir:Q_Logic()
 		end
 	end
 	--Order the table and select the best one.			
-	TableSort(candidates, function (a,b) return a.target and (a.targetPriority > b.targetPriority or (a.targetPriority == b.targetPriority and a.accuracy > b.accuracy)) end)
+	TableSort(candidates, function (a,b) return a.target and (a.targetPriority > b.targetPriority or (a.targetPriority == b.targetPriority and a.targetCount > b.targetCount)) end)
 	if #candidates > 0 and candidates[1].aimPosition then			
 		CastSpell(HK_Q, candidates[1].aimPosition, true)
 		self.NextTick = self.CurrentGameTime + .3

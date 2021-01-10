@@ -35,7 +35,7 @@ Data = {
         },
         Sivir = {
             Changelog = "Sivir Changelog Here",
-            Version = 1.1,
+            Version = 1.111,
         },
         Soraka = {
             Changelog = "Soraka Changelog Here",
@@ -71,7 +71,7 @@ Data = {
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
-            Version = 1.52,
+            Version = 1.53,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",

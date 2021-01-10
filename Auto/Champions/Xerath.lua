@@ -110,8 +110,8 @@ function Xerath:Tick()
 		--Dead, untargetable, lost vision, too long since last spell cast on them, etc
 	self:CheckRetargetTimeout()
 
-	--LocalOrbwalker.SetAttack(not self:IsRActive() or not self:IsQActive())
-	--LocalOrbwalker.SetMovement(not self:IsRActive())
+	_G.GOS.BlockAttack = not self:IsRActive() or not self:IsQActive()
+	_G.GOS.BlockMovement =not self:IsRActive()
 
 	--Run skill logic in order of priority. If logic returns true (action taken) then cancel the rest of the logic early!
 	if self:E_Peel() then return end
