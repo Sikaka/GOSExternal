@@ -67,7 +67,7 @@ Data = {
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
-            Version = 1.51,
+            Version = 1.52,
         },
         Ziggs = {
             Changelog = "Ziggs Changelog Here",

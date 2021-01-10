@@ -48,7 +48,7 @@ function Xerath:GenerateMenu()
 	Menu.Skills:MenuElement({id = "W", name = "[W] Eye of Destruction", type = MENU})
 	Menu.Skills.W:MenuElement({id = "Killsteal", name = "Killsteal", value = true, toggle = true })	
 	Menu.Skills.W:MenuElement({id = "AccuracyAuto", name = "Assist Accuracy", value = 4, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })
-	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 3, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
+	Menu.Skills.W:MenuElement({id = "AccuracyCombo", name = "Combo Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
 	Menu.Skills.W:MenuElement({id = "TargetCount", name = "Target # Enemies", value = 2, min = 1, max = 6, step = 1 })
 	
 	Menu.Skills:MenuElement({id = "E", name = "[E] Shocking Orb", type = MENU})
@@ -99,6 +99,9 @@ end
 function Xerath:Tick()
 	--Cache the current game time for use in the combo logic
 	self.CurrentGameTime = GameTimer()
+
+	--Return if the script shouldn't be run
+	if BlockSpells() then return end
 
 	--If the script has set a next tick time (artificial delay) dont run logic!
 	if self.NextTick > self.CurrentGameTime then return end
@@ -190,14 +193,14 @@ function Xerath:Q_Update()
 			self.QData.IsCharging = false
 		else
 			self.QData.ChargeDuration = MathMin(self.CurrentGameTime - self.QData.StartTime, 2)
-			self.QData.Range = 750 + 500 * self.QData.ChargeDuration
+			self.QData.Range = 700 + 500 * self.QData.ChargeDuration
 		end
 	end
 end
 
 function Xerath:Q_Targeting(target)
 	local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, self.QData.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
-	if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, self.QData.Range - 200) then
+	if aimPosition and LocalGeometry:IsInRange(myHero.pos, aimPosition, self.QData.Range - 150) then
 		local endPosition = myHero.pos + (aimPosition-myHero.pos):Normalized() * self.QData.Range						
 		local targetCount = LocalGeometry:GetLineTargetCount(myHero.pos, endPosition, Q.Delay, Q.Speed, Q.Radius)
 		local qDamage = LocalDamageManager:CalculateDamage(myHero, target, "XerathArcanopulseChargeUp")
