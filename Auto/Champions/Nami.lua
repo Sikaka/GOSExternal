@@ -91,11 +91,11 @@ function Tick()
 			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 			local hitCount = EnemyCount(castPosition, Q.Radius, LocalGeometry:GetSpellInterceptTime(myHero.pos, castPosition, Q.Delay, Q.Speed))
 			if hitCount >= Menu.Skills.Q.Count:Value() then
-				accuracyRequired = 3
+				accuracyRequired = 1
 			end
-			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
-				NextTick = LocalGameTimer() + .25
+			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then				
 				if CastSpell(HK_Q, castPosition) then
+					NextTick = LocalGameTimer() + .25
 					return
 				end
 			end
