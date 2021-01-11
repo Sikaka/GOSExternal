@@ -5,13 +5,16 @@ R = {	Range = 2750,	Radius = 215,	Speed = 850,	Delay = 0.5	}
 	
 
 function LoadScript()
+	Data = _G.SDK.Data
 	Menu = MenuElement({type = MENU, id = myHero.networkID, name = myHero.charName})
 	Menu:MenuElement({id = "Skills", name = "Skills", type = MENU})
 	Menu.Skills:MenuElement({id = "Q", name = "[Q] Aqua Prison", type = MENU})
-	Menu.Skills.Q:MenuElement({id = "Accuracy", name = "Combo Accuracy", value = 3, min = 1, max = 6, step = 1 })	
-	Menu.Skills.Q:MenuElement({id = "Auto", name = "Auto cast on Immobile", value = true, toggle = true })	
-	Menu.Skills.Q:MenuElement({id = "Count", name = "Auto cast on # Enemies", tooltip = "How many targets we need to be able to hit to auto cast", value = 3, min = 1, max = 6, step = 1 })
-	Menu.Skills.Q:MenuElement({id = "Mana", name = "Minimum Mana", value = 15, min = 1, max = 100, step = 1 })
+
+	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto: Accuracy", value = 4, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo: Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
+	Menu.Skills.Q:MenuElement({id = "TargetCount", name = "Auto: # Enemies", value = 2, min = 1, max = 6, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "ManaAuto", name = "Auto: Minimum Mana", value = 15, min = 1, max = 100, step = 1 })
+	Menu.Skills.Q:MenuElement({id = "ManaCombo", name = "Combo: Minimum Mana", value = 15, min = 1, max = 100, step = 1 })
 	Menu.Skills.Q:MenuElement({id = "Assist", name = "Assist Key",value = false,  key = 0x70})
 		
 	Menu.Skills:MenuElement({id = "W", name = "[W] Ebb and Flow", type = MENU})
@@ -85,21 +88,7 @@ function Tick()
 	end
 	
 	if Ready(_Q) then
-		local target = GetTarget(Q.Range)
-		if CanTarget(target) then
-			local accuracyRequired = (ComboActive() or Menu.Skills.Q.Assist:Value()) and Menu.Skills.Q.Accuracy:Value() or Menu.Skills.Q.Auto:Value() and 4 or 6
-			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
-			local hitCount = EnemyCount(castPosition, Q.Radius, LocalGeometry:GetSpellInterceptTime(myHero.pos, castPosition, Q.Delay, Q.Speed))
-			if hitCount >= Menu.Skills.Q.Count:Value() then
-				accuracyRequired = 3
-			end
-			if castPosition and accuracy >= accuracyRequired and LocalGeometry:IsInRange(myHero.pos, castPosition, Q.Range) then
-				NextTick = LocalGameTimer() + .25
-				if CastSpell(HK_Q, castPosition) then
-					return
-				end
-			end
-		end
+		if Q_Logic() then return end
 	end
 	
 	if Ready(_W) then
@@ -124,7 +113,52 @@ function Tick()
 	end
 end
 
+function Q_Logic()
 
+	if (ComboActive() and Menu.Skills.Q.ManaCombo:Value() or Menu.Skills.Q.ManaAuto:Value()) >= CurrentPctMana(myHero)  then return end
+
+	local candidates = {}
+	for i = 1, GameHeroCount() do
+		local target = GameHero(i)
+		if CanTarget(target) then
+			local targetData = Q_Targeting(target)
+			if targetData and targetData.target then
+				TableInsert(candidates, targetData)
+			end
+		end
+	end
+	--Order the table and select the best one.
+	TableSort(candidates, function (a,b) return a.target and (a.targetPriority > b.targetPriority or (a.targetPriority == b.targetPriority and a.accuracy > b.accuracy)) end)			
+	if #candidates > 0 then
+		CastSpell(HK_Q, candidates[1].aimPosition)
+		NextTick = LocalGameTimer() + .25
+		return true
+	end
+end
+
+function Q_Targeting(target)	
+	local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
+	if aimPosition and hitChance > 0 and LocalGeometry:IsInRange(myHero.pos, aimPosition, Q.Range) then
+		local targetCount = EnemyCount(aimPosition, Q.Radius, Q.Delay)
+		local targetPriority = Data:GetHeroPriority(target.charName)
+
+		if targetCount >= Menu.Skills.Q.TargetCount:Value() then
+			targetPriority = targetPriority + 1
+			hitChance = 6
+		end
+
+		local hitChanceRequired = ComboActive() and Menu.Skills.Q.AccuracyCombo:Value() or Menu.Skills.Q.AccuracyAuto:Value()
+
+		if Menu.Skills.Q.Assist:Value() then
+			hitChanceRequired = 1
+		end
+		
+		if hitChance >=hitChanceRequired then
+			return {target = target, targetPriority = targetPriority, targetCount = targetCount, accuracy = hitChance, aimPosition = aimPosition}
+		end
+	end
+	return {}
+end
 
 function OnBlink(target)
 	if target.isEnemy and CanTarget(target) and Ready(_Q) and Menu.Skills.Q.Auto:Value() and LocalGeometry:IsInRange(myHero.pos, target.pos, Q.Range) then

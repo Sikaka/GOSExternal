@@ -67,7 +67,7 @@ Data = {
         },
         Nami = {
             Changelog = "Nami Changelog Here",
-            Version = 1.11,
+            Version = 1.25,
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
