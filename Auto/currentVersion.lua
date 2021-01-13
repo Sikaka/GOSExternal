@@ -87,11 +87,15 @@ Data = {
         },
         Zoe = {
             Changelog = "Zoe Changelog Here",
-            Version = .01,
+            Version = 0.01,
         },
         Heimerdinger = {
             Changelog = "Heimerdinger Changelog Here",
             Version = 1.01,
+        },
+        Pyke = {
+            Changelog = "Pyke Changelog Here",
+            Version = 1.0,
         },
     },
     Core = {

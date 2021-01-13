@@ -35,8 +35,7 @@ function Xerath:GenerateMenu()
 	Menu.Skills.Q:MenuElement({id = "Mode", name = "Targeting Mode", drop = {"All Allowed Targets", "Selected Target Only"}})
 	Menu.Skills.Q:MenuElement({id = "AccuracyAuto", name = "Auto: Release Accuracy", value = 3, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })	
 	Menu.Skills.Q:MenuElement({id = "TargetCount", name = "Auto: Release # Enemies (Uses Combo Accuracy)", value = 2, min = 1, max = 6, step = 1 })
-	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo: Release Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })
-	Menu.Skills.Q:MenuElement({id = "SafeDistance", name = "Combo: Minimum Enemy Distance (Start Charging)", value = 400, min = 100, max = 1500, step = 50 })
+	Menu.Skills.Q:MenuElement({id = "AccuracyCombo", name = "Combo: Release Accuracy", value = 2, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile"} })	
 	Menu.Skills.Q:MenuElement({id = "Targets", name = "Priority List (Release Before Full Charge)", type = MENU})
 	for i = 1, GameHeroCount() do
 		local hero = GameHero(i)
@@ -171,19 +170,23 @@ function Xerath:Q_Logic()
 			end
 		end
 		return true
-	elseif ComboActive() then
-		--Do NOT start charging Q if an enemy is too close to us.
-		local target = NearestEnemy(myHero.pos, Menu.Skills.Q.SafeDistance:Value())
-		if target and CanTarget(target) then return false end
+	elseif ComboActive() and Ready(_Q) then
+		local candidates = {}
 		for i = 1, GameHeroCount() do
 			local target = GameHero(i)
-			if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID]:Value() and LocalGeometry:GetDistance(myHero.pos, target.pos) <= 1500 then				
-				ControlKeyDown(HK_Q)
-				self.NextTick = self.CurrentGameTime + .25
-				return true
+			if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID]:Value() then
+				local targetData = self:Q_Targeting(target)
+				if targetData and targetData.target then
+					TableInsert(candidates, targetData)
+				end
 			end
 		end
-
+		--Order the table and select the best one.			
+		TableSort(candidates, function (a,b) return a.target and (a.targetPriority > b.targetPriority or (a.targetPriority == b.targetPriority and a.accuracy > b.accuracy)) end)
+		if #candidates > 0 then			
+			CastSpell(HK_Q, candidates[1].aimPosition, true)
+			self:SetDynamicForcedTarget(candidates[1].target, .3)
+		end
 	end
 end
 
@@ -191,6 +194,7 @@ function Xerath:Q_Update()
 	if self.QData.IsCharging then
 		if not self:IsQActive() then
 			self.QData.IsCharging = false
+			self.QData.Range = 700		
 		else
 			self.QData.ChargeDuration = MathMin(self.CurrentGameTime - self.QData.StartTime, 2)
 			self.QData.Range = 700 + 500 * self.QData.ChargeDuration
