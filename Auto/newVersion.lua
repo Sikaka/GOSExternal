@@ -85,6 +85,10 @@ Data = {
             Changelog = "Janna Changelog Here",
             Version = 1.01,
         },
+        Zoe = {
+            Changelog = "Zoe Changelog Here",
+            Version = .01,
+        },
         Heimerdinger = {
             Changelog = "Heimerdinger Changelog Here",
             Version = 1.01,
