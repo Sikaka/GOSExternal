@@ -1,7 +1,7 @@
-Q = {	Range = 875,	Radius = 200,	Delay = 0.95,	Speed = 99999	}
+Q = {	Range = 875,	Radius = 160,	Delay = 0.99,	Speed = 99999	}
 W = {	Range = 725,	Radius = 650,	Delay = 0.25	}
 E = {	Range = 800	}
-R = {	Range = 2750,	Radius = 215,	Speed = 850,	Delay = 0.5	}
+R = {	Range = 2500,	Radius = 250,	Speed = 850,	Delay = 0.5	}
 	
 
 function LoadScript()
@@ -33,12 +33,12 @@ function LoadScript()
 		if hero and hero.isAlly then
 			Menu.Skills.W.EmergencyTargets:MenuElement({id = hero.networkID, name = hero.charName, value = 30, min = 1, max = 100, step = 5 })		
 		end
-	end	
+	end
 	Menu.Skills.W:MenuElement({id = "EmergencyMana", name = "Minimum Mana [No Bounce]", value = 25, min = 1, max = 100, step = 5 })
 	
 		
 	Menu.Skills:MenuElement({id = "E", name = "[E] Tidecaller's Blessing", type = MENU})
-	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Buff Allies", value = true, toggle = true })	
+	Menu.Skills.E:MenuElement({id = "Auto", name = "Auto Buff Allies", value = true, toggle = true })
 	Menu.Skills.E:MenuElement({id = "Targets", name = "Targets", type = MENU})
 	for i = 1, LocalGameHeroCount() do
 		local hero = LocalGameHero(i)
@@ -49,10 +49,42 @@ function LoadScript()
 	Menu.Skills.E:MenuElement({id = "Mana", name = "Minimum Mana", value = 25, min = 1, max = 100, step = 5 })
 		
 	Menu.Skills:MenuElement({id = "R", name = "[R] Tidal Wave", type = MENU})
-	Menu.Skills.R:MenuElement({id = "Count", name = "Combo Target Count", tooltip = "How many targets we need to be able to hit to auto cast", value = 2, min = 1, max = 6, step = 1 })
-	
+	Menu.Skills.R:MenuElement({id = "Assist", name = "Assist Key",value = false,  key = 0x73})
+	Menu.Skills.R:MenuElement({id = "Peel", name = "Peel Settings", type = MENU})
+	Menu.Skills.R.Peel:MenuElement({id = "Range", name = "Max Peel Range", value = 300, min = 100, max = 2500, step = 100 })
+	Menu.Skills.R.Peel:MenuElement({id = "Count", name = "Peel on # Targets", value = 2, min = 1, max = 6, step = 1 })
+	Menu.Skills.R.Peel:MenuElement({id = "Auto", name = "Auto Peel", value = true, toggle = true})
+	Menu.Skills.R.Peel:MenuElement({id = "Allies", name = "Peel For", type = MENU})
+	for i = 1, GameHeroCount() do
+		local hero = GameHero(i)
+		if hero and hero.isAlly then
+			Menu.Skills.R.Peel.Allies:MenuElement({id = hero.networkID, name = hero.charName, value = true, toggle = true})
+		end
+	end
+
+	Menu.Skills.R:MenuElement({id = "Auto", name = "Auto Settings", type = MENU})
+	Menu.Skills.R.Auto:MenuElement({id = "Targets", name = "Targets", type = MENU})
+	for i = 1, GameHeroCount() do
+		local hero = GameHero(i)
+		if hero and hero.isEnemy then
+			Menu.Skills.R.Auto.Targets:MenuElement({id = hero.networkID, name = hero.charName, value = true, toggle = true})
+		end
+	end
+
+	Menu.Skills.R.Auto:MenuElement({id = "Range", name = "Max Cast Range", value = 1500, min = 100, max = 2700, step = 100 })
+	Menu.Skills.R.Auto:MenuElement({id = "Count", name = "Cast on # Targets", value = 2, min = 1, max = 6, step = 1 })
+	Menu.Skills.R.Auto:MenuElement({id = "Accuracy", name = "Accuracy Required", value = 5, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })	
+	Menu.Skills.R.Auto:MenuElement({id = "AllyDistance", name = "Required Ally Distance", value = 800, min = 100, max = 2500, step = 100 })
+
+
+	Menu.Skills.R:MenuElement({id = "Combo", name = "Combo Settings", type = MENU})
+	Menu.Skills.R.Combo:MenuElement({id = "Range", name = "Max Cast Range", value = 1800, min = 100, max = 2700, step = 100 })
+	Menu.Skills.R.Combo:MenuElement({id = "Count", name = "Cast on # Targets", value = 2, min = 1, max = 6, step = 1 })
+	Menu.Skills.R.Combo:MenuElement({id = "Accuracy", name = "Accuracy Required", value = 3, drop = {"Low", "Normal", "High", "Dashing/Channeling", "Immobile", "Never"} })		
+	Menu.Skills.R.Combo:MenuElement({id = "AllyDistance", name = "Required Ally Distance", value = 800, min = 100, max = 2500, step = 100 })
+
+
 	LocalDamageManager:OnIncomingCC(function(target, damage, ccType) OnCC(target, damage, ccType) end)
-	LocalObjectManager:OnBlink(function(target) OnBlink(target) end )
 	LocalObjectManager:OnSpellCast(function(spell) OnSpellCast(spell) end)
 	Callback.Add("Tick", function() Tick() end)
 end
@@ -76,17 +108,11 @@ function Tick()
 	if BlockSpells() then return end
 	local currentMana = CurrentPctMana(myHero)
 	
-	--Get R target info
-	if ComboActive() and Ready(_R) then
-		local target = GetTarget(R.Range)
-		if CanTarget(target) then
-			local castPosition, accuracy = LocalGeometry:GetCastPosition(myHero, target, R.Range, R.Delay, R.Speed, R.Radius, R.Collision, R.IsLine)
-			if castPosition and accuracy > 1 and LocalGeometry:GetLineTargetCount(myHero.pos, castPosition, R.Delay, R.Speed, R.Radius) >= Menu.Skills.R.Count:Value() then
-				CastSpell(HK_R, castPosition)			
-			end
-		end
+
+	if Ready(_R) then
+		if R_Logic() then return end
 	end
-	
+
 	if Ready(_Q) then
 		if Q_Logic() then return end
 	end
@@ -128,7 +154,7 @@ function Q_Logic()
 		end
 	end
 	--Order the table and select the best one.
-	TableSort(candidates, function (a,b) return a.target and (a.targetPriority > b.targetPriority or (a.targetPriority == b.targetPriority and a.accuracy > b.accuracy)) end)			
+	TableSort(candidates, function (a,b) return a.target and (a.targetPriority > b.targetPriority or (a.targetPriority == b.targetPriority and a.accuracy > b.accuracy)) end)
 	if #candidates > 0 then
 		CastSpell(HK_Q, candidates[1].aimPosition)
 		NextTick = LocalGameTimer() + .25
@@ -136,7 +162,7 @@ function Q_Logic()
 	end
 end
 
-function Q_Targeting(target)	
+function Q_Targeting(target)
 	local aimPosition, hitChance = LocalGeometry:GetCastPosition(myHero, target, Q.Range, Q.Delay, Q.Speed, Q.Radius, Q.Collision, Q.IsLine)
 	if aimPosition and hitChance > 0 and LocalGeometry:IsInRange(myHero.pos, aimPosition, Q.Range) then
 		local targetCount = EnemyCount(aimPosition, Q.Radius, Q.Delay)
@@ -158,6 +184,69 @@ function Q_Targeting(target)
 		end
 	end
 	return {}
+end
+
+function R_Logic()
+	local candidates = LocalGeometry:GetTargetOptions(myHero, target, R.Range, R.Delay, R.Speed, R.Radius, R.Collision, R.IsLine)
+
+	--Prioritize # targets then by champ priority
+	TableSort(candidates, function (a,b) return a.target and (a.targetCount > b.targetCount or (a.targetCount == b.targetCount and a.targetPriority > b.targetPriority)) end)
+	
+	if #candidates > 0 then
+
+		--run assist logic
+		if Menu.Skills.R.Assist:Value() then			
+			CastSpell(HK_R, candidates[1].aimPosition)
+			NextTick = LocalGameTimer() + .25
+		end
+
+		--Run peel logic
+		if ComboActive() or Menu.Skills.R.Peel.Auto:Value() then
+			for _, t in ipairs(candidates) do
+				if t.targetCount >= Menu.Skills.R.Peel.Count:Value() then
+					local ally = NearestAlly(t.aimPosition, Menu.Skills.R.Peel.Range:Value())
+					if ally and Menu.Skills.R.Peel.Allies[ally.networkID]:Value() then
+						CastSpell(HK_R, t.aimPosition)
+						NextTick = LocalGameTimer() + .25
+						return
+					end
+				end
+			end
+		end
+
+		--Run combo logic
+		if ComboActive() then
+			for _, t in ipairs(candidates) do
+				if t.targetCount >= Menu.Skills.R.Combo.Count:Value() 
+					and t.accuracy >= Menu.Skills.R.Combo.Accuracy:Value()
+					and Menu.Skills.R.Combo.Range:Value() >= LocalGeometry:GetDistance(myHero.pos, t.aimPosition) then				
+					
+					local ally = NearestAlly(t.aimPosition, Menu.Skills.R.Combo.AllyDistance:Value())
+					if ally or LocalGeometry:GetDistance(myHero.pos, t.aimPosition) <= Menu.Skills.R.Combo.AllyDistance:Value() then
+						CastSpell(HK_R, t.aimPosition)
+						NextTick = LocalGameTimer() + .25
+						return
+					end
+				end
+			end
+		end
+
+		--Run auto logic
+		for _, t in ipairs(candidates) do
+			if t.targetCount >= Menu.Skills.R.Auto.Count:Value() 
+				and t.accuracy >= Menu.Skills.R.Auto.Accuracy:Value()
+				and Menu.Skills.R.Auto.Range:Value() >= LocalGeometry:GetDistance(myHero.pos, t.aimPosition) then				
+				local ally = NearestAlly(t.aimPosition, Menu.Skills.R.Auto.AllyDistance:Value())
+				if ally then
+					CastSpell(HK_R, t.aimPosition)
+					NextTick = LocalGameTimer() + .25
+					return
+				end
+			end
+		end
+
+	end
+
 end
 
 function OnBlink(target)

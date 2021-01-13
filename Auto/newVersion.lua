@@ -67,7 +67,7 @@ Data = {
         },
         Nami = {
             Changelog = "Nami Changelog Here",
-            Version = 1.25,
+            Version = 1.3,
         },
         Xerath = {
             Changelog = "Xerath Changelog Here",
@@ -96,7 +96,7 @@ Data = {
     },
     Dependencies = {
         Alpha = {
-            Version = 1.75,
+            Version = 1.76,
         },
         Activator = {
             Version = 1.85,

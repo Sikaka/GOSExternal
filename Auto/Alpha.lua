@@ -143,6 +143,35 @@ function __Geometry:IsInRange(p1, p2, range)
 	return (p1.x - p2.x) *  (p1.x - p2.x) + ((p1.z or p1.y) - (p2.z or p2.y)) * ((p1.z or p1.y) - (p2.z or p2.y)) < range * range 
 end
 
+function EnemyCount(origin, range, delay)
+	local count = 0
+	for i  = 1,LocalGameHeroCount(i) do
+		local enemy = LocalGameHero(i)
+		local enemyPos = enemy.pos
+		if delay then
+			enemyPos= LocalGeometry:PredictUnitPosition(enemy, delay)
+		end
+		if enemy and CanTarget(enemy) and LocalGeometry:IsInRange(origin, enemyPos, range) then
+			count = count + 1
+		end			
+	end
+	return count
+end
+
+function __Geometry:GetTargetCount(source, aimPos, delay, speed, width, targetAllies)
+	local targetCount = 0
+	for i = 1, LocalGameHeroCount() do
+		local t = LocalGameHero(i)
+		if t and t.pos and t.alive and t.health > 0 and t.visible and t.isTargetable and ( targetAllies or t.isEnemy) then			
+			local predictedPos = self:PredictUnitPosition(t, delay+ self:GetDistance(source, t.pos) / speed)			
+			if self:IsInRange(aimPos,predictedPos, width) then
+				targetCount = targetCount + 1
+			end
+		end
+	end
+	return targetCount
+end
+
 function __Geometry:GetLineTargetCount(source, aimPos, delay, speed, width, targetAllies)
 	local targetCount = 0
 	for i = 1, LocalGameHeroCount() do
@@ -219,6 +248,25 @@ function __Geometry:GetArcFarmCastPosition(range, delay, speed, width)
 	
 	return targetCount, castPosition
 end
+
+
+function __Geometry:GetTargetOptions(source, target, range, delay, speed, radius, checkCollision, isLine)
+	local candidates = {}
+	for i = 1, LocalGameHeroCount() do
+		local target = LocalGameHero(i)
+		if self:CanTarget(target) then
+
+			local aimPosition, hitChance = self:GetCastPosition(source, target, range, delay, speed, radius, checkCollision, isLine)
+			if aimPosition and hitChance > 0 and self:IsInRange(source.pos, aimPosition, range) then
+				local targetCount = isLine and self:GetLineTargetCount(aimPosition,radius,delay) or self:GetTargetCount(source.pos, aimPosition, delay, speed, radius)
+				local targetPriority = self.Data:GetHeroPriority(target.charName)
+				TableInsert(candidates, {target = target, targetPriority = targetPriority, targetCount = targetCount, accuracy = hitChance, aimPosition = aimPosition})				
+			end
+		end
+	end
+	return candidates
+end
+
 
 function __Geometry:GetCastPosition(source, target, range, delay, speed, radius, checkCollision, isLine)
 	local hitChance = 1
@@ -465,7 +513,9 @@ function __ObjectManager:__init()
 	
 	LocalCallbackAdd('Tick',  function() self:Tick() end)
 	--LocalCallbackAdd('Draw',  function() self:Draw() end)
-	
+
+	self.Data = _G.SDK.Data
+
 	self.CachedBuffs = {}
 	self.OnBuffAddedCallbacks = {}
 	self.OnBuffRemovedCallbacks = {}
@@ -663,6 +713,10 @@ function __ObjectManager:Tick()
 		end
 	end
 
+
+	--Temporarily disable all particle and missile checks. This is too laggy in current version of GOS
+	if true then return end
+
 	--Cache Particles ONLY if a create or destroy event is registered: If not it's a waste of processing
 	if (#self.OnParticleCreateCallbacks > 0 or #self.OnParticleDestroyCallbacks > 0) and GetTickCount() > self.NextCacheParticles then
 		
@@ -677,7 +731,7 @@ function __ObjectManager:Tick()
 			else
 				particle.valid = false
 			end
-		end	
+		end
 		
 		for i = 1, LocalGameParticleCount() do 
 			local particle = LocalGameParticle(i)

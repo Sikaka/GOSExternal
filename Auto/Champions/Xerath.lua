@@ -150,7 +150,7 @@ function Xerath:Q_Logic()
 			local candidates = {}
 			for i = 1, GameHeroCount() do
 				local target = GameHero(i)
-				if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID] then
+				if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID]:Value() then
 					local targetData = self:Q_Targeting(target)
 					if targetData and targetData.target then
 						TableInsert(candidates, targetData)
@@ -177,7 +177,7 @@ function Xerath:Q_Logic()
 		if target and CanTarget(target) then return false end
 		for i = 1, GameHeroCount() do
 			local target = GameHero(i)
-			if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID] and LocalGeometry:GetDistance(myHero.pos, target.pos) <= 1500 then				
+			if CanTarget(target) and Menu.Skills.Q.Targets[target.networkID]:Value() and LocalGeometry:GetDistance(myHero.pos, target.pos) <= 1500 then				
 				ControlKeyDown(HK_Q)
 				self.NextTick = self.CurrentGameTime + .25
 				return true
@@ -347,7 +347,7 @@ function Xerath:R_Logic()
 			local candidates = {}
 			for i = 1, GameHeroCount() do
 				local target = GameHero(i)
-				if CanTarget(target) and Menu.Skills.R.Targets[target.networkID] then
+				if CanTarget(target) and Menu.Skills.R.Targets[target.networkID]:Value() then
 					local targetData = self:R_Targeting(target)
 					if targetData and targetData.target then
 						TableInsert(candidates, targetData)
