@@ -83,6 +83,10 @@ local BuffManager = nil
 
 class "__Geometry"
 
+function __Geometry:__init()
+	self.Data = _G.SDK.Data
+end
+
 function __Geometry:VectorPointProjectionOnLineSegment(v1, v2, v)
 	assert(v1 and v2 and v, "VectorPointProjectionOnLineSegment: wrong argument types (3 <Vector> expected)")
 	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
@@ -260,7 +264,7 @@ function __Geometry:GetTargetOptions(source, target, range, delay, speed, radius
 			if aimPosition and hitChance > 0 and self:IsInRange(source.pos, aimPosition, range) then
 				local targetCount = isLine and self:GetLineTargetCount(aimPosition,radius,delay) or self:GetTargetCount(source.pos, aimPosition, delay, speed, radius)
 				local targetPriority = self.Data:GetHeroPriority(target.charName)
-				TableInsert(candidates, {target = target, targetPriority = targetPriority, targetCount = targetCount, accuracy = hitChance, aimPosition = aimPosition})				
+				LocalInsert(candidates, {target = target, targetPriority = targetPriority, targetCount = targetCount, accuracy = hitChance, aimPosition = aimPosition})				
 			end
 		end
 	end
